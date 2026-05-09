@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlblack"
+version = "0.1.0"
+description = "Surrogate-model assembly framework for optimization pipelines"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "sqlalchemy>=2.0",
+  "tomli>=2.0.1; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+catalog_postgres = [
+  "psycopg[binary]>=3.1",
+]
+catalog_mysql = [
+  "pymysql>=1.1",
+]
+
+[project.scripts]
+mlblack = "mlblack.__main__:main"
+
+[tool.setuptools.package-data]
+catalog = ["db.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

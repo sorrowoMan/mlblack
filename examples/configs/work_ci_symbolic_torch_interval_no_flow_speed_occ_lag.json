@@ -1,0 +1,63 @@
+﻿{
+    "data":  {
+                 "csv_path":  "${MLBLACK_WORK_CI_CSV_NO_FLOW_SPEED_OCC_LAG}",
+                 "target_col":  "ci",
+                 "date_col":  "date",
+                 "drop_cols":  [
+
+                               ],
+                 "split_mode":  "fold_flag",
+                 "test_fold_col":  "test_fold_10",
+                 "test_ratio":  0.2,
+                 "random_seed":  42
+             },
+    "train":  {
+                  "trainer_key":  "symbolic_torch_interval",
+                  "pipeline_key":  "zscore",
+                  "trainer_params":  {
+                                         "version":  "v2",
+                                         "lower_quantile":  0.1,
+                                         "upper_quantile":  0.9,
+                                         "v2_continuous_ops":  [
+                                                                   "identity",
+                                                                   "sin",
+                                                                   "cos"
+                                                               ],
+                                         "v2_binary_ops":  [
+                                                               "identity"
+                                                           ],
+                                         "v2_include_interactions":  true,
+                                         "v2_max_interactions":  12,
+                                         "v2_topk_features":  6,
+                                         "v2_include_hinge":  true,
+                                         "v2_hinge_quantiles":  [
+                                                                    0.25,
+                                                                    0.5,
+                                                                    0.75
+                                                                ],
+                                         "order_penalty":  10.0,
+                                         "width_penalty":  0.001,
+                                         "epochs":  320,
+                                         "batch_size":  128,
+                                         "lr":  0.0008,
+                                         "weight_decay":  0.0001,
+                                         "l1_readout":  2E-05,
+                                         "l1_params":  0.0,
+                                         "device":  "cpu",
+                                         "random_seed":  42
+                                     },
+                  "pipeline_params":  {
+
+                                      },
+                  "biases":  [
+
+                             ],
+                  "eval_splits":  [
+                                      "train",
+                                      "test"
+                                  ],
+                  "output_dir":  "${MLBLACK_OUTPUTS_DIR}/work_ci_scaffold_symbolic_torch_interval",
+                  "run_name":  "work_ci_scaffold_symbolic_torch_interval"
+              }
+}
+

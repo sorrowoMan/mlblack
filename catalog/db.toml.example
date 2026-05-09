@@ -1,0 +1,32 @@
+# Catalog DB protocol template for mlblack.
+# Copy this file to `catalog/db.toml` for local database-backed catalog use.
+
+[catalog_db]
+enabled = false
+mode = "prefer"
+readonly = false
+
+# Explicit SQLAlchemy URL examples:
+# url = "sqlite+pysqlite:///./runs/catalog.sqlite3"
+# url = "postgresql://user:pass@127.0.0.1:5432/mlblack_catalog"
+# url = "mysql://user:pass@127.0.0.1:3306/mlblack_catalog"
+
+# Structured field examples:
+# backend = "sqlite"
+# path = "./runs/catalog.sqlite3"
+
+# backend = "postgresql"
+# host = "127.0.0.1"
+# port = 5432
+# user = "postgres"
+# password = ""
+# database = "mlblack_catalog"
+# driver = "postgresql+psycopg"
+
+# backend = "mysql"
+# host = "127.0.0.1"
+# port = 3306
+# user = "root"
+# password = ""
+# database = "mlblack_catalog"
+# driver = "mysql+pymysql"
