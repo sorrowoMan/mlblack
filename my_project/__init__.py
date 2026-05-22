@@ -1,1 +1,0 @@
-"""MLBLACK project scaffold template."""

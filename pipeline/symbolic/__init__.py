@@ -1,0 +1,50 @@
+from .function_space import CandidateTerm, FunctionPool, FunctionSpace, FunctionSpaceProvider, dedupe_terms, safe_corr
+from .dynamic_pool import DynamicFunctionPoolPipeline, DynamicPoolConfig, DynamicPoolUpdate, PoolSignal
+from .grammar import (
+    ActivationPlan,
+    DynamicActivationConfig,
+    GrammarCandidate,
+    generate_pair_candidates,
+    generate_recursive_pair_candidates,
+    generate_recursive_unary_candidates,
+    generate_unary_candidates,
+    lower_conditional_primitive_specs,
+    make_seed_candidate,
+    parse_family_budget_csv,
+    resolve_dynamic_activation_kwargs,
+    select_activation_plan,
+)
+from .pool_pipeline import FunctionPoolPipeline, FunctionPoolPipelineConfig
+from .primitives import PairGrammarRule, PrimitiveRegistry, UnaryPrimitiveSpec, default_primitive_registry, seed_feature_terms
+
+__all__ = [
+    "ActivationPlan",
+    "CandidateTerm",
+    "DynamicActivationConfig",
+    "DynamicFunctionPoolPipeline",
+    "DynamicPoolConfig",
+    "DynamicPoolUpdate",
+    "FunctionPool",
+    "FunctionPoolPipeline",
+    "FunctionPoolPipelineConfig",
+    "FunctionSpace",
+    "FunctionSpaceProvider",
+    "GrammarCandidate",
+    "PairGrammarRule",
+    "PrimitiveRegistry",
+    "PoolSignal",
+    "UnaryPrimitiveSpec",
+    "dedupe_terms",
+    "default_primitive_registry",
+    "generate_pair_candidates",
+    "generate_recursive_pair_candidates",
+    "generate_recursive_unary_candidates",
+    "generate_unary_candidates",
+    "lower_conditional_primitive_specs",
+    "make_seed_candidate",
+    "parse_family_budget_csv",
+    "resolve_dynamic_activation_kwargs",
+    "safe_corr",
+    "seed_feature_terms",
+    "select_activation_plan",
+]

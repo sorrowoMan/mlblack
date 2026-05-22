@@ -1,37 +1,109 @@
-from __future__ import annotations
-
-from typing import Any, Dict
-
-from .base import BasePipeline
-from .config import FeatureSpaceBuilderConfig
-from .feature_space_builder import FeatureSpaceBuildInput, FeatureSpaceBuildResult, build_feature_space
-from .identity import IdentityPipeline
-from .zscore import ZScorePipeline
-
-_PIPELINE_REGISTRY = {
-    "identity": IdentityPipeline,
-    "zscore": ZScorePipeline,
-}
-
-
-def create_pipeline(name: str, state: Dict[str, Any] | None = None) -> BasePipeline:
-    key = str(name or "identity").strip().lower()
-    cls = _PIPELINE_REGISTRY.get(key)
-    if cls is None:
-        raise KeyError(f"Unknown pipeline: {name}")
-    pipe = cls()
-    if state is not None:
-        pipe.load_state_dict(dict(state))
-    return pipe
-
+from .base import DataPipeline, DataPipelineComponent, PipelineFitState
+from .data import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView, PreferencePairDataView, as_numeric_data_view, train_valid_split
+from .datasets import DatasetStreamConfig, NumericBatch, NumericBatchLoader, RowBatch, RowDatasetStream, TokenizedTextDatasetBuilder, TokenizedTextDatasetConfig
+from .components import IdentityComponent, SelectColumnsComponent, ZScoreNormalizeComponent
+from .model_conditioning import ModelConditionedTargetBuilder, ModelConditionedTargetComponent, ModelConditionedTargetConfig, build_model_conditioned_target
+from .conditional import (
+    BinaryGate,
+    ConditionalPrimitive,
+    ConditionalPrimitiveSpec,
+    HingeFeature,
+    OneHotGate,
+    PrimitiveFeatureComposer,
+    RouteThenFormulaComposer,
+    SharedBackboneResidualComposer,
+    SoftGate,
+    primitive_from_spec,
+)
+from .feature_space import ConditionalPrimitiveFeatureComponent, FeatureSpace, FeatureSpaceComponent
+from .numericizer import DefaultNumericizer, NumericFeatureColumn, NumericizationPlan, TargetCodec, VocabularyTokenizer, VocabularyTokenizerConfig
+from .symbolic import (
+    CandidateTerm,
+    DynamicActivationConfig,
+    DynamicFunctionPoolPipeline,
+    DynamicPoolConfig,
+    DynamicPoolUpdate,
+    FunctionPool,
+    FunctionPoolPipeline,
+    FunctionPoolPipelineConfig,
+    FunctionSpaceProvider,
+    GrammarCandidate,
+    PrimitiveRegistry,
+    PoolSignal,
+    default_primitive_registry,
+    generate_pair_candidates,
+    generate_recursive_pair_candidates,
+    generate_recursive_unary_candidates,
+    generate_unary_candidates,
+    lower_conditional_primitive_specs,
+    parse_family_budget_csv,
+    resolve_dynamic_activation_kwargs,
+    select_activation_plan,
+)
 
 __all__ = [
-    "BasePipeline",
-    "FeatureSpaceBuilderConfig",
-    "FeatureSpaceBuildInput",
-    "FeatureSpaceBuildResult",
-    "IdentityPipeline",
-    "ZScorePipeline",
-    "build_feature_space",
-    "create_pipeline",
+    "BinaryGate",
+    "ConditionalPrimitive",
+    "ConditionalPrimitiveSpec",
+    "DataPipeline",
+    "DataPipelineComponent",
+    "DatasetStreamConfig",
+    "DefaultNumericizer",
+    "HingeFeature",
+    "ConditionalPrimitiveFeatureComponent",
+    "CandidateTerm",
+    "DynamicFunctionPoolPipeline",
+    "DynamicActivationConfig",
+    "DynamicPoolConfig",
+    "DynamicPoolUpdate",
+    "FeatureSpace",
+    "FeatureSpaceComponent",
+    "FunctionPool",
+    "FunctionPoolPipeline",
+    "FunctionPoolPipelineConfig",
+    "FunctionSpaceProvider",
+    "GraphDataView",
+    "GrammarCandidate",
+    "IdentityComponent",
+    "ImageContrastivePairDataView",
+    "ImageDataView",
+    "ModelConditionedTargetBuilder",
+    "ModelConditionedTargetComponent",
+    "ModelConditionedTargetConfig",
+    "NumericDataView",
+    "NumericBatch",
+    "NumericBatchLoader",
+    "NumericFeatureColumn",
+    "NumericizationPlan",
+    "OneHotGate",
+    "PipelineFitState",
+    "PrimitiveFeatureComposer",
+    "PrimitiveRegistry",
+    "PreferencePairDataView",
+    "PoolSignal",
+    "RouteThenFormulaComposer",
+    "RowBatch",
+    "RowDatasetStream",
+    "SelectColumnsComponent",
+    "SharedBackboneResidualComposer",
+    "SoftGate",
+    "TargetCodec",
+    "TokenizedTextDatasetBuilder",
+    "TokenizedTextDatasetConfig",
+    "VocabularyTokenizer",
+    "VocabularyTokenizerConfig",
+    "ZScoreNormalizeComponent",
+    "as_numeric_data_view",
+    "build_model_conditioned_target",
+    "default_primitive_registry",
+    "generate_pair_candidates",
+    "generate_recursive_pair_candidates",
+    "generate_recursive_unary_candidates",
+    "generate_unary_candidates",
+    "lower_conditional_primitive_specs",
+    "parse_family_budget_csv",
+    "primitive_from_spec",
+    "resolve_dynamic_activation_kwargs",
+    "select_activation_plan",
+    "train_valid_split",
 ]

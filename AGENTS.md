@@ -1,421 +1,344 @@
-# AGENTS.md
+﻿# AGENTS.md
 
-## 0) How To Use This File
+## 0) 使用方式
 
-This is the first-read execution contract for AI collaborators working in `mlblack`.
+这份文档面向协作 Agent，目标是保证 `mlblack` 按新的 optimization-first 架构继续演进，而不是把旧 `mlblack` 的 family/trainer 耦合直接搬回来。
 
-If you are an AI / coding agent entering this repo:
+推荐阅读顺序：
 
-1. Read this file first.
-2. Then read `docs/AI_DEVELOPMENT_GUIDELINES.md`.
-3. Then read the family-specific code and tests relevant to the task.
+1. 先看 `1/2/3`，确认项目定位、核心分层和运行数据流。
+2. 再看 `4/5/6/7`，确认 state、resource、artifact、scaffold 边界。
+3. 最后按 `10/11` 做实现和最小检查。
 
-Permission-first rule:
+硬规则：
 
-- **Before making any code change, running tests, launching benchmarks, or executing write-producing automation, you must first obtain explicit user permission.**
-- Before permission is granted, you may only do: repo reading, architecture analysis, mechanism diagnosis, proposal drafting, and documentation rewrites.
-- Do not treat “the root cause is obvious” or “the patch is small” as implicit authorization.
-- If the user is discussing mechanisms, comparing designs, or asking for diagnosis, default to **analysis-only / no code changes**.
+- 只复用旧机制思想，不复用旧耦合边界。
+- `mlblack` 是 `nsgablack` 标准脚手架的 ML 特化层，不是第二套优化/编排框架。
+- `nsgablack` 已有成熟的 solver、adapter 编排、group、serial、event、parallel、runtime/backend、L0 resource 能力；`mlblack` 不重复实现这些底座。
+- `mlblack` 的正式复杂编排入口必须复用 `nsgablack`。低层 ML 组件可以保持轻量/可独立导入，但不能因此自建 workflow/runtime/L0。
+- 不保留兼容层：发现 `runtime/workflow/resource_request/resource allocator` 配置时应报错，而不是静默降级。
+- `mlblack` 只新增 ML 特有组件：representation、codec/decoder、head、problem/evaluation、inner parameter fitting、artifact/report、symbolic engine。
+- 大对象进入 snapshot/artifact，context 只保留轻量字段或引用。
+- 新增 demo/case 如果涉及 stage/group/event/parallel/backend/resource lease，必须通过 `nsgablack` 标准脚手架组装；`mlblack` 侧只暴露 inner training/evaluation surface。
 
-This file is intentionally short and normative.
-If a more scattered document conflicts with this file, prefer this file.
+## 1) 项目定位
 
-## 1) First Principle
+`mlblack` 把机器学习视为优化问题：
 
-`mlblack` is a composable learning framework, not an algorithm-name dump.
-
-Do not start by asking:
-
-- "Should I add another algorithm directory?"
-
-Start by asking:
-
-- Is this a new `family`?
-- Is this a cross-family `component`?
-- Is this a new `head`?
-- Is this a reusable `provider`?
-- Is this a pure `plugin`?
-
-## 2) The Five Kinds
-
-### 2.1 `family`
-
-Defines how a function family is trained.
-It is the main training backbone.
-
-Current formal families:
-
-- `linear family`
-- `tree family`
-- `tree_boosting family`
-- `neural family`
-- `symbolic family`
-
-### 2.2 `component`
-
-Enhances an existing family without replacing its main training loop.
-
-Typical examples:
-
-- regularization
-- dropout
-- batch sampling policy
-- warm-start policy
-- router / gate / piecewise primitive
-- gradient norm state signal
-- layer activation signal
-
-### 2.3 `head`
-
-Defines output semantics.
-
-Current formal heads:
-
-- `point`
-- `interval`
-
-### 2.4 `provider`
-
-Provides training/evaluation-side external power:
-
-- bridge
-- proxy
-- cache
-- short-circuit evaluation
-- numerical solver
-
-### 2.5 `plugin`
-
-Owns side effects and observability:
-
-- report
-- checkpoint
-- trace
-- reproducibility
-- resource audit
-
-## 3) Non-Negotiable Architecture Boundaries
-
-- `family` owns main training semantics.
-- `component` can enhance, but must not take over the full training workflow.
-- `head` changes output semantics, not the family identity.
-- `provider` powers a path, but must not pretend to be the model artifact.
-- `plugin` owns side effects, but must not rewrite task semantics.
-
-Do not:
-
-- mix `report/checkpoint/cache/trace` into the trainer body
-- hard-code provider logic into trainer `if/else`
-- mistake output-semantic changes for a new family
-- create a new trainer family just for one mechanism
-- fall back to algorithm-name scattering when a `family/preset/head` description is clearer
-
-### 3.1 Symbolic Search Boundary
-
-Architecture law:
-
-- If the structure is fixed, use an `mlblack` trainer.
-- If the structure must be searched, it must enter an `nsgablack` outer solver; `mlblack` should provide only the evaluation proxy, inner fitter, artifact builder, and audit surface.
-
-For symbolic learning, structure means any searched expression topology, term set, basis set, source object, chart variant, realization head, branch/gate, threshold, or symbolic operator composition.
-
-Consequences:
-
-- Do not let a symbolic trainer grow into a second outer optimization framework.
-- Do not hide symbolic structure search as private trainer beam/scoring logic when it should be represented as an `nsgablack` problem.
-- `nsgablack` owns outer orchestration, population/frontier management, multi-objective search, solver/adaptor choice, and search trace.
-- `mlblack` owns candidate evaluation: fitting, metrics, objective payloads, constraints, symbolic artifacts, interval heads, and audit reports.
-
-## 4) Componentization Rules
-
-When in doubt, prefer explicit modules over hidden trainer conditionals.
-
-Good decomposition targets:
-
-- family backbone
-- preset assembly
-- head semantics
-- mechanism component
-- provider capability
-- plugin side effect
-
-Bad decomposition:
-
-- business routing hidden inside trainer internals
-- provider behavior hidden as a trainer private helper
-- persistence logic hidden inside fit loops
-
-Execution guard:
-
-- **No implementation, test run, or benchmark run without explicit user approval first.**
-
-## 5) Contract Rules
-
-Every formal object should expose stable contracts.
-
-### 5.1 I/O Contract
-
-At minimum, define:
-
-- what it consumes
-- what it produces
-- what is optional
-- what is required
-
-### 5.2 Composition Contract
-
-Prefer explicit declarations such as:
-
-- `requires`
-- `provides`
-- `mutates`
-- `cache`
-
-Do not rely on ad hoc `hasattr(...)` and scattered context guessing as the main composition protocol.
-
-### 5.3 Persistence Contract
-
-Keep these outputs distinct:
-
-- `artifact`
-- `trainer_state`
-- `report`
-- provider/plugin byproducts
-
-Do not let provider/plugin outputs masquerade as the main artifact.
-
-## 6) Field Alignment Rules
-
-Field alignment is a first-class rule in `mlblack`.
-
-If two objects mean the same thing, they should use the same stable field key.
-
-Examples:
-
-- `family`
-- `preset`
-- `head`
-- `runtime_backend`
-- `status`
-- `supports_resume`
-
-Rules:
-
-- schema keys stay stable and English
-- user-facing labels may be Chinese
-- do not create near-duplicate field names for the same meaning
-- if aliases are needed, register them explicitly; do not scatter synonyms informally
-
-## 7) Catalog Is Mandatory
-
-Formal framework objects must not live only in code and README prose.
-
-If something is a formal part of the framework surface, it should be represented in catalog.
-
-Current structured catalog kinds:
-
-- `family`
-- `preset`
-- `head`
-- `component`
-- `provider`
-- `plugin`
-
-For new formal objects, add:
-
-- catalog entry
-- structured `fields`
-- structured `relations`
-- stable summary text
-
-## 8) Catalog Must Also Be Materialized To Database
-
-Catalog is not just a transient in-memory helper.
-It is a formal discoverability surface and should support database-backed persistence.
-
-Current rule:
-
-- catalog entries are authored in the structured registry surface
-- catalog must be materializable into sqlite
-- UI/service layers should be able to consume the materialized catalog database
-
-Current sqlite entrypoints:
-
-```powershell
-python -m mlblack catalog db materialize --db-path runs\catalog.sqlite3 --profile framework-core
-python -m mlblack catalog db summary --db-path runs\catalog.sqlite3 --profile framework-core
-python -m mlblack catalog db show preset:mlp_torch --db-path runs\catalog.sqlite3 --profile framework-core
+```text
+UnknownState
+  -> ModelRepresentation.decode(...)
+  -> model/function/spec
+  -> LearningProblem.evaluate(...)
+  -> Feedback(objectives, constraints, gradients, residuals)
+  -> OptimizerAdapter.update(...)
 ```
 
-This is part of the formal framework surface, not an optional documentation trick.
+核心对应关系：
 
-## 9) Runtime State And Database Rules
+| nsgablack | mlblack | 职责 |
+| --- | --- | --- |
+| Solver | Trainer | 控制平面、生命周期、状态、评估入口 |
+| Adapter | OptimizerAdapter | 优化策略，如 GD、random search、torch backprop |
+| Representation | ModelRepresentation + Codec + Head | 未知数编码/解码、模型输出语义 |
+| Problem | LearningProblem | 唯一稳定吃数据的评估层 |
+| Plugin | Capability | checkpoint、tracking、resource audit、report |
+| Bias | OptimizationBias | 软偏好，不替代硬约束 |
+| L0 Resource | injected ResourceContext / audit | 资源授权、调度、lease 属于 nsgablack；mlblack 只读取和审计 |
 
-`mlblack` distinguishes runtime state storage from catalog storage.
+## 2) 架构边界
 
-### 9.1 Runtime State
+### Trainer
 
-Use:
+负责：
 
-- `ContextStore` / `SQLiteContextStore` for light keys and refs
-- `SnapshotStore` / `SQLiteSnapshotStore` for heavy payloads
+- `fit/step` 生命周期
+- `evaluate_individual/evaluate_population`
+- context/snapshot/artifact 状态边界
+- adapter/representation/problem/capability/bias 装配
 
-Rules:
+不负责：具体优化算法、模型结构、业务 objective、数据清洗细节、跨 trainer 编排、并行调度、资源授权。
 
-- small state goes to context
-- heavy payload goes to snapshot
-- context should prefer `*_ref`
-- do not keep large payloads in context long-term
+### Adapter
 
-### 9.2 Catalog Database
+负责：`propose(...)`、`update(...)`、adapter state/resume。
 
-Catalog database is a separate indexed surface.
+不负责：直接读训练数据、直接构造业务 artifact、接管 trainer 生命周期。
 
-It is for:
+### Representation / Codec / Head
 
-- discoverability
-- UI queries
-- field-aligned lookup
-- relation jumps
-- future service/API reads
+负责：`init`、`encode/decode`、`repair`、head 输出组合。
 
-Do not confuse runtime snapshot storage with catalog indexing.
+说明：
 
-## 10) When Adding A New Family Or Preset
+- `head` 是 decoder 输出语义的一部分。
+- point/interval/probability 不应写成特殊 trainer。
+- conditional/piecewise 用 router + branch representation/composer，不回到旧 family 耦合。
+- 正交当前属于 representation/codec/feature map；正交评估可以作为 Problem/Capability 扩展，正交输出才属于 Head。
 
-### 10.1 New `family`
+### Problem
 
-At minimum, add:
+负责消费数据、调用 model/spec 评估、返回 `Feedback`。
 
-- formal family contract
-- grouped `family_spec`
-- preset assembly path
-- artifact family metadata
-- family signature
-- trainer_state compatibility checks
-- direct-vs-scaffold equivalence tests
-- catalog fields and relations
+Problem 是唯一稳定吃数据的位置。Adapter 不直接吃数据。
 
-### 10.2 New `preset`
+### Capability
 
-Prefer reusing an existing family backbone.
-Differentiate via:
+负责 checkpoint、experiment tracking、resource audit、report writer、lifecycle side effects。
 
-- backend
-- mechanism
-- head
-- policy
+Capability 不应改变优化语义；如果要影响优化方向，用 `OptimizationBias` 或 adapter。
 
-Do not invent a private one-off workflow too early.
+## 3) 标准数据流
 
-## 11) Example Assembly Rule
+```text
+adapter.propose
+  -> representation.repair
+  -> trainer.evaluate_population
+  -> problem.evaluate
+  -> bias.adjust_feedback
+  -> adapter.update
+  -> snapshot/context/report
+```
 
-If you add or change any `example`, `demo`, or benchmark runner, it must be assembled through the standard project scaffold/protocol path.
+说明：
 
-Here "standard scaffold" means the formal shape and responsibility split, not a mandatory literal directory name. It should look like the repo's `my_project` style even when it lives elsewhere:
+- 单个 inner trainer 的 batch evaluation 可以保留为最小顺序语义。
+- 并行、分组、stream/batch runtime、设备选择、资源 lease、跨 trainer portfolio 不属于 `mlblack` 主干，应交给 `nsgablack` 外层编排。
 
-- `problem/`: dataset, scenario, objective, target, and contract definitions
-- `pipeline/`: feature flow, family/head assembly, evaluation chain, and artifact construction
-- `config/`: declarative, reproducible assembly configuration
-- `build_*` / `run_*`: thin official assembly and execution entrypoints
-- `providers/` / `plugins/` / `reporting/`: external power, side effects, audit reports, and persistence
-- `registry` / `catalog`: discoverability for formal framework objects
+生命周期钩子：
 
-Example files themselves must remain thin entrypoints, compatibility wrappers, or teaching calls. Real assembly logic must live in the standard scaffold layers above.
+```text
+on_fit_start
+on_step_start
+on_evaluate_start
+on_evaluate_end
+on_step_end
+on_fit_end
+on_error
+```
 
-Use the formal assembly surface, such as:
+## 4) Context / Snapshot / State
 
-- `FlowAssemblySpec`
-- `TrainerAssemblySpec`
-- standard CLI / workflow entrypoints
-- standard project scaffolds already used by the repo
-- `nsgablack` outer-solver scaffold surface when symbolic structure search is involved
+Context 只放轻量信息：
 
-Do not:
+- `run_name`
+- `step`
+- `resource.*`
+- `last_population_snapshot`
+- `pipeline` summary
+- `signal.*` / reason / small metrics
 
-- instantiate a pile of private components ad hoc inside the example when a formal scaffold path exists
-- bypass the registry/assembly contract just to make the example shorter
-- let examples drift into a second unofficial runtime architecture
-- implement a private symbolic outer-search runner in an example when the search should be an `nsgablack` outer-solver problem
-- leave all problem, pipeline, provider, head, plugin, reporting, and runtime wiring permanently inside one `examples/.../*.py` file
+不要长期把以下对象放进 context：
 
-Cross-framework rule:
+- full population
+- full history
+- full trace
+- model object
+- fitted estimator
+- large arrays
 
-- If an example uses `mlblack`, the `mlblack` side must expose the evaluation proxy, inner fitter, artifact builder, head, and audit/report surface through the mlblack standard scaffold shape.
-- If an example also uses `nsgablack`, the `nsgablack` side must expose the outer solver, adapter, representation, bias, plugin, and runtime surface through the nsgablack standard scaffold shape.
-- Cross-framework examples may compose those two official scaffold surfaces, but must not bypass either side with private glue.
+这些应该进入：`SnapshotStore`、`ArtifactBundle`、`TrainerState`。
 
-Examples are part of the framework teaching surface, so they must reflect the official product assembly path.
+### 4.1 Context Contract
 
-## 12) Testing Expectations
+组件契约必须对齐 `nsgablack` 风格，使用普通字符串字段声明，不引入强制 `CTX.xxx` 常量层：
 
-For training-semantics changes, validate:
+```python
+context_requires = ("feedback.gradients", "candidate.unknown_state")
+context_optional = ()
+context_provides = ("population.candidates",)
+context_mutates = ("adapter.current_state",)
+context_cache = ()
+requires_metrics = ()
+metrics_fallback = "strict"
+context_notes = "Reads gradients and current state; proposes next candidates."
+```
 
-- direct trainer vs scaffold assembly
-- metrics
-- predictions
-- artifact metadata
-- trainer_state signature
+规则：
 
-If `resume` / `warm_start` are supported, validate direct-vs-scaffold equivalence there too.
+- key 必须能被 `mlblack.core.context_keys` registry 校验。
+- `doctor` 会扫描组件 class attrs 并校验 unknown context key、unknown metric key 和 invalid fallback。
+- `catalog` 会动态解析 import path，并把统一 contract 注入 `CatalogEntry.contract`。
+- `ComponentContract` 只是序列化兼容桥，组件源码中以 `context_*` class attrs 为主。
 
-If catalog is changed, validate:
+## 5) L0 Resource
 
-- schema
-- snapshot
-- relations
-- CLI
-- materialized sqlite catalog path
+`mlblack` 不拥有 L0 resource allocator。
 
-## 13) Hard AI Checklist
+资源第一原则：
 
-This checklist is meant to be used literally.
-Before an AI collaborator finishes a change, it should be able to answer every item.
+- `nsgablack` owns resource authorization、lease、parallel scheduling、backend selection、solver fanout。
+- `mlblack` owns passive `ResourceContext` consumption and audit only。
+- `mlblack` 不实现新的 `LocalResourceAllocator`、`SQLiteLeaseStore`、GPU lease manager、thread scheduler。
+- 不保留旧 allocator/lease-store 兼容类型。
 
-### 13.1 Before Editing
+嵌套关系：
 
-- [ ] Did I classify the object as `family` / `component` / `head` / `provider` / `plugin` before changing code?
-- [ ] Did I check whether an existing family/preset/component already covers this need?
-- [ ] Did I identify which plane this change belongs to?
-- [ ] Did I verify whether this is a runtime-state change, a catalog change, or both?
+```text
+nsgablack outer allocator
+  -> ResourceLease
+  -> ResourceContext JSON
+  -> mlblack inner training/evaluation task
+```
 
-### 13.2 Before Merging Code
+`mlblack` 内部必须遵守外部注入的 device/thread/context，不允许私下写死 `cuda:0`、线程数或 backend。
 
-- [ ] Did I preserve family/component/head/provider/plugin boundaries?
-- [ ] Did I keep contracts explicit instead of hiding behavior in trainer internals?
-- [ ] Did I reuse stable field keys instead of inventing new near-duplicates?
-- [ ] If I changed a formal framework object, did I update catalog entry/fields/relations?
-- [ ] If I changed catalog, did I preserve or improve sqlite materialization?
-- [ ] If I added or changed an example/demo, did I keep it on the standard scaffold/assembly path?
-- [ ] If I changed continuation semantics, did I verify `resume` / `warm_start` implications?
-- [ ] If I changed persistence, did I keep `artifact`, `trainer_state`, `report`, and side products distinct?
+## 6) Artifact / Replay
 
-### 13.3 Before Shipping A Result
+三类边界必须区分：
 
-- [ ] Did I add or update the right tests?
-- [ ] Did I run the most relevant tests instead of assuming compatibility?
-- [ ] If direct-vs-scaffold equivalence matters, did I validate it?
-- [ ] If I could not validate something important, did I explicitly say so?
+- `ModelArtifact`：训练产物
+- `TrainerStateArtifact`：恢复/回放状态
+- `RunReport`：审计报告
 
-## 14) Hard PR Checklist
+Typed artifact 可细化：
 
-If a change is large enough to be treated like a PR, it should pass this checklist:
+- `TreeEnsembleArtifact`
+- `XGBoostArtifact`
+- `SklearnMLPArtifact`
+- `TorchModelArtifact`
+- symbolic artifact 后续再接
 
-- [ ] The change explains its classification decision (`family/component/head/provider/plugin`).
-- [ ] The change explains why the chosen module/plane is the correct landing place.
-- [ ] Any new formal surface has stable fields, stable summary text, and catalog relations.
-- [ ] Any catalog change remains queryable through CLI and materializable through sqlite.
-- [ ] Any user-facing label changes do not break stable internal schema keys.
-- [ ] Any persistence change preserves the runtime-state-vs-catalog-db distinction.
-- [ ] Any new example or demo follows the standard scaffold/assembly path instead of a private shortcut.
-- [ ] Any training-semantic change is covered by the right equivalence or contract tests.
-- [ ] Any unverified risk is called out explicitly instead of being hidden.
+不要把 artifact persistence 写进 adapter。
 
-## 15) Recommended Reading Order
+## 7) Assembly / Inner Training
 
-1. `AGENTS.md`
-2. `docs/AI_DEVELOPMENT_GUIDELINES.md`
-3. `docs/ARCHITECTURE_PURPOSE.md`
-4. `docs/GETTING_STARTED.md`
-5. `docs/mlblack_framework_logic.md`
-6. relevant family code and tests
+标准 ML 组件入口：
+
+```python
+build_trainer(spec, data)
+```
+
+`TrainerAssemblySpec` 只负责单个 inner trainer 的 ML 组件装配：
+
+- preset
+- params
+- biases
+- capabilities
+- component_overrides
+
+`InnerTrainingAssemblySpec` 只允许表示 pipeline + single trainer 的声明数据。
+
+禁止继续提供 `build_flow / MLFlow` 执行入口。
+
+禁止把以下能力放进 `mlblack` assembly：
+
+- trainer group / portfolio
+- serial stage / workflow runner
+- event router
+- parallel runtime
+- backend selection
+- resource allocator / lease
+
+这些必须由 `nsgablack` 标准脚手架负责。`mlblack` 侧应该暴露 training proxy、problem bridge、inner fitter、artifact builder 和 audit/report surface，供 `nsgablack` 调用。
+
+### 7.1 Canonical Package Layout
+
+当前实现主干已收敛到这些 canonical namespace：
+
+- `core/`：Trainer、Adapter、Problem、Representation、Head、contracts、passive ResourceContext、state、artifact、store。
+- `adapters/`：GD、random search、estimator search、torch backprop。
+- `representations/`：representation、codec、model-space 解码。
+- `representations/heads/`：point、interval、probability、piecewise head。
+- `problems/`：监督/分类/条件 problem、跨框架 proxy/bridge、`problems/training/` task/result/contract。
+- `pipeline/`：data view、pipeline components、feature_space、`pipeline/numericizer/`、`pipeline/conditional/`。
+- `assembly/`：build_trainer、single-trainer assembly spec、schema/config。不要新增 `assembly/workflow` 机制。
+- `catalog/`：registry/query/dashboard、`catalog/experiment/`。
+- `capabilities/`、`bias/`、`models/`、`presets/`：保持独立主职责。
+
+旧顶层包 `heads/`、`numericizer/`、`conditional/`、`workflow/`、`training/`、`problem/`、`experiment/`、`schema/`、`config/`、`data/` 已迁走。新增实现必须使用 canonical namespace，不要重新创建这些顶层包。
+
+`assembly/workflow` 与 `core/runtime` 不属于 mlblack 主干；`core/resources` 只允许 passive `ResourceContext` 和 audit。
+
+## 8) 当前已迁移能力
+
+已落位：
+
+- linear / orthogonal linear
+- point / interval head
+- logistic / softmax / probability calibration / piecewise head
+- tree / xgboost estimator spec
+- tree/boosting mechanism metadata: splitter / sampling / pruning / warm_start / continuation / early_stopping
+- sklearn MLP spec
+- numpy MLP + torch backprop with optimizer state / batching lifecycle / device policy
+- supervised regression / interval regression / classification with AUC/F1/PR metrics
+- piecewise representation / piecewise head / piecewise regression problem
+- schema/config/scaffold
+- training contract / problem bridge / proxy
+- numericizer / feature_space
+- conditional primitives / composer / branch model composition
+- bias: noop / objective weight / state L2 / L2 scale / objective policy / branch policy / dynamic pool
+- capability: checkpoint / experiment tracker / resource audit
+- artifact bundle + typed model artifact + estimator state summary
+- catalog / doctor / query/facet/deep-link / lightweight dashboard export
+- experiment sqlite query/facet / lightweight dashboard export
+- cross-framework resource-context case under `examples/cross_framework/`
+
+已移除/迁出到 nsgablack-owned 语义：
+
+- `assembly/workflow/*`：trainer candidate/group/stage/event/portfolio result 属于 `nsgablack` 编排层。
+- `core/runtime.py`：serial/thread/batch/stream/facade backend 属于 `nsgablack` 外层 runtime/backend 管理。
+- `core/resources.py`：allocator、lease store、heartbeat 等 L0 资源授权属于 `nsgablack`；`mlblack` 只保留 passive context/audit。
+- `build_flow / MLFlow.workflow`：不再作为 mlblack 入口。
+
+Symbolic first pass now exists:
+
+- `models/symbolic.py`：fixed expression tree, `ParameterSpec`, numpy evaluator, expression stringification。
+- `representations/codecs/symbolic.py`：fixed symbolic expression codec and multi-expression codec。
+- `representations/symbolic.py`：fixed expression representation and fixed basis-set representation。
+- `representations/heads/symbolic.py`：multi-symbol / basis-set head。
+- `problems/symbolic.py`：fixed symbolic regression and orthogonal basis evaluation。
+- `pipeline/symbolic/`：primitive registry, function-space objects, function-pool pipeline。
+- `models/symbolic_gradient.py`：symbolic derivative expressions, chain-rule derivative values, parameter Jacobians, residual-gradient signals。
+- `pipeline/symbolic/dynamic_pool.py`：residual/gradient/gate expansion and budget/redundancy pruning。
+- `integrations/nsgablack_symbolic/orthogonal_problem.py`：Stage 1 outer basis problem; this optional integration may import `nsgablack` and delegates inner parameter fitting to mlblack。
+- `pipeline/symbolic/grammar.py`：full primitive grammar, recursive unary/pair expansion, conditional lowering, dynamic activation config, family budgets。
+- `integrations/nsgablack_symbolic/artifacts.py`：Stage 1 basis artifact, Stage 2 task artifact, lightweight symbolic artifact schema。
+- `integrations/nsgablack_symbolic/task_symbolic_problem.py`：Stage 2 basis-conditioned outer task problem; outer selects function-pool terms over basis atoms, inner fits symbolic parameters。
+- `integrations/nsgablack_symbolic/search_space.py`：index-coded function-pool search-space adapter。
+- `integrations/nsgablack_symbolic/builders.py`：`build_symbolic_orthogonal_suite(...)` exposes a problem bundle for nsgablack-facing stages; it must not become an mlblack-owned workflow runner。
+
+## 9) 实现规则
+
+- 新增 ML 方法时，先判断属于哪一层：representation、codec、head、problem、adapter、capability、bias、artifact。
+- 新增优化逻辑优先放 adapter。
+- 新增模型输出形态优先放 head/model wrapper。
+- 新增模型输出形态优先放 `representations/heads` 或 `models`。
+- 新增数据准备优先放 `pipeline`、`pipeline/numericizer` 或 `pipeline/conditional`。
+- 新增运行副作用优先放 capability。
+- 新增软引导优先放 bias。
+- 新增资源控制、并行调度、backend selection、group/stage/event 编排必须放到 `nsgablack` 或 `mlblack.integrations/nsgablack_*` 的 nsgablack-facing surface，不放到 `mlblack` 主干。
+- 新增可复现产物优先放 artifact/state。
+
+归属判断：
+
+- 如果机制回答“怎么调度多个 trainer / 多个候选 / 多个资源 / 多个阶段”，它属于 `nsgablack`。
+- 如果机制回答“一个 unknown state 怎么解码成 ML 模型/公式/输出 head”，它属于 `mlblack` representation/codec/head。
+- 如果机制回答“这个模型怎么吃数据并产生 feedback”，它属于 `mlblack` problem/evaluation。
+- 如果机制回答“外层怎么调用内层训练”，它属于 bridge/proxy/integration surface，编排权仍在 `nsgablack`。
+
+## 10) 常用命令
+
+```powershell
+Set-Location "C:\Users\hp\Desktop\新建文件夹 (2)"
+
+python -m compileall -q mlblack
+python examples\orthogonal_point_demo.py
+```
+
+Doctor：
+
+```powershell
+python -c "from mlblack.project import run_project_doctor, format_doctor_report; print(format_doctor_report(run_project_doctor('.', strict=True)))"
+```
+
+## 11) 最小检查清单
+
+- [ ] 是否保持 Trainer / Adapter / Representation / Problem / Capability 边界
+- [ ] 是否避免 adapter 直接读数据
+- [ ] 是否避免大对象写 context
+- [ ] 是否只读取/审计外部注入的 `ResourceContext`，没有自建资源授权
+- [ ] 是否能通过 `build_trainer` 或 nsgablack-facing proxy 装配
+- [ ] 是否没有新增 mlblack-owned workflow/runtime/L0 编排
+- [ ] 是否提供 `describe()` 或 contract/report surface
+- [ ] 是否至少跑过 compileall 和一个 smoke
