@@ -20,7 +20,7 @@ def _bootstrap() -> None:
 
 _bootstrap()
 
-from mlblack.pipeline.data import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView  # noqa: E402
+from mlblack.pipeline.data_views import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView  # noqa: E402
 from mlblack.presets import (  # noqa: E402
     build_tiny_cnn_image_classification_trainer,
     build_tiny_cnn_image_contrastive_trainer,

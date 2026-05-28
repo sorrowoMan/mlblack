@@ -321,6 +321,331 @@ class NeuralGraphSpec:
             metadata={"family": "neural", "route": "tiny_gnn"},
         )
 
+    @classmethod
+    def temporal_lstm(
+        cls,
+        *,
+        input_dim: int,
+        sequence_length: int,
+        hidden_dim: int = 32,
+        num_layers: int = 1,
+        output_dim: int = 1,
+        dropout: float = 0.0,
+        bidirectional: bool = False,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "temporal_lstm_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "forecast", "name": "forecast", "params": {"output_dim": int(output_dim)}},)
+        return cls(
+            name=name,
+            input={
+                "kind": "sequence",
+                "input_dim": int(input_dim),
+                "sequence_length": int(sequence_length),
+            },
+            blocks=(
+                NeuralBlockSpec(
+                    kind="lstm_block",
+                    params={
+                        "hidden_dim": int(hidden_dim),
+                        "num_layers": int(num_layers),
+                        "dropout": float(dropout),
+                        "bidirectional": bool(bidirectional),
+                    },
+                    metadata={"family": "temporal", "route": "temporal_lstm"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "temporal_lstm"},
+        )
+
+    @classmethod
+    def temporal_tcn(
+        cls,
+        *,
+        input_dim: int,
+        sequence_length: int,
+        channels: Sequence[int] = (32, 32),
+        kernel_size: int = 3,
+        dilation_base: int = 2,
+        output_dim: int = 1,
+        activation: str = "relu",
+        dropout: float = 0.0,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "temporal_tcn_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "forecast", "name": "forecast", "params": {"output_dim": int(output_dim)}},)
+        return cls(
+            name=name,
+            input={
+                "kind": "sequence",
+                "input_dim": int(input_dim),
+                "sequence_length": int(sequence_length),
+            },
+            blocks=(
+                NeuralBlockSpec(
+                    kind="tcn_block",
+                    params={
+                        "channels": tuple(int(v) for v in channels),
+                        "kernel_size": int(kernel_size),
+                        "dilation_base": int(dilation_base),
+                        "activation": str(activation),
+                        "dropout": float(dropout),
+                    },
+                    metadata={"family": "temporal", "route": "temporal_tcn"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "temporal_tcn"},
+        )
+
+    @classmethod
+    def temporal_transformer(
+        cls,
+        *,
+        input_dim: int,
+        sequence_length: int,
+        hidden_dim: int = 64,
+        num_layers: int = 2,
+        num_heads: int = 4,
+        ffn_expansion_ratio: float = 4.0,
+        output_dim: int = 1,
+        activation: str = "gelu",
+        dropout: float = 0.0,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "temporal_transformer_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "forecast", "name": "forecast", "params": {"output_dim": int(output_dim)}},)
+        return cls(
+            name=name,
+            input={
+                "kind": "sequence",
+                "input_dim": int(input_dim),
+                "sequence_length": int(sequence_length),
+                "hidden_dim": int(hidden_dim),
+            },
+            blocks=(
+                NeuralBlockSpec(
+                    kind="temporal_transformer_encoder_block",
+                    repeat=int(num_layers),
+                    mechanisms={
+                        "attention": NeuralComponentSpec(
+                            kind="temporal_self_attention",
+                            params={"num_heads": int(num_heads), "dropout": float(dropout)},
+                        ),
+                        "ffn": NeuralComponentSpec(
+                            kind="mlp",
+                            params={"expansion_ratio": float(ffn_expansion_ratio), "activation": str(activation), "dropout": float(dropout)},
+                        ),
+                    },
+                    norm={"kind": "layer_norm", "position": "pre"},
+                    metadata={"family": "temporal", "route": "temporal_transformer"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "temporal_transformer"},
+        )
+
+    @classmethod
+    def temporal_nbeats(
+        cls,
+        *,
+        input_dim: int,
+        sequence_length: int,
+        hidden_dim: int = 64,
+        theta_dim: int = 8,
+        num_stacks: int = 2,
+        num_blocks: int = 3,
+        output_dim: int = 1,
+        share_weights: bool = False,
+        dropout: float = 0.0,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "temporal_nbeats_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "forecast", "name": "forecast", "params": {"output_dim": int(output_dim)}},)
+        return cls(
+            name=name,
+            input={
+                "kind": "sequence",
+                "input_dim": int(input_dim),
+                "sequence_length": int(sequence_length),
+            },
+            blocks=(
+                NeuralBlockSpec(
+                    kind="nbeats_block",
+                    repeat=int(num_stacks),
+                    params={
+                        "hidden_dim": int(hidden_dim),
+                        "theta_dim": int(theta_dim),
+                        "num_blocks": int(num_blocks),
+                        "output_dim": int(output_dim),
+                        "share_weights": bool(share_weights),
+                        "dropout": float(dropout),
+                    },
+                    metadata={"family": "temporal", "route": "temporal_nbeats"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "temporal_nbeats"},
+        )
+
+    @classmethod
+    def temporal_deepar(
+        cls,
+        *,
+        input_dim: int,
+        sequence_length: int,
+        hidden_dim: int = 32,
+        num_layers: int = 1,
+        output_dim: int = 1,
+        dropout: float = 0.0,
+        bidirectional: bool = False,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "temporal_deepar_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "deepar", "name": "deepar", "params": {"output_dim": int(output_dim)}},)
+        return cls(
+            name=name,
+            input={
+                "kind": "sequence",
+                "input_dim": int(input_dim),
+                "sequence_length": int(sequence_length),
+            },
+            blocks=(
+                NeuralBlockSpec(
+                    kind="deepar_block",
+                    params={
+                        "hidden_dim": int(hidden_dim),
+                        "num_layers": int(num_layers),
+                        "dropout": float(dropout),
+                        "bidirectional": bool(bidirectional),
+                    },
+                    metadata={"family": "temporal", "route": "temporal_deepar"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "temporal_deepar"},
+        )
+
+    @classmethod
+    def temporal_patchtst(
+        cls,
+        *,
+        input_dim: int,
+        sequence_length: int,
+        patch_len: int = 8,
+        stride: int | None = None,
+        hidden_dim: int = 64,
+        num_layers: int = 2,
+        num_heads: int = 4,
+        ffn_dim: int | None = None,
+        output_dim: int = 1,
+        dropout: float = 0.0,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "temporal_patchtst_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "forecast", "name": "forecast", "params": {"output_dim": int(output_dim)}},)
+        eff_ffn = int(ffn_dim or hidden_dim * 4)
+        return cls(
+            name=name,
+            input={
+                "kind": "sequence",
+                "input_dim": int(input_dim),
+                "sequence_length": int(sequence_length),
+            },
+            blocks=(
+                NeuralBlockSpec(
+                    kind="patchtst_block",
+                    params={
+                        "patch_len": int(patch_len),
+                        "stride": int(stride or patch_len),
+                        "hidden_dim": int(hidden_dim),
+                        "num_layers": int(num_layers),
+                        "num_heads": int(num_heads),
+                        "ffn_dim": eff_ffn,
+                        "output_dim": int(output_dim),
+                        "dropout": float(dropout),
+                    },
+                    metadata={"family": "temporal", "route": "temporal_patchtst"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "temporal_patchtst"},
+        )
+
+    @classmethod
+    def temporal_tft(
+        cls,
+        *,
+        input_dim: int,
+        sequence_length: int,
+        hidden_dim: int = 64,
+        num_layers: int = 2,
+        num_heads: int = 4,
+        output_dim: int = 1,
+        dropout: float = 0.0,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "temporal_tft_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "forecast", "name": "forecast", "params": {"output_dim": int(output_dim)}},)
+        return cls(
+            name=name,
+            input={
+                "kind": "sequence",
+                "input_dim": int(input_dim),
+                "sequence_length": int(sequence_length),
+            },
+            blocks=(
+                NeuralBlockSpec(
+                    kind="tft_block",
+                    params={
+                        "hidden_dim": int(hidden_dim),
+                        "num_layers": int(num_layers),
+                        "num_heads": int(num_heads),
+                        "output_dim": int(output_dim),
+                        "dropout": float(dropout),
+                    },
+                    metadata={"family": "temporal", "route": "temporal_tft"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "temporal_tft"},
+        )
+
+    @classmethod
+    def tabular_tabnet(
+        cls,
+        *,
+        input_dim: int,
+        hidden_dim: int = 64,
+        n_steps: int = 4,
+        relaxation_factor: float = 1.5,
+        ghost_bn: bool = True,
+        dropout: float = 0.0,
+        heads: Sequence[NeuralHeadSpec | Mapping[str, Any] | str] | None = None,
+        name: str = "tabular_tabnet_graph",
+    ) -> "NeuralGraphSpec":
+        head_specs = heads or ({"kind": "classification", "name": "classification", "params": {"num_classes": 2}},)
+        return cls(
+            name=name,
+            input={"kind": "flat", "input_dim": int(input_dim)},
+            blocks=(
+                NeuralBlockSpec(
+                    kind="tabnet_block",
+                    params={
+                        "hidden_dim": int(hidden_dim),
+                        "n_steps": int(n_steps),
+                        "relaxation_factor": float(relaxation_factor),
+                        "ghost_bn": bool(ghost_bn),
+                        "dropout": float(dropout),
+                    },
+                    metadata={"family": "tabular", "route": "tabular_tabnet"},
+                ),
+            ),
+            heads=tuple(NeuralHeadSpec.from_value(item) for item in head_specs),
+            metadata={"family": "neural", "route": "tabular_tabnet"},
+        )
+
     def block_specs(self) -> tuple[NeuralBlockSpec, ...]:
         return tuple(NeuralBlockSpec.from_value(item) for item in self.blocks)
 

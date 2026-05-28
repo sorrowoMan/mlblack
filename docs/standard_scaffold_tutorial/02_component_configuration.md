@@ -1,4 +1,4 @@
-﻿# 02. 组件配置完整拆解
+# 02. 组件配置完整拆解
 
 这一章按真实分层讲配置。判断一个组件放哪里，只问一个问题：它回答的是“模型语义”、“数据评估”、“参数更新”、“运行副作用”，还是“外层编排”？
 
@@ -34,7 +34,7 @@ Data / Pipeline
 `NumericDataView` 是普通监督任务的稳定边界：
 
 ```python
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 
 data = NumericDataView(
     X_train=X_train,

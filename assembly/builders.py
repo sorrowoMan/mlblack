@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Mapping
 
@@ -20,7 +20,7 @@ from mlblack.capabilities import (
     SQLiteExperimentStore,
 )
 from mlblack.core import Trainer
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline import (
     ConditionalPrimitiveFeatureComponent,
     DataPipeline,
@@ -176,4 +176,40 @@ def _build_preset_trainer(preset: str, data: NumericDataView, params: Mapping[st
         from mlblack.presets import build_orthogonal_softmax_classification_trainer
 
         return build_orthogonal_softmax_classification_trainer(data, **kwargs)
+    if preset in {"temporal_lstm", "temporal_lstm_forecast"}:
+        from mlblack.presets import build_temporal_lstm_forecast_trainer
+
+        return build_temporal_lstm_forecast_trainer(data, **kwargs)
+    if preset in {"temporal_tcn", "temporal_tcn_forecast"}:
+        from mlblack.presets import build_temporal_tcn_forecast_trainer
+
+        return build_temporal_tcn_forecast_trainer(data, **kwargs)
+    if preset in {"temporal_transformer", "temporal_transformer_forecast"}:
+        from mlblack.presets import build_temporal_transformer_forecast_trainer
+
+        return build_temporal_transformer_forecast_trainer(data, **kwargs)
+    if preset in {"temporal_nbeats", "temporal_nbeats_forecast"}:
+        from mlblack.presets import build_temporal_nbeats_forecast_trainer
+
+        return build_temporal_nbeats_forecast_trainer(data, **kwargs)
+    if preset in {"temporal_deepar", "temporal_deepar_forecast"}:
+        from mlblack.presets import build_temporal_deepar_forecast_trainer
+
+        return build_temporal_deepar_forecast_trainer(data, **kwargs)
+    if preset in {"temporal_patchtst", "temporal_patchtst_forecast"}:
+        from mlblack.presets import build_temporal_patchtst_forecast_trainer
+
+        return build_temporal_patchtst_forecast_trainer(data, **kwargs)
+    if preset in {"temporal_tft", "temporal_tft_forecast"}:
+        from mlblack.presets import build_temporal_tft_forecast_trainer
+
+        return build_temporal_tft_forecast_trainer(data, **kwargs)
+    if preset in {"tabular_tabnet_classification", "tabnet_classification", "tabnet_classifier"}:
+        from mlblack.presets import build_tabular_tabnet_classification_trainer
+
+        return build_tabular_tabnet_classification_trainer(data, **kwargs)
+    if preset in {"tabular_tabnet_regression", "tabnet_regression", "tabnet_regressor"}:
+        from mlblack.presets import build_tabular_tabnet_regression_trainer
+
+        return build_tabular_tabnet_regression_trainer(data, **kwargs)
     raise ValueError(f"unknown trainer preset: {preset}")

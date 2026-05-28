@@ -10,7 +10,7 @@ from mlblack.integrations.nsgablack_symbolic import (
     OrthogonalBasisOuterProblemConfig,
     OrthogonalBasisSetArtifact,
 )
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 
 try:
     from ..config import SymbolicOrthogonalNestedCaseConfig

@@ -10,6 +10,11 @@ from .composition import (
 )
 from .linear import LinearPointModel, OrthogonalFeatureMap, OrthogonalLinearPointModel
 from .neural import NumpyMLPPointModel, mlp_parameter_shapes, split_mlp_parameters
+from .distributions import (
+    NegativeBinomialDistributionModel,
+    NormalDistributionModel,
+    PoissonDistributionModel,
+)
 from .outputs import CenterRadiusIntervalModel, IntervalPredictionModel
 from .probability import BinaryLogisticProbabilityModel, SoftmaxProbabilityModel, TemperatureCalibratedProbabilityModel
 from .symbolic import (
@@ -46,17 +51,38 @@ from .symbolic_gradient import (
     parse_residual_gradient_signal,
     symbolic_mse_parameter_gradient_numpy,
 )
+from .time_series import (
+    ARIMASARIMAXForecastModel,
+    ARIMASARIMAXProvider,
+    ARIMASARIMAXSpec,
+    ForecastResult,
+    LagEstimatorForecastModel,
+    LinearAutoregressiveForecastModel,
+    NaiveForecastModel,
+    StatsmodelsSARIMAXForecastModel,
+)
 
 __all__ = [
     "BinaryLogisticProbabilityModel",
+    "ARIMASARIMAXForecastModel",
+    "ARIMASARIMAXProvider",
+    "ARIMASARIMAXSpec",
     "CenterRadiusIntervalModel",
     "EstimatorFactory",
     "EstimatorSpecModel",
     "FittedEstimatorModel",
+    "ForecastResult",
     "GradientSignal",
     "IntegratedPredictionModel",
     "IntervalPredictionModel",
+    "LagEstimatorForecastModel",
     "LinearPointModel",
+    "LinearAutoregressiveForecastModel",
+    "NaiveForecastModel",
+    "NegativeBinomialDistributionModel",
+    "NormalDistributionModel",
+    "PoissonDistributionModel",
+    "StatsmodelsSARIMAXForecastModel",
     "NumpyMLPPointModel",
     "OrthogonalFeatureMap",
     "OrthogonalLinearPointModel",

@@ -1,0 +1,8 @@
+# Catalog entries for granger_causality_check
+
+[[entries]]
+key = "example.traffic_granger_causality"
+title = "Granger Causality Check on Traffic CI"
+kind = "example"
+tags = ["example", "traffic", "granger", "causal", "diagnostic"]
+summary = "Pairwise Granger causality tests between CI and external factors (weather, AQI, holidays) on real traffic data."

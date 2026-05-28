@@ -40,6 +40,7 @@ from .resources import ResourceAudit, ResourceContext, ResourceEvent
 from .state import TrainerState, build_trainer_state, replay_trainer, restore_trainer_state, stable_state_signature
 from .stores import InMemoryContextStore, InMemorySnapshotStore, SnapshotRecord
 from .trainer import BlankTrainer, ComposableTrainer, Trainer
+from .trainer_stage import ArtifactRef, CompletionPolicy, SerialTrainer, StageSpec
 from .types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
 
 __all__ = [
@@ -80,6 +81,10 @@ __all__ = [
     "SymbolicIntervalArtifact",
     "SymbolicModelArtifact",
     "TorchModelArtifact",
+    "ArtifactRef",
+    "CompletionPolicy",
+    "SerialTrainer",
+    "StageSpec",
     "Trainer",
     "TrainerResult",
     "TrainerState",

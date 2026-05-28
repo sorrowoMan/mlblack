@@ -1,0 +1,25 @@
+# Catalog entries for tsne_umap
+# Register discoverable components here.
+#
+# Format:
+#   [[entries]]
+#   key = "kind.component_name"
+#   title = "..."
+#   kind = "problem|pipeline|representation|adapter|bias|capability|..."
+#   import_path = "module:Class"
+
+[[entries]]
+key = "problem.tsne_umap_regression"
+title = "Tsne_Umap Regression Problem"
+kind = "problem"
+import_path = "problem.example_problem:ExampleRegressionProblem"
+tags = ["example", "regression"]
+summary = "Custom regression problem for tsne_umap."
+
+[[entries]]
+key = "adapter.tsne_umap_gd"
+title = "Tsne_Umap Gradient Descent Adapter"
+kind = "adapter"
+import_path = "adapter.example_adapter:ExampleGradientDescentAdapter"
+tags = ["example", "gradient_descent"]
+summary = "Custom gradient descent adapter for tsne_umap."

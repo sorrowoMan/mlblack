@@ -1,4 +1,4 @@
-﻿# mlblack
+# mlblack
 
 `mlblack` is an optimization-first machine learning layer aligned with `nsgablack`.
 It is not a second orchestration framework. `nsgablack` owns solver groups,
@@ -32,7 +32,7 @@ UnknownState
 import numpy as np
 
 from mlblack.assembly import build_trainer
-from mlblack.pipeline.data import train_valid_split
+from mlblack.pipeline.data_views import train_valid_split
 
 X = np.linspace(-1, 1, 64).reshape(-1, 1)
 y = 1.5 + 2.0 * X[:, 0]

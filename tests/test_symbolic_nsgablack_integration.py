@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import subprocess
 import sys
@@ -35,7 +35,7 @@ from mlblack.models import (
     feature_expr,
     unary_expr,
 )
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 
 
 def _data(*, classification: bool = False) -> NumericDataView:

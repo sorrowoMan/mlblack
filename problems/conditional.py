@@ -1,11 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Mapping
 
 import numpy as np
 
 from mlblack.core.types import Feedback, UnknownState
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.problems.supervised import SupervisedRegressionProblem
 
 

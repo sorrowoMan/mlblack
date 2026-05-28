@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
@@ -19,7 +19,7 @@ ensure_case_importable(Path(__file__))
 from build_solver import SymbolicOrthogonalNestedCaseConfig, build_stage1_solver, build_stage2_solver  # noqa: E402
 from problem import build_symbolic_regression_data  # noqa: E402
 from reporting import write_case_report  # noqa: E402
-from mlblack.pipeline.data import NumericDataView  # noqa: E402
+from mlblack.pipeline.data_views import NumericDataView  # noqa: E402
 
 
 VARIANTS: dict[str, tuple[str, str]] = {

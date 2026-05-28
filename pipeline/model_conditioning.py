@@ -6,7 +6,7 @@ from typing import Any, Mapping
 import numpy as np
 
 from mlblack.pipeline.base import DataPipelineComponent
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 
 
 @dataclass(frozen=True)

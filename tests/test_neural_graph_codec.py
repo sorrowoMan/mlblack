@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import numpy as np
 import pytest
@@ -6,7 +6,7 @@ import pytest
 from mlblack.core import ArtifactBuilder, ComputeBackendSession, ComputeBackendSpec, render_artifact_html
 from mlblack.assembly import build_trainer
 from mlblack.adapters import FunctionalBackpropAdapter, FunctionalBackpropConfig
-from mlblack.pipeline.data import NumericDataView, PreferencePairDataView
+from mlblack.pipeline.data_views import NumericDataView, PreferencePairDataView
 from mlblack.pipeline import VocabularyTokenizer
 from mlblack.integrations import (
     PretrainedCheckpointMapper,
@@ -213,6 +213,31 @@ def test_neural_graph_codec_decodes_tiny_transformer_classification() -> None:
     assert output["logits"].shape == (2, 3)
     assert output["hidden_states"].shape == (2, 4, 16)
     assert len(output["audit"]["attention_maps"]) == 2
+
+
+def test_neural_graph_codec_decodes_temporal_routes() -> None:
+    import torch
+
+    specs = (
+        NeuralGraphSpec.temporal_lstm(input_dim=2, sequence_length=4, hidden_dim=5, output_dim=2),
+        NeuralGraphSpec.temporal_tcn(input_dim=2, sequence_length=4, channels=(4, 5), output_dim=2),
+        NeuralGraphSpec.temporal_transformer(input_dim=2, sequence_length=4, hidden_dim=8, num_layers=1, num_heads=2, output_dim=2),
+    )
+    ctx = _backend_context()
+    batch = torch.ones((3, 4, 2), dtype=torch.float32)
+    flat_batch = torch.ones((3, 8), dtype=torch.float32)
+
+    for spec in specs:
+        codec = NeuralGraphCodec(spec, random_seed=43)
+        assert codec.describe(ctx)["route"] in {"temporal_lstm", "temporal_tcn", "temporal_transformer"}
+        layout = codec.parameter_layout(ctx)
+        assert layout.total_size > 0
+        model = codec.decode(codec.init_values(ctx), ctx)
+        output = model(batch, return_audit=True)
+        flat_output = model(flat_batch)
+        assert output["forecast"].shape == (3, 2)
+        assert flat_output["forecast"].shape == (3, 2)
+        assert output["audit"]["route"] == codec.describe(ctx)["route"]
 
 
 def test_neural_graph_codec_decodes_tiny_transformer_lm() -> None:

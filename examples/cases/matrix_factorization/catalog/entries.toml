@@ -1,0 +1,49 @@
+# Catalog entries for matrix_factorization
+
+[[entries]]
+key = "problem.matrix_factorization"
+title = "Matrix Factorization Regression Problem"
+kind = "problem"
+import_path = "problem.matrix_factorization_problem:MatrixFactorizationProblem"
+tags = ["matrix_factorization", "recommendation", "collaborative_filtering"]
+summary = "MSE reconstruction loss over observed (user, item) ratings with analytic gradients."
+
+[[entries]]
+key = "adapter.matrix_factorization_gd"
+title = "Matrix Factorization Gradient Descent Adapter"
+kind = "adapter"
+import_path = "adapter.mf_adapter:MFGradientDescentAdapter"
+tags = ["matrix_factorization", "gradient_descent", "momentum", "nmf"]
+summary = "Gradient descent with momentum, per-matrix learning rates, and NMF projection."
+
+[[entries]]
+key = "representation.matrix_factorization"
+title = "Matrix Factorization U,V Embedding Representation"
+kind = "representation"
+import_path = "representation.mf_representation:MFRepresentation"
+tags = ["matrix_factorization", "embedding", "low_rank"]
+summary = "Encodes/decodes (U, V) embedding matrices for collaborative filtering."
+
+[[entries]]
+key = "bias.l2_regularization_mf"
+title = "L2 Regularization Bias for MF"
+kind = "bias"
+import_path = "bias.l2_bias:L2RegularizationBias"
+tags = ["matrix_factorization", "regularization"]
+summary = "Adds L2 penalty on embedding matrices to objectives and gradients."
+
+[[entries]]
+key = "bias.nmf_projection_mf"
+title = "NMF Non-Negativity Bias for MF"
+kind = "bias"
+import_path = "bias.nmf_bias:NMFProjectionBias"
+tags = ["matrix_factorization", "nmf", "non_negative"]
+summary = "Soft penalty on negative embedding values to encourage NMF solutions."
+
+[[entries]]
+key = "pipeline.mf_synthetic_data"
+title = "Synthetic Rating Matrix Generator"
+kind = "pipeline"
+import_path = "pipeline.mf_pipeline:generate_synthetic_ratings"
+tags = ["matrix_factorization", "synthetic_data", "collaborative_filtering"]
+summary = "Generates low-rank rating matrices with configurable sparsity and noise."

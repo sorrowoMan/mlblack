@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable, ClassVar, Mapping, Sequence
@@ -8,7 +8,7 @@ import numpy as np
 from mlblack.assembly import build_trainer
 from mlblack.assembly.spec import TrainerAssemblySpec
 from mlblack.core.contracts import ComponentContract, ContractMixin
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.problems.training import TrainingContract, TrainingResultRecord, TrainingTask
 
 SpecMapper = Callable[[Sequence[float], Mapping[str, Any]], Mapping[str, Any]]

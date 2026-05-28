@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
@@ -9,7 +9,7 @@ from mlblack.adapters import GradientDescentAdapter, RandomSearchAdapter
 from mlblack.core import ComposableTrainer
 from mlblack.core.contracts import ComponentContract, ContractMixin
 from mlblack.models.symbolic import binary_expr, expression_complexity, param_expr, parameterize_expression
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline.symbolic import FunctionPool, FunctionPoolPipeline, FunctionPoolPipelineConfig
 from mlblack.problems import FixedSymbolicRegressionProblem, SupervisedClassificationProblem, SupervisedIntervalRegressionProblem
 from mlblack.representations import SymbolicExpressionConfig, SymbolicExpressionRepresentation

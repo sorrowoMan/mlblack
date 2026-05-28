@@ -1,0 +1,8 @@
+# Catalog entries for arimax_factor_attribution
+
+[[entries]]
+key = "example.traffic_arimax_attribution"
+title = "ARIMAX Factor Attribution on Traffic CI"
+kind = "example"
+tags = ["example", "traffic", "arimax", "attribution", "time-series"]
+summary = "ARIMAX(2,0,1) factor group attribution decomposing CI variation into Weather/AQI/Holiday/CI_Lags/Time_Cyclic groups."

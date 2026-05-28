@@ -8,7 +8,11 @@ from .supervised import (
     SupervisedRegressionProblem,
 )
 from .symbolic import FixedSymbolicRegressionProblem, OrthogonalBasisEvaluationProblem
+from .time_series import RollingOriginForecastingProblem, TimeSeriesForecastingProblem
 from .neural import (
+    TemporalNeuralForecastingProblem,
+    TemporalNeuralProbabilisticForecastingProblem,
+    TemporalNeuralRollingOriginProblem,
     TinyCNNImageClassificationProblem,
     TinyCNNImageContrastiveProblem,
     TinyGNNGraphClassificationProblem,
@@ -27,6 +31,11 @@ __all__ = [
     "SupervisedClassificationProblem",
     "SupervisedIntervalRegressionProblem",
     "SupervisedRegressionProblem",
+    "RollingOriginForecastingProblem",
+    "TimeSeriesForecastingProblem",
+    "TemporalNeuralForecastingProblem",
+    "TemporalNeuralProbabilisticForecastingProblem",
+    "TemporalNeuralRollingOriginProblem",
     "TinyTransformerClassificationProblem",
     "TinyCNNImageClassificationProblem",
     "TinyCNNImageContrastiveProblem",

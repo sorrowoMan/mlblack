@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 
 
 def build_symbolic_regression_data(*, n_samples: int = 96, valid_fraction: float = 0.25, seed: int = 11) -> NumericDataView:

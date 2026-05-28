@@ -5,7 +5,7 @@ from typing import Any, Iterable, Iterator, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline.numericizer.text import VocabularyTokenizer, VocabularyTokenizerConfig
 
 

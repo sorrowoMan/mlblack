@@ -1,8 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from mlblack.adapters import GradientDescentAdapter, GradientDescentConfig, RandomSearchAdapter, RandomSearchConfig
 from mlblack.core import Trainer
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.representations.heads import IntervalHead
 from mlblack.problems import SupervisedIntervalRegressionProblem, SupervisedRegressionProblem
 from mlblack.representations import OrthogonalPointConfig, OrthogonalPointLinearRepresentation

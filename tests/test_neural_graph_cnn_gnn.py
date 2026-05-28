@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from mlblack.core import ComputeBackendSession, ComputeBackendSpec
-from mlblack.pipeline.data import GraphDataView, ImageContrastivePairDataView, ImageDataView
+from mlblack.pipeline.data_views import GraphDataView, ImageContrastivePairDataView, ImageDataView
 from mlblack.presets import (
     build_tiny_cnn_image_classification_trainer,
     build_tiny_cnn_image_contrastive_trainer,

@@ -6,7 +6,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from mlblack.core.contracts import ComponentContract, ContractMixin
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.presets import build_tiny_transformer_classification_trainer, build_tiny_transformer_lm_trainer
 from mlblack.representations import NeuralGraphSpec
 

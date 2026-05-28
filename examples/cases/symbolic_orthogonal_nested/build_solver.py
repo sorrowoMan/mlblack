@@ -5,10 +5,12 @@ from pathlib import Path
 
 if __package__ in {None, ""}:
     _THIS_DIR = Path(__file__).resolve().parent
-    if str(_THIS_DIR) not in sys.path:
-        sys.path.insert(0, str(_THIS_DIR))
     from _bootstrap import ensure_case_importable  # noqa: E402
     ensure_case_importable(Path(__file__))
+    _this_dir_str = str(_THIS_DIR)
+    if _this_dir_str in sys.path:
+        sys.path.remove(_this_dir_str)
+    sys.path.insert(0, _this_dir_str)
     from config import SymbolicOrthogonalNestedCaseConfig  # noqa: E402
     from pipeline import build_representation_pipeline  # noqa: E402
     from problem import build_stage1_problem, build_stage2_problem, build_symbolic_regression_data  # noqa: E402
@@ -20,7 +22,7 @@ else:
     from .problem import build_stage1_problem, build_stage2_problem, build_symbolic_regression_data  # noqa: E402
 
 from mlblack.integrations.nsgablack_symbolic import OrthogonalBasisSetArtifact  # noqa: E402
-from mlblack.pipeline.data import NumericDataView  # noqa: E402
+from mlblack.pipeline.data_views import NumericDataView  # noqa: E402
 from nsgablack.adapters import NSGA2Adapter, NSGA2Config  # noqa: E402
 from nsgablack.core.evolution_solver import EvolutionSolver  # noqa: E402
 

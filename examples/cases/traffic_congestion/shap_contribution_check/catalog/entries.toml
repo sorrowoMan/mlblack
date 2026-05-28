@@ -1,0 +1,8 @@
+# Catalog entries for shap_contribution_check
+
+[[entries]]
+key = "example.traffic_shap_consistency"
+title = "SHAP Contribution Consistency on Traffic CI"
+kind = "example"
+tags = ["example", "traffic", "shap", "xgboost", "attribution", "diagnostic"]
+summary = "Cross-paradigm feature importance comparison: Linear coefficients vs XGBoost gain vs SHAP vs Permutation on traffic CI."

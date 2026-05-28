@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Sequence
 
@@ -6,7 +6,7 @@ import numpy as np
 
 from mlblack.adapters import RandomSearchAdapter, RandomSearchConfig
 from mlblack.core import Trainer
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.representations.heads import BinaryLogisticHead, SoftmaxHead
 from mlblack.problems import SupervisedClassificationProblem
 from mlblack.representations import OrthogonalPointConfig, OrthogonalPointLinearRepresentation

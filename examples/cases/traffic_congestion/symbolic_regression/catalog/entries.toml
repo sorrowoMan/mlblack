@@ -1,0 +1,8 @@
+# Catalog entries for symbolic_regression
+
+[[entries]]
+key = "example.traffic_symbolic_regression"
+title = "Symbolic Regression on Traffic CI"
+kind = "example"
+tags = ["example", "traffic", "symbolic", "regression", "linear", "gradient_descent"]
+summary = "Gradient-descent linear regression on traffic CI mechanism reconstruction (same-day features), baseline for symbolic approach."

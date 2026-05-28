@@ -1,0 +1,1 @@
+n_rows=1717\nci_formula=100*(0.7*clip(1-v/v_ff,0,1)+0.3*clip((occ-q10)/(q90-q10),0,1))\nv_ff_p85=94.900000\nocc_q10=1.300000\nocc_q90=21.000000\n

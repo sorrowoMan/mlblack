@@ -1,4 +1,4 @@
-﻿# 01. 创建并运行第一个标准项目
+# 01. 创建并运行第一个标准项目
 
 这一章从最小可运行项目开始。目标不是教某个模型，而是固定标准脚手架：数据、pipeline、trainer spec、fit、report、artifact 每一步都可审计。
 
@@ -16,7 +16,7 @@ Set-Location "C:\Users\hp\Desktop\新建文件夹 (2)"
 import numpy as np
 
 from mlblack.assembly import build_pipeline, build_trainer
-from mlblack.pipeline.data import train_valid_split
+from mlblack.pipeline.data_views import train_valid_split
 
 X = np.linspace(-1.0, 1.0, 80).reshape(-1, 1)
 y = 1.0 + 2.0 * X[:, 0]
@@ -141,7 +141,7 @@ run_report:
 ```python
 from mlblack.adapters import GradientDescentAdapter, GradientDescentConfig
 from mlblack.core import Trainer
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.problems import SupervisedRegressionProblem
 from mlblack.representations import OrthogonalPointLinearRepresentation
 

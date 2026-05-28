@@ -1,0 +1,33 @@
+{
+  "name": "matrix_factorization",
+  "features": [],
+  "target": "",
+  "inner_training": {
+    "pipeline": {
+      "components": [
+        {
+          "kind": "pipeline",
+          "import_path": "pipeline.mf_pipeline:generate_synthetic_ratings",
+          "params": {
+            "n_users": 100,
+            "n_items": 200,
+            "k": 5,
+            "sparsity": 0.80,
+            "noise": 0.1,
+            "seed": 42
+          }
+        }
+      ]
+    },
+    "trainer": {
+      "preset": "custom",
+      "problem_import": "problem.matrix_factorization_problem:MatrixFactorizationProblem",
+      "representation_import": "representation.mf_representation:MFRepresentation",
+      "adapter_import": "adapter.mf_adapter:MFGradientDescentAdapter",
+      "resource_context": {
+        "device": "cpu",
+        "threads": 1
+      }
+    }
+  }
+}

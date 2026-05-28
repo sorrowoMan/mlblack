@@ -8,7 +8,7 @@ from mlblack.core.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
 from mlblack.models.symbolic import SymbolicBasisSetModel, SymbolicExpressionModel
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 
 
 class FixedSymbolicRegressionProblem(LearningProblem):

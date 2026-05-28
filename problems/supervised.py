@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Mapping
 
@@ -8,7 +8,7 @@ from mlblack.core.backend_session import get_compute_backend_from_context
 from mlblack.core.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.models import EstimatorSpecModel, FittedEstimatorModel
 
 

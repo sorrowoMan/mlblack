@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
@@ -11,10 +11,13 @@ from mlblack.adapters import (
     TorchBackpropConfig,
 )
 from mlblack.core import ComputeBackendSpec, Trainer
-from mlblack.pipeline.data import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView
+from mlblack.pipeline.data_views import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView
 from mlblack.problems import (
+    SupervisedClassificationProblem,
     SupervisedEstimatorFitRegressionProblem,
     SupervisedRegressionProblem,
+    TemporalNeuralForecastingProblem,
+    TemporalNeuralProbabilisticForecastingProblem,
     TinyCNNImageClassificationProblem,
     TinyCNNImageContrastiveProblem,
     TinyGNNGraphClassificationProblem,
@@ -25,9 +28,11 @@ from mlblack.problems import (
 from mlblack.representations import (
     NeuralBackboneSpec,
     NeuralBatchingSpec,
+    NeuralGraphRepresentation,
+    NeuralGraphRepresentationConfig,
+    NeuralGraphSpec,
     NeuralOptimizationSpec,
     NeuralEngineSpec,
-    NeuralGraphRepresentation,
     NumpyMLPPointConfig,
     NumpyMLPPointRepresentation,
     build_neural_estimator_representation,
@@ -464,6 +469,491 @@ def build_tiny_cnn_image_contrastive_trainer(
         representation_name="tiny_cnn_image_contrastive",
     )
     problem = TinyCNNImageContrastiveProblem(data, head_name="retrieval", margin=float(margin))
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_temporal_lstm_forecast_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int = 1,
+    sequence_length: int = 12,
+    hidden_dim: int = 32,
+    num_layers: int = 1,
+    output_dim: int = 1,
+    dropout: float = 0.0,
+    bidirectional: bool = False,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "temporal_lstm_forecast",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.temporal_lstm(
+                input_dim=int(input_dim),
+                sequence_length=int(sequence_length),
+                hidden_dim=int(hidden_dim),
+                num_layers=int(num_layers),
+                output_dim=int(output_dim),
+                dropout=float(dropout),
+                bidirectional=bool(bidirectional),
+            ),
+            random_seed=int(random_seed),
+            representation_name="temporal_lstm_forecast",
+        )
+    )
+    problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_temporal_tcn_forecast_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int = 1,
+    sequence_length: int = 12,
+    channels: Sequence[int] = (32, 32),
+    kernel_size: int = 3,
+    dilation_base: int = 2,
+    output_dim: int = 1,
+    activation: str = "relu",
+    dropout: float = 0.0,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "temporal_tcn_forecast",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.temporal_tcn(
+                input_dim=int(input_dim),
+                sequence_length=int(sequence_length),
+                channels=tuple(int(v) for v in channels),
+                kernel_size=int(kernel_size),
+                dilation_base=int(dilation_base),
+                output_dim=int(output_dim),
+                activation=str(activation),
+                dropout=float(dropout),
+            ),
+            random_seed=int(random_seed),
+            representation_name="temporal_tcn_forecast",
+        )
+    )
+    problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_temporal_transformer_forecast_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int = 1,
+    sequence_length: int = 12,
+    hidden_dim: int = 64,
+    num_layers: int = 2,
+    num_heads: int = 4,
+    ffn_expansion_ratio: float = 4.0,
+    output_dim: int = 1,
+    activation: str = "gelu",
+    dropout: float = 0.0,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "temporal_transformer_forecast",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.temporal_transformer(
+                input_dim=int(input_dim),
+                sequence_length=int(sequence_length),
+                hidden_dim=int(hidden_dim),
+                num_layers=int(num_layers),
+                num_heads=int(num_heads),
+                ffn_expansion_ratio=float(ffn_expansion_ratio),
+                output_dim=int(output_dim),
+                activation=str(activation),
+                dropout=float(dropout),
+            ),
+            random_seed=int(random_seed),
+            representation_name="temporal_transformer_forecast",
+        )
+    )
+    problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_temporal_nbeats_forecast_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int = 1,
+    sequence_length: int = 12,
+    hidden_dim: int = 64,
+    theta_dim: int = 8,
+    num_stacks: int = 2,
+    num_blocks: int = 3,
+    output_dim: int = 1,
+    share_weights: bool = False,
+    dropout: float = 0.0,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "temporal_nbeats_forecast",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.temporal_nbeats(
+                input_dim=int(input_dim),
+                sequence_length=int(sequence_length),
+                hidden_dim=int(hidden_dim),
+                theta_dim=int(theta_dim),
+                num_stacks=int(num_stacks),
+                num_blocks=int(num_blocks),
+                output_dim=int(output_dim),
+                share_weights=bool(share_weights),
+                dropout=float(dropout),
+            ),
+            random_seed=int(random_seed),
+            representation_name="temporal_nbeats_forecast",
+        )
+    )
+    problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_temporal_deepar_forecast_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int = 1,
+    sequence_length: int = 12,
+    hidden_dim: int = 32,
+    num_layers: int = 1,
+    output_dim: int = 1,
+    dropout: float = 0.0,
+    bidirectional: bool = False,
+    alpha: float = 0.1,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "temporal_deepar_forecast",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.temporal_deepar(
+                input_dim=int(input_dim),
+                sequence_length=int(sequence_length),
+                hidden_dim=int(hidden_dim),
+                num_layers=int(num_layers),
+                output_dim=int(output_dim),
+                dropout=float(dropout),
+                bidirectional=bool(bidirectional),
+            ),
+            random_seed=int(random_seed),
+            representation_name="temporal_deepar_forecast",
+        )
+    )
+    problem = TemporalNeuralProbabilisticForecastingProblem(data, head_name="deepar", alpha=float(alpha))
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_temporal_patchtst_forecast_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int = 1,
+    sequence_length: int = 24,
+    patch_len: int = 8,
+    stride: int | None = None,
+    hidden_dim: int = 64,
+    num_layers: int = 2,
+    num_heads: int = 4,
+    ffn_dim: int | None = None,
+    output_dim: int = 1,
+    dropout: float = 0.0,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "temporal_patchtst_forecast",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.temporal_patchtst(
+                input_dim=int(input_dim),
+                sequence_length=int(sequence_length),
+                patch_len=int(patch_len),
+                stride=int(stride or patch_len),
+                hidden_dim=int(hidden_dim),
+                num_layers=int(num_layers),
+                num_heads=int(num_heads),
+                ffn_dim=int(ffn_dim or hidden_dim * 4),
+                output_dim=int(output_dim),
+                dropout=float(dropout),
+            ),
+            random_seed=int(random_seed),
+            representation_name="temporal_patchtst_forecast",
+        )
+    )
+    problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_temporal_tft_forecast_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int = 1,
+    sequence_length: int = 12,
+    hidden_dim: int = 64,
+    num_layers: int = 2,
+    num_heads: int = 4,
+    output_dim: int = 1,
+    dropout: float = 0.0,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "temporal_tft_forecast",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.temporal_tft(
+                input_dim=int(input_dim),
+                sequence_length=int(sequence_length),
+                hidden_dim=int(hidden_dim),
+                num_layers=int(num_layers),
+                num_heads=int(num_heads),
+                output_dim=int(output_dim),
+                dropout=float(dropout),
+            ),
+            random_seed=int(random_seed),
+            representation_name="temporal_tft_forecast",
+        )
+    )
+    problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_tabular_tabnet_classification_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int | None = None,
+    hidden_dim: int = 64,
+    n_steps: int = 4,
+    relaxation_factor: float = 1.5,
+    ghost_bn: bool = True,
+    dropout: float = 0.0,
+    num_classes: int = 2,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "tabular_tabnet_classification",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.tabular_tabnet(
+                input_dim=int(input_dim or data.X_train.shape[1]),
+                hidden_dim=int(hidden_dim),
+                n_steps=int(n_steps),
+                relaxation_factor=float(relaxation_factor),
+                ghost_bn=bool(ghost_bn),
+                dropout=float(dropout),
+                heads=({"kind": "classification", "name": "classification", "params": {"num_classes": int(num_classes)}},),
+            ),
+            random_seed=int(random_seed),
+            representation_name="tabular_tabnet_classification",
+        )
+    )
+    problem = SupervisedClassificationProblem(data)
+    adapter = _build_neural_graph_adapter(
+        optimizer=optimizer,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        random_seed=random_seed,
+    )
+    return Trainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=run_name,
+        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+    )
+
+
+def build_tabular_tabnet_regression_trainer(
+    data: NumericDataView,
+    *,
+    input_dim: int | None = None,
+    hidden_dim: int = 64,
+    n_steps: int = 4,
+    relaxation_factor: float = 1.5,
+    ghost_bn: bool = True,
+    dropout: float = 0.0,
+    output_dim: int = 1,
+    compute_backend: str = "torch",
+    optimizer: str = "adamw",
+    learning_rate: float = 1e-2,
+    weight_decay: float = 0.0,
+    max_grad_norm: float | None = 10.0,
+    device: str = "cpu",
+    device_policy: str = "fallback_cpu",
+    random_seed: int = 42,
+    run_name: str = "tabular_tabnet_regression",
+) -> Trainer:
+    representation = NeuralGraphRepresentation(
+        NeuralGraphRepresentationConfig(
+            graph_spec=NeuralGraphSpec.tabular_tabnet(
+                input_dim=int(input_dim or data.X_train.shape[1]),
+                hidden_dim=int(hidden_dim),
+                n_steps=int(n_steps),
+                relaxation_factor=float(relaxation_factor),
+                ghost_bn=bool(ghost_bn),
+                dropout=float(dropout),
+                heads=({"kind": "point", "name": "point", "params": {"output_dim": int(output_dim)}},),
+            ),
+            random_seed=int(random_seed),
+            representation_name="tabular_tabnet_regression",
+        )
+    )
+    problem = SupervisedRegressionProblem(data)
     adapter = _build_neural_graph_adapter(
         optimizer=optimizer,
         learning_rate=learning_rate,

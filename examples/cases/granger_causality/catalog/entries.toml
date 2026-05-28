@@ -1,0 +1,25 @@
+# Catalog entries for granger_causality
+# Register discoverable components here.
+#
+# Format:
+#   [[entries]]
+#   key = "kind.component_name"
+#   title = "..."
+#   kind = "problem|pipeline|representation|adapter|bias|capability|..."
+#   import_path = "module:Class"
+
+[[entries]]
+key = "problem.granger_causality_regression"
+title = "Granger_Causality Regression Problem"
+kind = "problem"
+import_path = "problem.example_problem:ExampleRegressionProblem"
+tags = ["example", "regression"]
+summary = "Custom regression problem for granger_causality."
+
+[[entries]]
+key = "adapter.granger_causality_gd"
+title = "Granger_Causality Gradient Descent Adapter"
+kind = "adapter"
+import_path = "adapter.example_adapter:ExampleGradientDescentAdapter"
+tags = ["example", "gradient_descent"]
+summary = "Custom gradient descent adapter for granger_causality."

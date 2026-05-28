@@ -1,9 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 
 from .artifacts import OrthogonalBasisSetArtifact
 from .orthogonal_problem import OrthogonalBasisEvaluationRecord, OrthogonalBasisOuterProblem, OrthogonalBasisOuterProblemConfig

@@ -1,11 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 import sys
 from pathlib import Path
 import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from mlblack.pipeline.data import train_valid_split
+from mlblack.pipeline.data_views import train_valid_split
 from mlblack.presets import build_orthogonal_linear_point_trainer
 rng = np.random.default_rng(7)
 X = rng.normal(size=(240, 2))

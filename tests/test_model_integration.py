@@ -8,7 +8,7 @@ import pytest
 from mlblack.core import ArtifactBuilder
 from mlblack.models import LinearPointModel, PredictionIOContract, PredictionInputSpec, PredictionIntegrationComponent
 from mlblack.pipeline import ModelConditionedTargetComponent, build_model_conditioned_target
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.presets import build_orthogonal_linear_point_trainer
 
 

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -17,7 +17,7 @@ from mlblack.models.symbolic import (
     parameterize_expression,
 )
 from mlblack.models.symbolic_normalization import expression_equivalence_key, expression_family_signature
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline.symbolic import CandidateTerm, FunctionPool, safe_corr
 from mlblack.representations import SymbolicBasisSetConfig, SymbolicBasisSetRepresentation
 

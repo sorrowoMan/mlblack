@@ -1,0 +1,726 @@
+作品编号：TJJM20260521010924
+2026年（第十二届）全国大学生统计建模大赛参 赛 作 品
+参赛学校：
+华南农业大学
+论文题目：
+数据自主涌现的物理规律：基于动态符号回归的高速公路拥堵临界阈值发现与可解释预测
+——以深圳宝安区G4入口为例
+参赛队员：
+余沛林、缪荣贤、冯晞瑶
+指导老师：
+利小玲
+数据自主涌现的物理规律：基于动态符号回归的高速公路拥堵临界阈值发现与可解释预测
+——以深圳宝安区G4入口为例
+摘要
+在全球化和城市化持续加速的背景下，城市交通拥堵已成为全球性难题。深圳市宝安区因产业与人口高度聚集，G4高速入口拥堵已成为制约区域经济发展与市民出行的关键瓶颈。高速公路拥堵预测面临数据高波动、外部事件频发及传统模型先验性限制等挑战，可解释性与预测稳定性难以兼得。线性时序模型在平稳条件下可解释性较好，而机器学习方法虽拟合能力强，但依赖大量数据与计算资源，且“黑箱”特性导致决策逻辑缺乏可解释性。
+针对上述困境，本研究突破传统“假设—优化”建模范式，提出动态符号回归预测模型。该方法由算法自主从数据中挖掘最优数学表达式，在保证预测精度的同时提升可解释性。依托G4高速公路某路段2017—2024年间1717天的日度数据，构建了基于车速压力与占道压力的拥堵指数，通过STL分解揭示其趋势主导、季节效应微弱的结构特征。同时构建ARIMAX模型完成节假日语义、气象条件等外部事件的量化归因，验证了假期临界日平均推高拥堵指数约15.2个单位的显著效应。研究发现，在无任何交通工程先验知识注入的前提下，符号回归模型高频、稳定地涌现出以分段线性整流函数为核心的算子结构。其有率关联的整流项阈值c经多次独立演化后自主收敛至0.20附近，与交通流理论中“临界密度”的经典结论吻合，验证了符号模型的可靠性。
+在此前提下，基于滞后变量设计的符号学习预测模型实证验证了流量对拥堵的间接驱动关系。预测性能评估显示，在90%置信水平（=0.10）下，其预测区间宽度可缩至25.76；相比之下，随机森林方法的可信度仅30%。上述结果从区间估计的精准性与可信水平两个维度充分证明了本方法在预测可靠性和精度上的优越性。本研究也形成了一套“数据治理—符号发现—物理检验”的通用建模范式，可为存在临界相变特征的复杂系统预测提供方法论参考。
+关键词：符号回归；拥堵指数；高速公路；临界阈值；可解释人工智能
+目录
+一、绪论1
+（一）研究背景及意义1
+1.研究背景1
+2.研究意义1
+（二）文献综述1
+1.交通数据质量与影响因素研究1
+2.日期语义与事件冲击的量化表达研究2
+3.拥堵评价指标与时序结构诊断研究2
+4.预测方法演进与符号回归研究3
+5.文献评述3
+（三）研究内容与技术路线4
+（四）研究创新点5
+二、 数据基础与拥堵指数构建5
+（一）数据来源与变量说明5
+（二）数据清洗、口径核验与特征构造5
+（三）车型结构与出行意愿变量6
+（四）融合车速与占道率的拥堵指数定义7
+（五）STL分解与描述性分析8
+三、ARIMAX模型的外部事件归因分析10
+（一）ARIMAX模型的适用性检验10
+（二）模型设定与外生变量体系11
+（三）滚动时间窗验证方案设计12
+（四）ARIMAX模型的归因结果12
+1. 全样本系数估计与边际贡献12
+2.滚动交叉验证误差分时段比较14
+四、符号回归驱动的函数空间搜索15
+（一）传统参数化建模的困境15
+（二）符号回归的基本原理与搜索机制15
+（三）梯度引导动态符号回归16
+1.残差驱动的拟合诊断方法16
+2.梯度匹配引导的函数池动态扩展17
+五、符号回归的机理重构与临界阈值发现18
+（一）同日状态估计的机理重构任务设定18
+（二）XGBoost基线模型的引入和参数设置18
+（三）符号模型与XGBoost的拟合精度对比19
+（四）符号模型输出的解析结构解读19
+（五）占有率临界阈值的涌现与物理意义验证20
+六、符号模型与XGBoost的前瞻预测对比20
+（一）前瞻预测与信息约束条件20
+（二）区间预测方法的引入与必要性说明21
+（三）符号结构向预测区间的转换方式22
+（四）符号模型的多组区间预测实验22
+1.固定置信水平下的随机种子实验22
+2.多档置信水平的对比实验23
+（五）符号模型与XGBoost的预测对比结果25
+1.机构重构与前瞻预测的任务差异25
+2.信息不完全对预测误差的影响25
+3.符号模型在困难条件下的相对优势25
+七、结论与建议25
+（一）研究结论25
+（二）政策建议26
+（三）研究不足与展望26
+参考文献28
+附录30
+致谢52
+表格与插图清单
+表1   数据指标体系7
+表2   外生变量分组与作用说明11
+表3   ARIMAX模型外生变量回归结果13
+表4   模型对比图16
+表5   符号模型与XGBoost的机理重构任务结果19
+表6   符号模型与XGBoost模型输出对比表20
+表7   前瞻预测任务中符号模型与XGBoost性能对比（=0.20）23
+表8   不同风险水平下符号模型与XGBoost性能对比24
+表9   单次实验详细结果（seed 44, =0.20）24
+图1   建模逻辑框架图4
+图2   总流量字段与分车型数据口径差异图（清洗后）6
+图3   拥堵指数CI的STL时序分解与强度诊断9
+图4   拥堵指数、平均车速与平均占道率的分布特征9
+图5   拥堵指数CI原始时序曲线10
+图6   日际变化量分布11
+图7   10折滚动原点外推验证协议示意图12
+图8   ARIMAX外生变量系数图13
+图9   外生变量编辑贡献份额图13
+图10  10折滚动外推预测误差图14
+图11  低误差测试折预测表现图14
+图12  高误差测试折预测表现图15
+图13  梯度引导的动态符号回归流程示意图18
+图14  符号模型相对XGBoost的指标优势图19
+图15  符号回归涌现的解析函数结构示意图20
+图16  =0.20前瞻区间预测性能对比图23
+图17   不同置信水平下覆盖率与区间宽度变化对比图24
+绪论
+（一）研究背景及意义
+1.研究背景
+随着城镇化持续深化，高速公路已成为支撑区域经济发展的重要基础设施。截至2024年底，全国高速公路通车里程已超过19万公里。然而，交通需求快速增长与供给能力有限之间的矛盾日益突出，高速公路拥堵已成为制约运输效率、增加社会成本的重要问题。
+“十五五”规划纲要指出，要“加强安全风险评估和监测预警，实施公路安全韧性提升工程”。高速公路拥堵治理作为安全韧性提升的重要内容，已成为交通管理领域的焦点问题。深圳市宝安区凭借产业集聚与物流枢纽优势，物流吞吐量占全市30%以上。G4广深高速宝安段日均车流量超10万辆，高峰时段每小时达8000辆，早晚高峰、节假日返程、恶劣天气等引发的拥堵问题突出，严重制约区域交通可持续发展。
+有鉴于此，本研究以宝安区G4高速公路入口为研究对象，结合2017—2024年日度交通流、气象、空气质量等多源数据，立足“数据治理—机制归因—符号发现—规律验证”的方法链条，重构节假日语义特征体系，构建基于车速与占道率的拥堵指数，引入符号回归方法自主挖掘拥堵生成机制中的非线性结构，旨在为高速公路关键节点拥堵预警、应急调度与通行效率提升提供方法支撑。
+2.研究意义
+本研究在理论层面，本研究将符号回归引入交通时序预测领域，突破传统参数化模型对函数形式的先验依赖，揭示建模语言丰富性对复杂系统建模的意义，丰富可解释人工智能在交通预测中的理论体系。
+在实践层面，建立了从数据治理到规律发现的技术流程：通过口径核验与降级策略解决数据冲突，通过事件窗编码实现日期语义精细化，通过符号回归生成可解释的拥堵形成机制。模型轻量、可部署，可接入交通管理平台，提升拥堵预警与应急调度水平。
+（二）文献综述
+1.交通数据质量与影响因素研究
+学术界从数据预处理和因素识别两个层面展开了探索。在数据预处理方面，为应对高维交通数据中的异常值干扰，徐程等（2016）[1]设计了动态交通数据异常值的实时筛选方法，提升了数据预处理的效率与可靠性。在因素识别方面，卢勇等（2018）[2]利用高速公路事故数据构建短时预测模型，验证了天气、车型比例等外生变量对拥堵状态的影响。杨俊宴等（2021）[3]基于多源大数据构建了交通拥堵地区的人群数字画像，运用聚类分析和空间统计方法，揭示了不同人群出行行为的时空分异特征。
+2.日期语义与事件冲击的量化表达研究
+既往研究大多将日期编码为星期几、是否周末、是否节假日等离散变量，这一处理方式虽然简便，但难以应对节前出发潮、假期首日冲击、假期中段回落、收假返程高峰等不同阶段的机制差异。针对这一局限，学界逐渐聚焦于事件窗口的精细化建模。
+吉霖等（2019）[4]利用北京市限行政策中独特的“尾号4现象”作为工具变量，通过双重差分法识别出交通拥堵对PM2.5浓度的因果效应，发现拥堵导致PM2.5浓度相对升高约9.46%。袁韵等（2020）[5]采用断点回归方法，揭示了网约车运行规模、出行效率与空气污染之间的交互影响机制，发现交通拥堵会加剧空气污染，而空气污染又会反向抑制出行需求。江世雄等（2021）[6]在研究天气对地铁客流影响时，引入风寒指数和综合舒适度指数替代单一温度指标，发现非工作日客流对天气变化更为敏感。
+3.拥堵评价指标与时序结构诊断研究
+既有文献普遍以车流量作为拥堵程度的衡量指标，然而在高速公路场景中，这一对应关系并不稳定。因此，构建多维拥堵评价指标成为重要的研究方向。黄子赫等（2020）[7]提出基于DBSCAN密度聚类的道路拥堵识别方法，用并行聚类和平均移动速度判别拥堵程度，识别命中率达91%。白孝轩等（2026）[8]研究了载货质量对柴油车CO₂排放因子的影响，发现单位货物质量排放因子随载货质量增加先快速下降后趋缓。
+在时序结构诊断方面，冯斌等（2023）[9]将集合经验模态分解与有序聚类结合用于交通信号控制时段划分，发现与原始流量相关性最高的本征模态函数能有效反映交通流的关键特征。李小龙等（2025）[10]在非平稳时间序列预测中采用傅里叶变换将序列分解为时变与时不变组分，分别刻画局部动态波动与全局稳态趋势。
+4.预测方法演进与符号回归研究
+时间序列模型如ARIMA、VAR等通过线性组合历史观测值建模时序依赖，具有良好的可解释性，但对非平稳和非线性特征的适应能力有限。李浩等（2020）[11]基于城市道路卡口数据，利用随机森林结合日期特征、节假日特征和周期性特征进行交通流量预测，取得了92.7%的预测准确度。冯超琴（2024）[12]构建了CNN-BiLSTM和ED-BiLSAM模型，发现组合模型优于单一模型，且特征提取的先后顺序对预测结果有显著影响。然而点预测难以表达预测结果的不确定性，郭瑞军等（2025）[13]在区域信号协调控制中，结合层次分析和模糊综合评价处理多指标权衡问题。这些研究为本研究的多目标优化思路提供了参考。
+符号回归作为一种能够从数据中自动搜索数学表达式的建模方法，由Koza（1994）[14]在其遗传编程的开创性工作中。与传统的回归分析不同，符号回归同时搜索模型的结构和参数，不预设函数形式，具备自主发现变量间数学关系的能力。近年来，符号回归在物理规律发现、工程建模等领域展现出独特优势，Makke和Chawla（2024）[15]将符号回归分为线性回归、非线性回归、树表达等类别，并总结了符号回归在物理、化学、材料科学等领域的应用进展，然而目前符号回归在交通拥堵预测领域的研究较少。
+5.文献评述
+综合文献梳理，现有研究在交通拥堵预测领域取得了一定的进展，但也存在三个可进一步探索的方向。
+其一，数据口径一致性问题在文献中讨论较少。多数研究默认原始字段可靠，对总流量与分车型之间的不一致性缺乏核验。在多源数据融合场景下，不同来源、不同口径的数据可能存在系统性偏差，若不加甄别地直接使用，可能导致模型估计偏误。其二，日期语义的表达精度有待提升。“是否节假日”的二值标签难以区分假期不同阶段的拥堵机制差异，而事件窗口内的预测稳定性往往是高速公路管理的关键需求。其三，非线性临界效应的建模能力不足。传统线性模型无法刻画“阈值触发”型的非线性关系，而深度学习的“黑箱”特性又难以满足可解释性需求。而符号回归有望在这一问题上提供新方案。
+鉴于此，本研究结合深圳市宝安区G4入口车流量场景，以高速公路拥堵指数预测为切入点，构建从数据治理到符号回归的完整方法链。
+（三）研究内容与技术路线
+本研究围绕高速公路拥堵指数预测，分数据治理、拥堵评价、归因分析和符号回归建模四个环节：
+（1）数据治理。完成口径核验、异常处理和节假日语义重构。
+（2）拥堵评价。基于车速压力与占道压力构造日度拥堵指数CI，取值0至100。采用STL分解对CI进行时序结构诊断，分离趋势、季节与残差项，判断拥堵变化的主导因素。
+（3）归因分析。引入ARIMAX模型，量化节假日语义、气象条件、车型占比等外生变量对拥堵指数的边际影响，通过滚动时间窗验证确保评估的时序可靠性。
+（4）符号回归建模。通过符号回归自主搜索最优表达式，挖掘拥堵生成机制中可能存在的非线性结构，重点分析整流算子的涌现情况及其物理含义。
+本研究的技术路线遵循“先解释、后发现、再验证”的顺序，确保每一步为下一步提供依据，详见图1：
+图1  建模逻辑框架图
+（四）研究创新点
+本研究的创新点体现在以下三个层面：
+第一，在数据层提出“语义优先的数据处理策略”。研究发现并处理总流量与分车型加总的口径不一致问题，同时将“是否节假日”的标签拓展为近端、中段、远端三层语义标签，并建立语义优先规则，使模型能够识别真实出行行为状态。
+第二，在方法层引入符号回归进行规律自主发现。突破传统参数化模型对函数形式的依赖，让算法在函数空间中自主搜索最优表达式。通过整流算子，使模型具备表达分段线性阈值关系的能力。
+第三，在发现层验证了数据驱动建模的科学发现潜力。在没有注入交通工程先验知识的条件下，符号回归自主涌现出与经典理论高度吻合的20%占有率临界阈值，为数据驱动模型在基础科学研究中的应用提供了实证支持。
+数据基础与拥堵指数构建
+（一）数据来源与变量说明
+本研究所用数据源自G4高速公路广深宝安段的道路运行监测系统，时间跨度为2017年4月6日至2024年4月2日。原始数据覆盖交通运行、外部环境和日历语义三类信息。经过日期标准化、异常样本剔除、节假日语义补全以及滞后特征构造后，最终形成1717个日度观测样本，用于后续拥堵指数构建、统计归因、符号机理重构和前瞻预测建模。
+（二）数据清洗、口径核验与特征构造
+预处理首先统一日期格式并按时间排序，随后利用五类车型流量加总结果识别采集异常。对于分车型加总流量过低或多车型同时为零的样本，视为异常记录并剔除。
+完成异常样本处理后，研究进一步生成时间与日历特征，包括星期、月份、是否周末、是否节假日当天、是否工作日、是否临近节假日、是否假期中段和是否为普通非工作周末等。“是否临近节假日”用于标记节假日前后窗口，“是否假期中段”用于区分假期中间时段，“是否为普通非工作周末”用于识别常规周末。相比单一的“是否节假日”变量，这些语义标签能够更细致地区分出行需求的集中释放、回落和常规周末波动。
+所有滚动统计量均需保证第日特征只使用第日之前的信息，避免前瞻偏差。口径核验发现，原始总流量字段与五类车型流量加总之间存在不一致。因此定义差值变量为：
+公式（1）
+清洗后，1717个样本中仍有644天存在，平均绝对偏差约3942辆，说明原始总流量与分车型字段并非完全同一口径，见图2：
+图2  总流量字段与分车型数据口径差异图（清洗后）
+本研究不强行平衡二者，而是保留总流量作为独立观测，分车型流量仅用于构造出行意愿。
+（三）车型结构与出行意愿变量
+分车型流量能一定程度反映交通构成差异。小客车主导的流量多与通勤、周末和节假日出行相关，中大型车辆更多反映生产性运输和物流活动。由于不同车辆群体的出行规律不同，单纯使用总流量容易掩盖交通需求结构变化。为保留车型结构信息并降低噪声，研究将分车型流量聚合为三类：小型车流量（微型车与轻型车之和）、中型车流量（中型车）以及大型车流量（大车与长车之和）。同时考虑到仅使用占比难以区分某类车辆真实增加与其他车辆减少导致的被动上升。为此，对每一类车辆组，以同月、同星期的历史中位数作为日历基准，构造相对出行意愿：
+公式（2）
+其中，对应小型车、中型车或大型车。该变量衡量在相似日历背景下，某类车辆出行需求相对于历史常态的偏离程度。当说明该类车辆需求高于同月同星期的常态水平；当时表示需求相对减弱。
+相比直接使用原始流量或简单车型占比，出行意愿变量能够削弱月份和星期周期对流量水平的影响，更突出异常需求变化。后续ARIMAX归因分析中，研究将比较仅使用外部环境变量的模型与加入相对出行意愿后的模型，以检验需求结构信号是否具有增量解释价值。
+在经过清洗之后，最后我们可以把数据清洗并整理为如下结构，见表1：
+表1  数据指标体系
+指标类型
+具体指标
+关键构造指标
+拥堵指数
+出行意愿
+时间特征指标
+节假日前后
+假期中段
+普通周末
+交通指标
+小型车流量
+中型车流量
+大型车流量
+整体车流量
+平均占道率
+平均车速
+天气指标
+空气质量指数
+天气
+生活影响程度
+生活影响程度
+（四）融合车速与占道率的拥堵指数定义
+单一流量指标难以全面刻画拥堵状态。在高速公路场景中，高流量并不必然对应低速拥堵，而中等流量也可能因道路占用率上升而出现通行效率下降。因此，本研究将拥堵状态定义为车速压力与占道压力的综合结果。车速反映通行效率，占道率反映道路资源占用程度，两者共同刻画拥堵压力。
+设为第日平均车速，为第日平均占道率。为避免极端值对指数尺度产生过强影响，研究采用稳健分位数口径构造压力指标。速度压力定义为：
+公式（3）
+其中，为自由流速度参照值，取样本期平均车速的85%分位数，计算得到=94.9km/h。当车速接近或高于该自由流速度时，速度压力接近0；当车速明显下降时，速度压力随之上升。将占道压力定义如下：
+公式（4）
+和分别为平均占道率的10%和90%分位数，研究计算得到=1.3，=21.0。采用分位数而非极值归一化，可以降低异常天气、事故或极端节假日样本对指数尺度的影响。最终拥堵指数定义为：
+公式（5）
+该指数取值越高，表示拥堵压力越强。速度压力权重设为0.7，占道压力权重设为0.3，体现出高速公路场景中速度下降对通行效率的主导影响，同时保留占道率对道路饱和状态的刻画能力。指标也是后续STL分解、归因分析、符号机理重构和前瞻区间预测的统一目标变量。
+（五）STL分解与描述性分析
+为识别的内在时序结构，研究采用STL（Seasonal-Trend decomposition using Loess）方法进行分解，并进行描述性统计，输出结果图3：
+图3  拥堵指数CI的STL时序分解与强度诊断
+实证结果显示≈0.877，≈0。结果表明在当前日度粒度下，波动主要由长期趋势与非周期性冲击驱动，稳定的星期季节效应较弱。
+图4  拥堵指数、平均车速与平均占道率的分布特征
+描述性统计显示，见图4，平均车速均值约为70.89km/h，标准差约为25.96；平均占道率均值约为9.79，标准差约为10.06。占道率的相对波动幅度明显高于车速，说明其对交通状态变化更为敏感。拥堵指数的均值约为29.32，标准差约为23.33，表明样本期内拥堵水平存在较大波动，具有明显的事件冲击和状态切换特征。
+ARIMAX模型的外部事件归因分析
+（一）ARIMAX模型的适用性检验
+STL分解结果表明，趋势强度约为0.877，占据绝对主导，而以周为单位的季节性强度趋近于0。这说明依赖历史值的自回归结构预测未来的拥堵状态，模型会将所有无法用惯性解释的波动因素归入噪声。然而观察原始时序曲线可知，噪声的分布并不均匀。
+图5  拥堵指数CI原始时序曲线
+在某些特定日期，当日拥堵指数会出现30到40个单位的瞬时跃升，而相邻普通日的波动幅度却很少超过10个单位，见图5。这些异常波动几乎与节假日免费通行、恶劣天气等外部事件在时间上重合。
+图6  日际变化量分布
+为了研究这些外生变量和的联系，本研究的建模策略是对原始序列建立ARIMAX模型，并以此解释外生变量中原始的自回归项无法捕捉的边际信息。该模型在自回归与移动平均的惯性结构之上，把节假日语义标签、气象条件等外生变量纳入建模框架，将拥堵状态分解为历史惯性延续与外部事件即时冲击两个来源，每个外生变量的系数可解读为该事件对拥堵指数的边际贡献。
+（三）模型设定与外生变量体系
+ARIMAX模型的一般形式可表示为：
+公式（6）
+其中、、分别为自回归阶数、差分阶数和移动平均阶数，由AIC准则联合确定；为常数项；、、为待估系数；为第个外生变量；为白噪声误差项，满足均值为零、方差为常数的假设。外生变量及其系数是模型解释力的主要载体。
+外生变量的设计沿用前文的日期语义体系，并在进入模型前做了进一步的聚焦，最终保留七个变量，可大致分为两组（见表2）：
+表2  外生变量分组与作用说明
+分组类型
+具体指标
+作用体现
+日期语义变量
+假期前后临界日
+出行需求集中释放与回落
+假期中段日
+长假中段需求趋稳状态
+普通周末
+剥离自然周循环基底效应
+天气指标
+风力
+风力对驾驶安全与速度波动的影响
+空气质量指数
+环境条件对出行需求和风险状态的影响
+天气
+天气对通行能力和出行行为的影响
+生活影响指数
+大型活动、施工或其他社会扰动
+日期语义变量用于刻画节假日与周末出行情境，环境变量用于刻画天气和社会活动扰动。
+（四）ARIMAX模型的归因结果
+基于上述模型设定与验证框架，ARIMAX模型在1717个日度样本上完成参数估计与滚动外推评估。
+全样本系数估计与边际贡献
+图8  ARIMAX外生变量系数图
+图9  外生变量编辑贡献份额图
+表3  ARIMAX模型外生变量回归结果
+分组类型
+具体指标
+系数
+p值
+日期语义变量
+假期临界日
+0.900
+>0.1
+假期中段日
+1.332
+>0.1
+普通周末
+0.435
+>0.1
+天气指标
+风力
+-0.461
+>0.1
+空气质量指数(AQI)
+0.040
+0.076
+天气
+0.375
+>0.1
+生活影响指数
+-0.524
+>0.1
+图8-9、表3给出了外生变量的回归结果与贡献份额。结果显示，三个日期语义变量的系数均未达到常规显著水平，但普通周末、假期中段日和假期临界日的贡献份额合计约为17%，说明日期语义变量虽然难以表现为稳定的单项显著效应，但仍提供了事件识别信息。这与STL分解中周季节性强度接近0的结论一致，即的波动并非主要由固定周周期驱动，而更多表现为事件性扰动。
+相比之下，环境变量的贡献更集中。AQI、风力和天气类型的贡献份额合计接近80%，其中AQI在10%水平上边际显著。该结果表明，在控制历史惯性后，日常拥堵波动更多受到环境条件影响；风力系数为负，可能反映强风天气对非必要出行的抑制，AQI系数为正则提示污染天气下道路运行压力可能上升。
+2.滚动交叉验证误差分时段比较
+再进行滚动的10折交叉验证，最后结果见图10：
+图10  10折滚动外推预测误差图
+10折滚动预测的汇总结果显示，ARIMAX模型的平均MAE为10.47，平均RMSE为12.63。逐折表现存在一定分化：第1、2、4、7、8折的误差相对较低，MAE在5.2至8.0之间，见图11；
+图11  低误差测试折预测表现图
+而第3、6、9、10折的误差偏高，MAE最高达22.9，参见图12。这些高误差折恰好对应了测试窗口覆盖拥堵波动剧烈时段的折叠，
+图12  高误差测试折预测表现图
+但这种"平稳期尚可、极端期崩溃"的模式暴露了 ARIMAX 的结构性缺陷：全局线性假设在波动加剧时失效。固定系数无法捕捉拥堵对外生变量响应的强度变化——同样是风力 4 级，在平日和节假日对出行意愿的抑制效果可能截然不同，但 ARIMAX 只能输出一个平均系数。滚动 CV 的分化不是偶然的噪声，而是线性框架能力边界的直接信号。
+时序响应的非线性与结构突变诊断
+基于格兰杰因果检验和VAR的IRF分析
+ARIMAX 结果的张力在于：天气/风力等环境变量贡献份额合计近 80%，但无一系数显著（p 均 > 0.1）。一种可能的解释是效应真实存在但被噪声淹没；另一种是贡献来自同期伪相关。这里我们采用基于格兰杰因果检验和VAR的IRF分析，做一次滞后维度的压力测试：如果 X 对 Y 的驱动关系足够稳定、足够强，那么不应只在同期（X_t）有效——X 的历史值（X_{t-1}, X_{t-2}, ...）在控制 Y 自身历史后，也应该保留对 Y_t 的增量预测力。 动态系统中，真实的驱动关系几乎不会精确截断在当天的边界上。如果连滞后痕迹都检测不到，说明这个驱动关系要么不存在，要么其形式超出了原框架的探测能力
+格兰杰检验结果表明：天气虚拟变量、风力等级、节假日均无法拒绝"不导致拥堵"的零假设。 这意味着这些外生变量的历史值不包含对拥堵未来变化的增量预测信息。ARIMAX 中它们的不显著系数不是估计精度问题，而是线性形式下因果信号确实微弱。
+2.基于TAR模型的阈值效应诊断
+如果上述推断成立——即关系是条件性、非线性的——那么应该能在数据中直接检测到结构性变化的证据。门限自回归（TAR）诊断正是为了验证这一点。
+红色的分段拟合线清晰反映出：当出行意愿跨过临界点（突变检测阈值 c=−0.46c=−0.46）后，模型的截距和斜率发生急剧偏折的非线性突变。传统 ARIMAX（蓝色虚线）以单一斜率贯穿，显然会严重低估突破阈值后的“崩盘式”拥堵。从而验证了关系的非线性；
+2. 基于GAM 的全局平滑验证
+为了探究这个这个非线性突变的突变点，我们进一步使用广义相加模型 (GAM) 对环境和意愿影响进行多变量客观拟合，绘制出了多特征驱动下的非线性响应曲线：
+通过TAR和GAM，我们从多维统计角度再次证明了拥堵归因机制不仅存在突变的相变，还有极其复杂的平滑边际效应。
+然而，TAR和GAM本身也存在明显局限：TAR依赖人为设定门限变量和分段数，其分段线性结构是对真实连续非线性的一种粗糙近似；GAM虽然能拟合任意平滑曲线，但无法输出一个紧凑的数学表达式，且难以显式表达变量间的交互与阈值触发关系。二者均属于“探测到非线性，却无法给出统一解析规律”的过渡性工具。
+符号回归驱动的函数空间搜索
+（一）传统参数化建模的困境
+传统参数化建模通常遵循“假设—优化”循环。通常必须先依据经验预设一个含参数的函数形式，如线性、指数、幂等，再通过最小二乘或梯度下降估计最优参数。但这一范式在面对交通流等复杂系统时存在着困境：真实机制的函数形式事先未知，预设结构等同于押注。若形式匹配，模型有效；若偏离，系统性偏差将固化且无法通过后续参数调整修正；大多数方法都不具备可解释性，即使是诸如GAM、TAR等方法，虽然在特征层面提供了一定可解释性，但它们仍无法输出封闭形式的数学表达式，而这对于理解交通流动力机制至关重要。
+（二）符号回归的基本原理与搜索机制
+符号回归则提供了一种不同于传统参数化建模的思路。在这一范式下只需给定一组基础数学符号和优化目标，让算法在函数空间中搜索即可获得能够解释数据结构的表达式。
+但传统符号回归在复杂建模中仍存在局限。方法通常依赖预先固定的算子集，并通过随机演化机制组合表达式。但算子集过小则表达能力不足，难以刻画阈值效应和变量耦合；算子集过大则搜索空间急剧膨胀，训练耗时增加，且易产生过拟合表达式。
+这一矛盾在交通拥堵指数建模中尤为突出。交通系统的非线性结构并不是均匀分布在所有变量方向上的。某些变量可能主要体现平滑趋势，某些变量可能存在阈值触发效应，另一些变量又可能只有在与其它变量共同作用时才体现解释力。此外，传统方法主要依据预测误差和表达式复杂度筛选公式，很少利用拟合过程中的残差与梯度信息。但仅凭误差指标只能回答误差大小，却无法回答模型的形状偏差，难以实现有效调整，详见表4：
+表4  模型对比图
+模型
+结构预依赖
+拟合能力
+解释性
+主要局限
+线性模型
+强
+弱
+系数层面
+结构过于刚性
+树模型
+中
+强
+规则分裂层面
+分段规则难以机制化
+神经网络
+弱
+强
+较弱
+数据量要求高，黑箱程度高
+GAM
+中
+中
+单变量形状层面
+交互与阈值表达受限
+TAR
+中
+中
+分段系数+阈值
+门限变量需先验，无法刻画平滑过渡
+符号回归
+弱
+强
+函数结构层面
+搜索空间控制困难
+为解决上述问题，本研究设计梯度引导动态符号回归方法。研究的主要思想是将符号回归组织为内层拟合诊断与外层结构搜索交替的迭代过程。
+（三）梯度引导动态符号回归
+模型采用外层结构搜索与内层参数拟合相结合的嵌套框架。外层负责在动态函数池中搜索合适的符号结构，内层则在给定结构下估计函数系数。
+1.残差驱动的拟合诊断方法
+假设经过第轮迭代后，当前函数池为：
+公式（7）
+表示当前函数池中的第个候选符号函数。外层优化算法在该函数池上搜索并选择其中子集作为拟合结构后，将结构返回到内层，内层通过正则化线性拟合估计系数，得到当前模型：
+公式（8）
+其中，为内层拟合得到的参数。其估计过程可写为：
+公式（9）
+为内层拟合得到的参数。完成第轮拟合后，模型计算当前残差：
+公式（10）
+2.梯度匹配引导的函数池动态扩展
+为了进一步比较模型解析斜率与数据经验斜率之间的差异，需要形成梯度配信号：
+公式（11）
+其中，表示由局部差分或分箱中位数估计得到的经验斜率。若某一变量方向上的较大，说明当前函数池在该方向上表达不足，下一轮将优先生成与该变量相关的非线性项、交互项或阈值项。
+因此，第轮诊断后，函数池更新为：
+公式（12）
+其中，表示由残差和梯度诊断生成的新候选函数。新增函数包括单变量非线性变换、变量交互项以及阈值/门控结构，例如：
+公式（13）
+需要强调的是，新增候选函数只是进入下一轮候选池，并不会被直接保留为最终模型。最终结构仍由外层多目标优化决定，其目标是在预测误差、滚动验证稳定性和表达式复杂度之间取得平衡。整个过程可概括为：
+公式（14）
+通过上述改进，梯度引导动态符号回归将符号回归从固定算子空间中的随机表达式搜索，改造为由残差和梯度诊断驱动的自适应函数空间拓展过程，见图13。其价值在于保持符号模型的可解释性的同时，还能利用拟合过程中的诊断信息动态调整搜索空间，从而提高模型的表达能力、搜索效率并控制复杂度。
+图13  梯度引导的动态符号回归流程示意图
+符号回归的机理重构与临界阈值发现
+（一）同日状态估计的机理重构任务设定
+梯度引导动态符号回归方法虽然理论能够输出一组候选规律结构，但能输出候选结构本身并不等同于模型在机理上有效。因此，在将该方法用于严格前瞻预测之前，有必要先检验其是否具备交通流机理重构能力。即在采用梯度引导动态符号回归方法、已知交通系统同步状态的基础上，进行同日状态估计与机理重构，进而检验模型能否反向重构拥堵指数与交通运行变量之间的瞬时物理约束和代数关系。
+（二）XGBoost基线模型的引入和参数设置
+在完成同日状态估计任务设定后，本研究鉴于数据量和任务特征，引入了XGBoost作为黑盒非线性基线模型进行对比。
+XGBoost通过大量树结构切分特征空间，能够捕捉复杂的非线性关系，在中小样本中表现出色，并在许多工程预测任务中表现稳定，常被视为强有力的非线性基线。
+这里研究设置XGBoost的预测区间采用分位数回归森林和XGBoost内置的分位数损失进行训练，区间上下界分别对应和1−分位数。其超参数通过网格搜索优化，包括树深度、学习率、子采样比例等。
+（三）符号模型与XGBoost的拟合精度对比
+最终实验结果见表5：
+表5  符号模型与XGBoost的机理重构任务结果
+模型
+RMSE
+MAE
+PICP
+PINAW
+IS
+符号模型
+0.0713
+0.0537
+0.9500
+0.0017
+0.1078
+XGBoost
+1.0363
+0.7818
+0.2167
+0.0069
+12.2546
+图14  符号模型相对XGBoost的指标优势图
+从图14可知，在同日状态估计任务中，符号学习模型在点误差、区间质量以及覆盖率上均明显优于XGBoost。这说明在该机理重构任务中，本研究方法在单纯的拟合指标上更具优势。
+（四）符号模型输出的解析结构解读
+更重要的是，符号学习模型输出了一组稀疏且可解释的解析结构。某次结果为：
+公式（15）
+公式中表示平均车速，为平均占有率。该表达式有两类结构，一类是速度在约94.95km/h附近的双侧分段结构，另一类是占有率在19%至21%附近的多重分段结构。
+与之相比，XGBoost虽具有较强的非线性拟合能力，但其输出主要表现为树结构中的分裂规则和叶节点常数，难以形成紧凑、连续、可直接解释的交通流方程，差异见表6：
+表6  符号模型与XGBoost模型输出对比表
+模型
+输出形态
+结构规模
+符号模型
+稀疏解析表达式
+少量分段基函数
+XGBoost
+树分裂规则与叶节点常数
+360棵树、16184个分裂节点、16544个叶节点
+（五）占有率临界阈值的涌现与物理意义验证
+从交通流理论角度，速度折点对应自由流状态边界附近的边际变化；占有率20%左右的密集分段项则与宏观基本图中由自由流向拥堵流转变的临界区域相吻合，见图15。因此，该模型不仅在统计指标上优于黑盒基线，其输出结构也能与交通流理论相互印证。
+图15  符号回归涌现的解析函数结构示意图
+符号模型与XGBoost的前瞻预测对比
+（一）前瞻预测与信息约束条件
+机理重构任务的结果表明，梯度引导动态符号回归既能获得优于黑盒基线的拟合性能，又能从同步交通变量中提炼出具有明确物理含义的解析结构。这一发现启发我们去尝试将模型迁移到更为严格和实际的前瞻预测任务中。
+但机理重构和前瞻预测两个任务存在着本质区别：前者允许使用当日车流量、车速、占有率等同步变量，目标是重构系统内部关系；后者必须在预测时点之前完成判断，不能使用任何事后信息。对于第日拥堵指数，模型只能使用预测日前已经可得或可提前确定的信息。任何仅在第日结束后才能获得的变量，都不能作为输入。
+（二）区间预测方法的引入与必要性说明
+在交通拥堵风险预警任务中，单一点预测是不充分的。点预测可理解为对条件中心趋势的估计：
+公式（16）
+表示第日拥堵指数，指预测时点之前可获得的信息集合。该形式只能给出未来拥堵指数的中心位置，却无法反映其围绕中心值可能产生的波动范围。
+根据交通流理论，本身是具有感知模糊与突变特性的，小幅波动难以被明显感知，即在一个区间内的拥挤感知是类似的，而状态切换又常以跳跃方式发生。如第五章验证的在车速94.95km/h，占有率20%左右的突变。
+因此，在风险预警场景中，单一点值的决策意义有限，更需要刻画未来拥堵水平可能落入的范围。这是由于交通系统受到天气、节假日、突发事件、出行需求波动和历史状态惯性等多重因素影响，即使对于相似，未来拥堵水平也可能出现明显差异。
+（三）符号结构向预测区间的转换方式
+在确定严格事前变量集合以及区间预测方法后，模型还需要完成从“可得信息”到“风险区间”的转换。在第四章的符号回归框架上调整输出形式。设为符号模型基于事前变量搜索得到的函数表示，则预测区间可写为：
+公式（20）
+和分别为预测下界和上界。由此，模型输出的不只是拥堵指数的中心趋势，更是在当前可得信息下未来拥堵可能落入的风险范围。
+为进一步检验该模型，还需采用时间顺序验证。训练集始终位于测试集之前，模型不使用任何未来样本。第个滚动窗口可表示为：
+公式（21）
+其中，为测试窗口长度。该协议使模型处于接近真实部署的环境中。
+模型评价同时采用RMSE、MAE、PICP、PINAW和IS，分别衡量中心误差、覆盖率、区间宽度和综合区间质量。
+（四）符号模型的多组区间预测实验
+在完成变量约束、区间建模和验证协议设定后，实验使用历史拥堵指数及其滞后项（如）、历史滚动均值和波动、预测日前已知的日历变量，以及可提前获得的外部变量，如天气和AQI。将符号区间模型与XGBoost基线进行对比，通过多组实验检验模型表现。结果如图16：
+1.固定置信水平下的随机种子实验
+首先，在=0.20的设置下，研究采用3个随机种子进行重复实验，
+图16  =0.20前瞻区间预测性能对比图
+表7  前瞻预测任务中符号模型与XGBoost性能对比（=0.20）
+模型
+RMSE
+PICP
+PINAW
+符号模型seed 42
+7.6691
+0.8583
+0.3204
+符号模型seed 43
+7.6194
+0.8167
+0.3007
+符号模型seed 44
+7.6243
+0.8000
+0.2815
+符号模型 平均
+7.6376
+0.8250
+0.3009
+XGBoost基线
+8.1316
+0.1833
+0.0651
+根据表7显示，在严格事前变量约束下，符号区间模型平均RMSE是7.6376，低于XGBoost的8.1316；平均PICP为0.8250，显著高于XGBoost的0.1833。符号模型不仅中心误差更低，而且能够形成更可靠的风险覆盖。
+以seed 44的结果为例，模型选中的核心函数项为：
+公式（22）
+中心预测可以概括为：
+公式（23）
+该结构表明，前瞻预测阶段主要依赖历史拥堵惯性、上一期占有率状态和可提前获得的外部扰动变量。与机理重构中出现的速度约95km/h、占有率约20%的阈值结构不同，在删除同日同步变量后，模型转而利用滞后项、历史占有率和天气日历交互来刻画未来风险。
+2.多档置信水平的对比实验
+进一步比较不同设置下的覆盖率与区间宽度权衡，可以得到图17、表8：
+图17  不同置信水平下覆盖率与区间宽度变化对比图
+表8  不同风险水平下符号模型与XGBoost性能对比
+设置
+模型
+RMSE
+PICP
+PINAW
+IS
+0.10
+符号模型
+7.5325
+0.9528
+0.4482
+33.8022
+XGBoost
+8.1316
+0.3000
+0.0909
+79.8110
+0.15
+符号模型
+7.5705
+0.8584
+0.3339
+29.4466
+XGBoost
+8.1316
+0.2167
+0.0747
+59.1231
+0.20
+符号模型
+7.6376
+0.8250
+0.3009
+26.3
+XGBoost
+8.1316
+0.1833
+0.0651
+47.3380
+从表8可以看到，=0.10时，符号模型平均PICP达到0.9528，覆盖能力较强，但PINAW也上升至0.4482；=0.20时，PICP为0.8250，PINAW降至0.3009，区间更加紧致。这说明区间预测存在明确的覆盖率—宽度权衡。较低对应更高覆盖率和更宽区间，较高则得到更紧致的风险边界。
+为进一步观察单次实验的表现，给出seed 44的结果，见表9。
+表9  单次实验详细结果（seed 44, =0.20）
+模型
+RMSE
+MAE
+PICP
+PINAW
+Mean Width
+IS
+符号模型
+7.6243
+5.3815
+0.8000
+0.2815
+17.6662
+26.0245
+XGBoost
+8.1316
+6.1778
+0.1833
+0.0651
+4.0854
+47.3380
+可见XGBoost的区间虽然更窄，但覆盖率严重不足，其风险边界过于保守而无法有效覆盖真实拥堵波动。相比之下，符号模型在保持较低点误差的同时，实现了更接近目标水平的覆盖率，并取得更低的IS。这说明本研究模型给出的区间在覆盖率、宽度和误差之间形成了更合理的折中。
+（五）
+1.机构重构与前瞻预测的任务差异
+第五章与第六章的模型指标之间存在较大差距，这主要是任务差异，而非模型方法问题。
+机理重构任务允许使用同日的同步变量，与拥堵指数之间存在较强的瞬时代数关系，因此该任务更接近于在已知系统状态后的方程反演。相较而言，预测任务处在更严格的信息条件下。模型无法看到当日真实发生的车速、流量和占有率，只能根据历史拥堵状态、滞后项、日历变量和外部预报信息推断未来。此时，模型面对的不再是完整状态下的代数重构，而是信息不完全条件下的未来推断。
+2.信息不完全对预测误差的影响
+由于关键同步状态变量不可见，且未来交通状态还可能受到临时事故、施工、突发出行需求和天气预报误差等不可观测因素影响，预测误差明显高于机理重构任务是合理的。
+3.符号模型在困难条件下的相对优势
+但在这种更困难的信息条件下，符号区间模型仍然取得了优于XGBoost的结果。
+（1）点预测精度对比
+符号模型平均RMSE为7.6376，XGBoost为8.1316，符号模型在点预测精度上优于XGBoost。
+（2）区间预测能力对比
+符号模型不仅平均RMSE更低，而且PICP和IS均明显优于XGBoost，可见该方法在面向实际预测与风险预警的应用上依旧存在着优势。
+结论与建议
+（一）研究结论
+本研究基于2017—2024年G4广深高速宝安段1717天日度数据，构建拥堵指数，并结合STL、ARIMAX与梯度引导动态符号回归分析拥堵机制和预测边界。首先，通过STL分解显示拥堵指数具有显著的趋势主导特征，趋势强度达0.877，季节效应趋近于零，表明拥堵演化主要受长期趋势与事件冲击驱动。解释了为何传统以周为固定时间效应的模型在高速公路场景中解释力有限。
+其次，ARIMAX框架表明，环境因素是日常拥堵的重要变量，空气质量指数和风力等级对拥堵波动的贡献分别达41.7%和27.3%。二者合计接近70%。其中AQI系数为正，边际显著，支持“污染天气下机动车出行需求上升”的推断；风力系数为负，可能与强风抑制非必要出行有关。这一结果为空气质量与交通管理的跨部门协同提供了量化依据。
+在机理重构任务中，符号回归自主涌现出的临界阈值在占有率20%附近和车速95km/h附近，与交通流理论中“临界密度”和“自由流边界”的经典结论高度一致。验证了交通流理论的核心假设，展示了符号回归在复杂系统规律发现、机理重构中的独特潜力。
+最后，符号区间模型在严格前瞻预测任务中仍然优于XGBoost基线：在显著性水平0.20下，符号模型的预测区间覆盖率达0.8250、均方根误差为7.6376，而XGBoost覆盖率仅为0.1833，虽区间更窄但覆盖率严重不足。证明了符号模型在预测精度与风险覆盖之间的更优平衡，上述研究证明了方法不仅适用于机理重构，也具有面向实际预测与风险预警的应用价值。
+（二）政策建议
+基于研究成果，本研究提出如下政策建议：
+一是完善多源数据治理。加强车速、流量、占有率、气象、空气质量和节假日信息采集，并细化节前、节中、返程等日期标签，提高预测准确性。
+二是加强部门数据协同。推动交通、气象、环保等部门共享数据，将天气和空气质量变化纳入拥堵研判，提升预警和应急响应能力。
+三是推广可解释预测模型。将符号回归等可解释模型用于高速入口监测，为入口管控、路线诱导和风险预警提供支持。
+（三）研究不足与展望
+本研究取得了一定成果，但仍存在不足。一方面，研究主要依赖日度历史数据，未能纳入交通事故、道路施工等实时动态事件，限制了模型的即时响应能力，未来应整合多源实时数据以提升动态监测与预测水平。另一方面，符号回归虽能自主涌现物理一致的阈值结构，但对拥堵系统中各变量间的深层因果机制挖掘尚不充分，后续可结合因果推断或结构方程模型等方法，进一步揭示交通状态演化的内在逻辑关系，增强研究结论的解释性与鲁棒性。
+参考文献
+徐程,曲昭伟,陶鹏飞,等.动态交通数据异常值的实时筛选与恢复方法[J].哈尔滨工程大学学报,2016,37(2):211-217.
+卢勇,姚仕伟,陈永胜,石琦.高速公路交通事故短时预测及节假日交通安全特征分析[J].公路,2018,63(11):224-227.
+杨俊宴,何国枫,陈代俊,等.城市交通拥堵地区人群数字画像解析与空间规划应对[J].规划师,2021,37(19):26-34.
+吉霖,张伟强,侯赢.交通拥堵与空气质量——来自汽车尾号限行的证据[J].运筹与管理,2019,28(09):107-116.
+袁韵,徐戈,陈晓红,等.城市交通拥堵与空气污染的交互影响机制研究——基于滴滴出行的大数据分析[J].管理科学学报,2020,23(02):54-73.
+江世雄,蔡灿煌,林宇晨,等.天气因素对福州地铁客流的影响分析[J].交通运输系统工程与信息,2021,21(03):268-274.
+黄子赫,高尚兵,蔡创新,等.多重处理的道路拥堵识别可视化融合分析[J].中国图象图形学报,2020,25(02):409-418.
+白孝轩,苗璐洋,李朋,等.考虑载货质量的柴油车多元动态CO2排放因子定量研究[J].环境科学学报,2026,46(02):111-122.
+冯斌,徐建闽,林永杰.基于关键本征模态函数的道路交通信号控制时段划分方法[J].交通信息与安全,2023,41(01):75-84.
+李小龙,李曦,刘洋,等.基于延迟时空依赖的非平稳时间序列交通流量预测模型[J].电子学报,2025,53(11):4035-4050.
+李浩,张杉,曹斌,等.基于城市道路卡口数据的交通流量预测[J].重庆大学学报,2020,43(11):29-40.
+冯超琴.基于深度学习的城市网约车流量短时预测方法[D].昆明理工大学,2024.
+郭瑞军,胡欣怡,李泽森,等.基于逐级寻波法的区域信号协调控制方法[J/OL].西南交通大学学报,1-13[2026-05-04].https://link.cnki.net/urlid/51.1277.U.20250718.1110.002.
+Koza J R. Genetic programming as a means for programming computers by natural selection[J]. Statistics and computing, 1994, 4(2): 87-112.
+Makke N, Chawla S. Interpretable scientific discovery with symbolic regression: a review[J]. Artificial Intelligence Review, 2024, 57(1): 2.
+Udrescu S M, Tegmark M. AI Feynman: A physics-inspired method for symbolic regression[J]. Science advances, 2020, 6(16): eaay2631.
+附录
+本研究的核心代码（重点节选）
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import annotations
+import io
+from pathlib import Path
+import matplotlib.font_manager as fm
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "outputs_external_only"
+FIG_DIR = Path(__file__).resolve().parent
+BLACK = "#1F1F1F"
+DARK = "#3B3B3B"
+MID = "#707070"
+LIGHT = "#D8DDE3"
+FILL = "#F4F6F8"
+def setup_matplotlib() -> None:
+candidates = ["Microsoft YaHei", "SimSun", "SimHei", "Noto Sans CJK SC"]
+available = {f.name for f in fm.fontManager.ttflist}
+for name in candidates:
+if name in available:
+plt.rcParams["font.sans-serif"] = [name]
+break
+plt.rcParams.update(
+{
+"axes.unicode_minus": False,
+"figure.dpi": 160,
+"font.size": 8.5,
+"axes.titlesize": 11,
+"axes.labelsize": 9,
+"xtick.labelsize": 8,
+"ytick.labelsize": 8.5,
+"legend.fontsize": 8,
+}
+)
+def save_png(fig, path: Path) -> None:
+buf = io.BytesIO()
+fig.savefig(buf, format="png", bbox_inches="tight", dpi=300)
+path.write_bytes(buf.getvalue())
+plt.close(fig)
+def clean_axis(ax) -> None:
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.spines["left"].set_color("#9BA3AD")
+ax.spines["bottom"].set_color("#9BA3AD")
+ax.tick_params(colors="#333333")
+def coef_forest() -> Path:
+path = FIG_DIR / "academic_bw_04_arimax_coefficients_forest.png"
+df = pd.DataFrame(
+[
+["假期临界日", 0.9001, -0.957, 2.757, 0.342, "日期"],
+["假期中段日", 1.3320, -1.509, 4.173, 0.358, "日期"],
+["普通周末", 0.4350, -0.534, 1.404, 0.379, "日期"],
+["天气类型", 0.3749, -0.702, 1.452, 0.495, "环境"],
+["风力", -0.4607, -1.096, 0.175, 0.155, "环境"],
+["AQI", 0.0403, -0.004, 0.085, 0.076, "环境"],
+["生活影响", -0.5238, -2.497, 1.450, 0.603, "环境"],
+],
+columns=["变量", "coef", "low", "high", "p", "group"],
+).iloc[::-1].reset_index(drop=True)
+fig, ax = plt.subplots(figsize=(6.8, 3.35))
+y = np.arange(len(df))
+ax.axvline(0, color=BLACK, lw=0.8, ls=(0, (3, 3)), alpha=0.8)
+for i, r in df.iterrows():
+marker = "o" if r.group == "环境" else "s"
+ax.hlines(i, r.low, r.high, color=DARK, lw=1.25)
+ax.scatter(r.coef, i, s=30, marker=marker, facecolor=FILL, edgecolor=BLACK, lw=0.9, zorder=3)
+label = "*" if r.p < 0.10 else ""
+if label:
+ax.text(r.coef + 0.10, i + 0.13, label, fontsize=10, color=BLACK)
+ax.set_yticks(y, df["变量"])
+ax.set_xlabel("系数估计及95%置信区间")
+ax.set_title("ARIMAX外生变量系数估计")
+ax.grid(True, axis="x", color=LIGHT, lw=0.55)
+clean_axis(ax)
+ax.legend(
+handles=[
+plt.Line2D([0], [0], marker="s", color=BLACK, markerfacecolor=FILL, lw=0, label="日期语义变量"),
+plt.Line2D([0], [0], marker="o", color=BLACK, markerfacecolor=FILL, lw=0, label="环境扰动变量"),
+],
+frameon=False,
+loc="lower right",
+)
+ax.text(0.99, 0.02, "* p<0.10", transform=ax.transAxes, ha="right", va="bottom", fontsize=7.5, color=MID)
+save_png(fig, path)
+return path
+def contribution() -> Path:
+path = FIG_DIR / "academic_bw_05_exogenous_contribution.png"
+mc = pd.read_csv(OUT / "marginal_contributions.csv")
+label_map = {
+"空气质量指数（AQI）": "AQI",
+"风力": "风力",
+"天气虚拟变量": "天气类型",
+"is_nonwork_weekend": "普通周末",
+"is_holiday_mid": "假期中段日",
+"is_holiday_near": "假期临界日",
+"生活影响": "生活影响",
+}
+mc["变量"] = mc["factor"].map(label_map)
+mc["贡献份额"] = mc["abs_contribution_share"] * 100
+mc["group"] = np.where(mc["变量"].isin(["普通周末", "假期中段日", "假期临界日"]), "date", "env")
+mc = mc.sort_values("贡献份额")
+fig, ax = plt.subplots(figsize=(6.8, 3.35))
+y = np.arange(len(mc))
+hatches = mc["group"].map({"date": "////", "env": ""}).to_list()
+bars = ax.barh(y, mc["贡献份额"], height=0.58, color=FILL, edgecolor=BLACK, linewidth=0.8)
+for bar, hatch, val in zip(bars, hatches, mc["贡献份额"]):
+bar.set_hatch(hatch)
+ax.text(val + 0.55, bar.get_y() + bar.get_height() / 2, f"{val:.1f}", va="center", fontsize=7.8, color=DARK)
+ax.set_yticks(y, mc["变量"])
+ax.set_xlabel("绝对边际贡献份额(%)")
+ax.set_title("外生变量边际贡献份额")
+ax.grid(True, axis="x", color=LIGHT, lw=0.55)
+clean_axis(ax)
+date_sum = mc.loc[mc["group"].eq("date"), "贡献份额"].sum()
+env_sum = mc.loc[mc["group"].eq("env"), "贡献份额"].sum()
+ax.text(0.98, 0.07, f"日期语义 {date_sum:.1f}%\n环境扰动 {env_sum:.1f}%", transform=ax.transAxes, ha="right", va="bottom", fontsize=7.8, color=DARK)
+ax.legend(
+handles=[
+plt.Rectangle((0, 0), 1, 1, facecolor=FILL, edgecolor=BLACK, hatch="////", label="日期语义变量"),
+plt.Rectangle((0, 0), 1, 1, facecolor=FILL, edgecolor=BLACK, label="环境扰动变量"),
+],
+frameon=False,
+loc="lower right",
+bbox_to_anchor=(0.98, 0.26),
+)
+save_png(fig, path)
+return path
+def cv_errors() -> Path:
+path = FIG_DIR / "academic_bw_06_rolling_cv_errors.png"
+folds = pd.read_csv(OUT / "rolling_cv_folds.csv")
+summary = pd.read_csv(OUT / "rolling_cv_summary.csv").iloc[0]
+x = folds["fold"].to_numpy()
+fig, ax = plt.subplots(figsize=(6.8, 3.25))
+ax.plot(x, folds["MAE"], color=BLACK, lw=1.15, marker="o", ms=3.8, markerfacecolor=FILL, markeredgecolor=BLACK, label="MAE")
+ax.plot(x, folds["RMSE"], color=MID, lw=1.15, marker="s", ms=3.6, markerfacecolor="white", markeredgecolor=MID, label="RMSE")
+ax.axhline(summary["MAE_mean"], color=BLACK, lw=0.8, ls=(0, (4, 3)), alpha=0.75)
+ax.axhline(summary["RMSE_mean"], color=MID, lw=0.8, ls=(0, (4, 3)), alpha=0.75)
+high = folds["MAE"] > summary["MAE_mean"]
+ax.scatter(folds.loc[high, "fold"], folds.loc[high, "MAE"], s=58, facecolors="none", edgecolors=BLACK, lw=0.9)
+ax.text(10.15, summary["MAE_mean"], f"{summary['MAE_mean']:.2f}", va="center", fontsize=7.6, color=BLACK)
+ax.text(10.15, summary["RMSE_mean"], f"{summary['RMSE_mean']:.2f}", va="center", fontsize=7.6, color=MID)
+ax.set_xlim(0.6, 10.75)
+ax.set_xticks(x)
+ax.set_xlabel("滚动测试折")
+ax.set_ylabel("误差")
+ax.set_title("滚动外推预测误差")
+ax.grid(True, axis="y", color=LIGHT, lw=0.55)
+clean_axis(ax)
+ax.legend(frameon=False, loc="upper left")
+save_png(fig, path)
+return path
+def main() -> None:
+setup_matplotlib()
+for p in [coef_forest(), contribution(), cv_errors()]:
+print(p)
+if __name__ == "__main__":
+main()
+from __future__ import annotationsimport argparseimport csvimport jsonimport mathfrom collections import defaultdictfrom datetime import datetimefrom pathlib import Pathfrom statistics import mean, pstdevfrom typing import Anydef _safe_float(v: Any) -> float | None:    try:        x = float(v)    except Exception:        return None    if not math.isfinite(x):        return None    return xdef _safe_int(v: Any) -> int | None:    try:        return int(v)    except Exception:        return Nonedef _extract_row_from_summary(path: Path, data: dict[str, Any]) -> dict[str, Any]:    cfg = data.get("config", {}) if isinstance(data.get("config"), dict) else {}    tc = data.get("test_compare", {}) if isinstance(data.get("test_compare"), dict) else {}    itv = tc.get("interval_metrics", {}) if isinstance(tc.get("interval_metrics"), dict) else {}    sym = itv.get("symbolic", {}) if isinstance(itv.get("symbolic"), dict) else {}    xgb = itv.get("xgboost", {}) if isinstance(itv.get("xgboost"), dict) else {}    ds = data.get("dataset", {}) if isinstance(data.get("dataset"), dict) else {}    outer = data.get("outer_search", {}) if isinstance(data.get("outer_search"), dict) else {}    alpha = _safe_float(cfg.get("interval_alpha"))    target_cov = None if alpha is None else 1.0 - alpha    picp = _safe_float(sym.get("picp"))    pinaw = _safe_float(sym.get("pinaw"))    iscore = _safe_float(sym.get("interval_score"))    rmse = _safe_float(tc.get("symbolic_subset_rmse"))    row = {        "record_type": "summary",        "source_file": str(path),        "run_id": str(path.parent.name),        "timestamp": str(data.get("timestamp", "")),        "seed": _safe_int(cfg.get("seed")),        "pop_size": _safe_int(cfg.get("pop_size")),        "generations": _safe_int(cfg.get("generations")),        "rolling_folds": _safe_int(cfg.get("rolling_folds")),        "max_terms": _safe_int(cfg.get("max_terms")),        "strict4_enabled": bool(cfg.get("strict4_branch_mode_enabled", False)),        "interval_method": str(cfg.get("interval_method", "")),        "interval_alpha": alpha,        "interval_target_coverage": target_cov,        "interval_calib_ratio": _safe_float(cfg.get("interval_calib_ratio")),        "interval_quantile_l2": _safe_float(cfg.get("interval_quantile_l2")),        "symbolic_rmse": rmse,        "symbolic_picp": picp,        "symbolic_pinaw": pinaw,        "symbolic_is": iscore,        "xgb_rmse": _safe_float(tc.get("xgboost_rmse")),        "xgb_picp": _safe_float(xgb.get("picp")),        "xgb_pinaw": _safe_float(xgb.get("pinaw")),        "xgb_is": _safe_float(xgb.get("interval_score")),        "picp_abs_gap_to_target": None        if (picp is None or target_cov is None)        else abs(picp - target_cov),        "n_train": _safe_int(ds.get("n_train")),        "n_test": _safe_int(ds.get("n_test")),        "n_features": _safe_int(ds.get("n_features")),        "outer_duration_sec": _safe_float(outer.get("duration_sec")),    }    return rowdef _extract_rows_from_sweep_json(path: Path, data: Any) -> list[dict[str, Any]]:    rows: list[dict[str, Any]] = []    if isinstance(data, list):        iterable = data    elif isinstance(data, dict) and isinstance(data.get("runs"), list):        iterable = data.get("runs")    else:        return rows    for i, r in enumerate(iterable):        if not isinstance(r, dict):            continue        alpha = _safe_float(r.get("alpha"))        target_cov = None if alpha is None else 1.0 - alpha        picp = _safe_float(r.get("symbolic_picp"))        row = {            "record_type": "sweep",            "source_file": str(path),            "run_id": str(r.get("tag", f"{path.stem}#{i}")),            "timestamp": "",            "seed": _safe_int(r.get("seed")),            "pop_size": None,            "generations": None,            "rolling_folds": None,            "max_terms": None,            "strict4_enabled": None,            "interval_method": "",            "interval_alpha": alpha,            "interval_target_coverage": target_cov,            "interval_calib_ratio": _safe_float(r.get("interval_calib_ratio")),            "interval_quantile_l2": _safe_float(r.get("interval_quantile_l2")),            "symbolic_rmse": _safe_float(r.get("symbolic_rmse")),            "symbolic_picp": picp,            "symbolic_pinaw": _safe_float(r.get("symbolic_pinaw")),            "symbolic_is": _safe_float(r.get("symbolic_is")),            "xgb_rmse": _safe_float(r.get("xgb_rmse")),            "xgb_picp": _safe_float(r.get("xgb_picp")),            "xgb_pinaw": _safe_float(r.get("xgb_pinaw")),            "xgb_is": _safe_float(r.get("xgb_is")),            "picp_abs_gap_to_target": None            if (picp is None or target_cov is None)            else abs(picp - target_cov),            "n_train": None,            "n_test": None,            "n_features": None,            "outer_duration_sec": None,        }        rows.append(row)    return rowsdef _experiment_key(row: dict[str, Any]) -> str:    parts = [        f"pop{row.get('pop_size')}",        f"gen{row.get('generations')}",        f"alpha{row.get('interval_alpha')}",        f"calib{row.get('interval_calib_ratio')}",        f"ql2{row.get('interval_quantile_l2')}",        f"strict4{int(bool(row.get('strict4_enabled')))}",        f"method{row.get('interval_method')}",    ]    return "|".join(parts)def _write_csv(path: Path, rows: list[dict[str, Any]], cols: list[str]) -> None:    path.parent.mkdir(parents=True, exist_ok=True)    with path.open("w", newline="", encoding="utf-8") as f:        w = csv.DictWriter(f, fieldnames=cols)        w.writeheader()        for r in rows:            w.writerow({k: r.get(k) for k in cols})def _write_markdown(path: Path, rows: list[dict[str, Any]], cols: list[str], limit: int = 200) -> None:    path.parent.mkdir(parents=True, exist_ok=True)    use = rows[: max(0, int(limit))]    with path.open("w", encoding="utf-8") as f:        f.write("| " + " | ".join(cols) + " |\n")        f.write("|" + "|".join(["---"] * len(cols)) + "|\n")        for r in use:            f.write("| " + " | ".join(str(r.get(c, "")) for c in cols) + " |\n")def _make_plots(rows: list[dict[str, Any]], out_dir: Path) -> list[str]:    try:        import matplotlib.pyplot as plt    except Exception:        return []    out_dir.mkdir(parents=True, exist_ok=True)    used = [r for r in rows if r.get("symbolic_pinaw") is not None and r.get("symbolic_picp") is not None]    if not used:        return []    paths: list[str] = []    # 1) PICP-PINAW scatter (core interval tradeoff)    xs = [float(r["symbolic_pinaw"]) for r in used]    ys = [float(r["symbolic_picp"]) for r in used]    cs = [float(r["symbolic_is"]) if r.get("symbolic_is") is not None else 0.0 for r in used]    fig, ax = plt.subplots(figsize=(8, 5))    sc = ax.scatter(xs, ys, c=cs, cmap="viridis", alpha=0.85, edgecolors="k", linewidths=0.3)    ax.set_xlabel("PINAW (lower is better)")    ax.set_ylabel("PICP (target = 1-alpha)")    ax.set_title("Interval Tradeoff Map: PICP vs PINAW (color = Interval Score)")    fig.colorbar(sc, ax=ax, label="Interval Score")    p = out_dir / "picp_vs_pinaw.png"    fig.tight_layout()    fig.savefig(p, dpi=150)    plt.close(fig)    paths.append(str(p))    # 2) RMSE vs PINAW (show point-vs-interval compromise)    used2 = [r for r in rows if r.get("symbolic_rmse") is not None and r.get("symbolic_pinaw") is not None]    if used2:        x2 = [float(r["symbolic_pinaw"]) for r in used2]        y2 = [float(r["symbolic_rmse"]) for r in used2]        fig, ax = plt.subplots(figsize=(8, 5))        ax.scatter(x2, y2, alpha=0.85, edgecolors="k", linewidths=0.3)        ax.set_xlabel("PINAW (lower is better)")        ax.set_ylabel("Symbolic RMSE")        ax.set_title("Point-Interval Compromise: RMSE vs PINAW")        p2 = out_dir / "rmse_vs_pinaw.png"        fig.tight_layout()        fig.savefig(p2, dpi=150)        plt.close(fig)        paths.append(str(p2))    return pathsdef main() -> None:    parser = argparse.ArgumentParser(description="Aggregate nowcasting interval experiment summaries and generate report tables/plots.")    parser.add_argument("--out-root", type=str, default=str(Path(__file__).resolve().parent / "out"))    parser.add_argument("--report-dir", type=str, default="", help="Report output dir. Default: <out-root>/reports/<timestamp>")    parser.add_argument("--include-sweep-json", type=int, default=1, help="Include top-level sweep/aggregate json files in out root.")    args = parser.parse_args()    out_root = Path(args.out_root).resolve()    if not out_root.exists():        raise FileNotFoundError(f"out root not found: {out_root}")    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")    report_dir = Path(args.report_dir).resolve() if str(args.report_dir).strip() else (out_root / "reports" / stamp)    report_dir.mkdir(parents=True, exist_ok=True)    rows: list[dict[str, Any]] = []    for p in sorted(out_root.glob("**/summary.json")):        try:            data = json.loads(p.read_text(encoding="utf-8"))            if isinstance(data, dict):                rows.append(_extract_row_from_summary(p, data))        except Exception:            continue    if bool(int(args.include_sweep_json)):        for p in sorted(out_root.glob("*.json")):            try:                data = json.loads(p.read_text(encoding="utf-8"))            except Exception:                continue            rows.extend(_extract_rows_from_sweep_json(p, data))    rows = [r for r in rows if r.get("symbolic_pinaw") is not None and r.get("symbolic_picp") is not None]    rows.sort(key=lambda r: (float(r["symbolic_pinaw"]), float(r.get("symbolic_is") or 1e9)))    for r in rows:        r["experiment_key"] = _experiment_key(r)    # Aggregate by experiment key    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)    for r in rows:        groups[str(r["experiment_key"])].append(r)    agg_rows: list[dict[str, Any]] = []    for k, g in groups.items():        pinaw = [float(x["symbolic_pinaw"]) for x in g if x.get("symbolic_pinaw") is not None]        picp = [float(x["symbolic_picp"]) for x in g if x.get("symbolic_picp") is not None]        isv = [float(x["symbolic_is"]) for x in g if x.get("symbolic_is") is not None]        rmse = [float(x["symbolic_rmse"]) for x in g if x.get("symbolic_rmse") is not None]        target = [float(x["interval_target_coverage"]) for x in g if x.get("interval_target_coverage") is not None]        row0 = g[0]        agg_rows.append(            {                "experiment_key": k,                "n_runs": len(g),                "pop_size": row0.get("pop_size"),                "generations": row0.get("generations"),                "interval_alpha": row0.get("interval_alpha"),                "interval_calib_ratio": row0.get("interval_calib_ratio"),                "interval_quantile_l2": row0.get("interval_quantile_l2"),                "strict4_enabled": row0.get("strict4_enabled"),                "pinaw_mean": mean(pinaw) if pinaw else None,                "pinaw_std": pstdev(pinaw) if len(pinaw) > 1 else 0.0,                "picp_mean": mean(picp) if picp else None,                "picp_std": pstdev(picp) if len(picp) > 1 else 0.0,                "is_mean": mean(isv) if isv else None,                "is_std": pstdev(isv) if len(isv) > 1 else 0.0,                "rmse_mean": mean(rmse) if rmse else None,                "target_coverage": mean(target) if target else None,                "picp_gap_abs": None                if not (picp and target)                else abs(mean(picp) - mean(target)),            }        )    agg_rows.sort(key=lambda r: (float(r["pinaw_mean"]) if r.get("pinaw_mean") is not None else 1e9, float(r.get("is_mean") or 1e9)))    cols = [        "record_type",        "run_id",        "seed",        "pop_size",        "generations",        "strict4_enabled",        "interval_alpha",        "interval_target_coverage",        "interval_calib_ratio",        "interval_quantile_l2",        "symbolic_picp",        "symbolic_pinaw",        "symbolic_is",        "symbolic_rmse",        "xgb_picp",        "xgb_pinaw",        "xgb_is",        "xgb_rmse",        "picp_abs_gap_to_target",        "source_file",        "experiment_key",    ]    agg_cols = [        "experiment_key",        "n_runs",        "pop_size",        "generations",        "strict4_enabled",        "interval_alpha",        "interval_calib_ratio",        "interval_quantile_l2",        "target_coverage",        "picp_mean",        "picp_std",        "picp_gap_abs",        "pinaw_mean",        "pinaw_std",        "is_mean",        "is_std",        "rmse_mean",    ]    _write_csv(report_dir / "runs_flat.csv", rows, cols)    _write_markdown(report_dir / "runs_flat.md", rows, cols, limit=300)    _write_csv(report_dir / "experiment_aggregate.csv", agg_rows, agg_cols)    _write_markdown(report_dir / "experiment_aggregate.md", agg_rows, agg_cols, limit=200)    plot_paths = _make_plots(rows, report_dir)    dashboard = {        "generated_at": datetime.now().isoformat(timespec="seconds"),        "out_root": str(out_root),        "report_dir": str(report_dir),        "n_run_records": len(rows),        "n_experiment_groups": len(agg_rows),        "best_by_pinaw": agg_rows[0] if agg_rows else {},        "plot_files": plot_paths,        "table_files": [            str(report_dir / "runs_flat.csv"),            str(report_dir / "runs_flat.md"),            str(report_dir / "experiment_aggregate.csv"),            str(report_dir / "experiment_aggregate.md"),        ],    }    (report_dir / "dashboard.json").write_text(json.dumps(dashboard, ensure_ascii=False, indent=2), encoding="utf-8")    print("NOWCASTING_REPORT_DONE")    print(f"report_dir={report_dir}")    print(f"n_run_records={len(rows)}")    if agg_rows:        b = agg_rows[0]        print(            "best_by_pinaw: "            f"pinaw_mean={b.get('pinaw_mean')}, "            f"picp_mean={b.get('picp_mean')}, "            f"is_mean={b.get('is_mean')}, "            f"exp={b.get('experiment_key')}"        )if __name__ == "__main__":    main()
+致谢
+参与本次统计建模比赛，是我大三学年一段难忘而宝贵的经历。从选题到定稿，前后历时一个多月，团队常常围坐在一起开会讨论、反复调试模型、查阅文献。我们经历过瓶颈期的焦虑与困惑，也体会了攻克难题后的豁然开朗。
+由衷感谢指导老师的悉心帮助，从研究思路的厘清到数据分析方法的指点，老师总能在我们最需要的时候给予方向性的指导。同时，也非常感谢华南农业大学数学与信息学院、软件学院的各位老师，老师们为本次大赛辛勤付出，给予我们宝贵的锻炼平台，并在比赛过程中给予了细致的协调与支持。
+比赛虽有终点，但探索不会停止。这次经历让我们更加相信，扎实的方法、严谨的态度和团队的默契，是解决现实问题坚实可靠的力量。未来的学习和研究中，我们会带着这份收获，继续脚踏实地，向前走。
+2026年5月7日

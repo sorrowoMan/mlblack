@@ -1,8 +1,10 @@
 from .base import DataPipeline, DataPipelineComponent, PipelineFitState
-from .data import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView, PreferencePairDataView, as_numeric_data_view, train_valid_split
+from .data_views import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView, PreferencePairDataView, TimeSeriesDataView, as_numeric_data_view, train_valid_split
 from .datasets import DatasetStreamConfig, NumericBatch, NumericBatchLoader, RowBatch, RowDatasetStream, TokenizedTextDatasetBuilder, TokenizedTextDatasetConfig
 from .components import IdentityComponent, SelectColumnsComponent, ZScoreNormalizeComponent
+from .sources import HiveQuerySource, JDBCQuerySource, S3ParquetSource
 from .model_conditioning import ModelConditionedTargetBuilder, ModelConditionedTargetComponent, ModelConditionedTargetConfig, build_model_conditioned_target
+from .time_series import SeasonalDecompositionConfig, SeasonalDecompositionResult, STLSeasonalDecompositionComponent, TimeSeriesWindowConfig, TimeSeriesWindowingComponent, build_lagged_numeric_view, seasonal_decompose
 from .conditional import (
     BinaryGate,
     ConditionalPrimitive,
@@ -64,7 +66,9 @@ __all__ = [
     "FunctionSpaceProvider",
     "GraphDataView",
     "GrammarCandidate",
+    "HiveQuerySource",
     "IdentityComponent",
+    "JDBCQuerySource",
     "ImageContrastivePairDataView",
     "ImageDataView",
     "ModelConditionedTargetBuilder",
@@ -83,11 +87,18 @@ __all__ = [
     "PoolSignal",
     "RouteThenFormulaComposer",
     "RowBatch",
+    "S3ParquetSource",
     "RowDatasetStream",
     "SelectColumnsComponent",
+    "SeasonalDecompositionConfig",
+    "SeasonalDecompositionResult",
     "SharedBackboneResidualComposer",
     "SoftGate",
+    "STLSeasonalDecompositionComponent",
     "TargetCodec",
+    "TimeSeriesDataView",
+    "TimeSeriesWindowConfig",
+    "TimeSeriesWindowingComponent",
     "TokenizedTextDatasetBuilder",
     "TokenizedTextDatasetConfig",
     "VocabularyTokenizer",
@@ -95,6 +106,7 @@ __all__ = [
     "ZScoreNormalizeComponent",
     "as_numeric_data_view",
     "build_model_conditioned_target",
+    "build_lagged_numeric_view",
     "default_primitive_registry",
     "generate_pair_candidates",
     "generate_recursive_pair_candidates",
@@ -104,6 +116,7 @@ __all__ = [
     "parse_family_budget_csv",
     "primitive_from_spec",
     "resolve_dynamic_activation_kwargs",
+    "seasonal_decompose",
     "select_activation_plan",
     "train_valid_split",
 ]

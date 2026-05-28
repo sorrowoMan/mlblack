@@ -6,7 +6,7 @@
 
 推荐阅读顺序：
 
-1. 先看 `1/2/3`，确认项目定位、核心分层和运行数据流。
+1. 先看 `1/2/3`，确认项目定位、双层编排模型和运行数据流。
 2. 再看 `4/5/6/7`，确认 state、resource、artifact、scaffold 边界。
 3. 最后按 `10/11` 做实现和最小检查。
 
@@ -14,12 +14,12 @@
 
 - 只复用旧机制思想，不复用旧耦合边界。
 - `mlblack` 是 `nsgablack` 标准脚手架的 ML 特化层，不是第二套优化/编排框架。
-- `nsgablack` 已有成熟的 solver、adapter 编排、group、serial、event、parallel、runtime/backend、L0 resource 能力；`mlblack` 不重复实现这些底座。
-- `mlblack` 的正式复杂编排入口必须复用 `nsgablack`。低层 ML 组件可以保持轻量/可独立导入，但不能因此自建 workflow/runtime/L0。
-- 不保留兼容层：发现 `runtime/workflow/resource_request/resource allocator` 配置时应报错，而不是静默降级。
-- `mlblack` 只新增 ML 特有组件：representation、codec/decoder、head、problem/evaluation、inner parameter fitting、artifact/report、symbolic engine。
+- `nsgablack` 已有成熟的 solver group、并行调度、事件路由、resource lease 等外层编排能力；`mlblack` 不重复实现这些外层底座。
+- `mlblack` 支持内层编排（`SerialTrainer`、`ModelConditionedTarget`、`DataPipeline`），用于单次训练任务内的顺序多阶段/多模型组合。跨 solver 的并行/分组/资源调度仍必须走 `nsgablack`。
+- 不保留旧兼容层：发现 `runtime/workflow/resource_request/resource allocator` 等旧外层编排配置时应报错，而不是静默降级。
+- `mlblack` 只新增 ML 特有组件：representation、codec/decoder、head、problem/evaluation、inner parameter fitting、artifact/report、symbolic engine、inner stage orchestration。
 - 大对象进入 snapshot/artifact，context 只保留轻量字段或引用。
-- 新增 demo/case 如果涉及 stage/group/event/parallel/backend/resource lease，必须通过 `nsgablack` 标准脚手架组装；`mlblack` 侧只暴露 inner training/evaluation surface。
+- 新增 demo/case 如果涉及 group/event/parallel/backend/resource lease，必须通过 `nsgablack` 标准脚手架组装；`mlblack` 侧只暴露 inner training/evaluation surface 和内层多 stage 串联。
 
 ## 1) 项目定位
 
@@ -46,7 +46,83 @@ UnknownState
 | Bias | OptimizationBias | 软偏好，不替代硬约束 |
 | L0 Resource | injected ResourceContext / audit | 资源授权、调度、lease 属于 nsgablack；mlblack 只读取和审计 |
 
-## 2) 架构边界
+## 2) 双层编排模型：内层 mlblack / 外层 nsgablack
+
+核心区分：
+
+| | 内层编排 (mlblack) | 外层编排 (nsgablack) |
+|---|---|---|
+| 粒度 | 单次训练任务内部 | 多个训练/评估任务之间 |
+| 机制 | SerialTrainer, ModelConditionedTarget, DataPipeline, IntegratedPredictionModel | SolverGroup, SerialStageSolver, EventRouter, ParallelRuntime |
+| 并发 | 单线程顺序 | 多线程/多进程/分布式 |
+| 资源 | 被动消费一个 ResourceContext | 主动分配、租约、调度 |
+| artifact | ArtifactRef 流（snapshot 引用，不过 trainer 边界） | 跨 solver 产物传递、portfolio 聚合 |
+
+**判断归属**：一个机制如果回答“一个训练任务内部怎么做多阶段/多模型组合”，它属于 mlblack 内层编排。如果回答“多个训练/评估任务之间怎么调度、并行、分配资源”，它属于 nsgablack 外层编排。
+
+### mlblack 内层编排（当前已实现）
+
+#### SerialTrainer（`core/trainer_stage.py`）
+
+顺序串联多个 Trainer，artifact 在 stage 间流动：
+
+```python
+stages = [
+    StageSpec(name="pretrain", factory=lambda: pretrain_trainer, output_artifacts=["init_state"]),
+    StageSpec(name="finetune", factory=lambda: finetune_trainer, input_artifacts={"init_state": "pretrain.init_state"}),
+]
+result = SerialTrainer(stages).fit()
+```
+
+- 每个 stage 是独立的 Trainer（有自己的 Representation/Problem/Adapter）
+- artifact 通过 `ArtifactRef` 共享注册表流转（大对象走 snapshot_store，小对象 inline）
+- 返回聚合 `StageResult` 历史
+- 本质是**单线程顺序执行**，不涉及并行、组调度、资源分配
+
+#### ModelConditionedTargetComponent（`pipeline/model_conditioning.py`）
+
+数据层面的阶段化：用已训练模型的预测结果变换下一阶段的 target（如 `y' = y - model.predict(X)`），实现残差学习/boosting 风格的多阶段训练。不是特殊 Trainer，是数据 pipeline 内的 target 变换。
+
+#### IntegratedPredictionModel（`models/composition.py`）
+
+模型层面的多模型组合：将已训练的多个 component model 在推理时按权重/策略集成。**不是 workflow runner**，是模型语义边界。
+
+#### DataPipeline（`pipeline/base.py`）
+
+有序数据变换链：fit → transform 顺序执行，为 Trainer 准备数据。pipeline 内的 component 可以是有状态的（如 numericizer）。
+
+### 外层编排（nsgablack 专属）
+
+以下能力 mlblack **不支持**，必须走 nsgablack：
+
+- trainer **group** / portfolio：同时管理多个 Trainer 实例
+- **parallel** runtime：多线程/多进程执行
+- **event** router：异步事件驱动编排
+- **resource** allocator / lease：GPU 分配、线程池管理
+- **backend** selection：自动选择计算后端
+- 跨 solver 的 **stage** 编排：用 nsgablack 的 `SerialStageSolver`
+
+三层嵌套关系：
+
+```text
+nsgablack outer orchestration (groups, parallel, events, resources)
+  ├── Solver A
+  │     └── Problem (evaluate calls mlblack TrainingProxy)
+  │           ├── mlblack SerialTrainer (inner multi-stage)
+  │           │     ├── Stage 1: ComposableTrainer
+  │           │     └── Stage 2: ComposableTrainer
+  │           └── artifact flow within SerialTrainer
+  └── Solver B
+        └── ...
+```
+
+### 为什么这样分？
+
+如果把内层编排（SerialTrainer）删除，每个 stage 必须用一个 nsgablack Solver 包裹——这对“预训练 → 微调”这种顺序组合来说是过度工程。SerialTrainer 提供轻量的顺序串联，无需外层调度器介入。
+
+反过来，如果把并行/分组/资源调度放进 mlblack，等于在 mlblack 内部重建一个 nsgablack，两个框架会各自为政。
+
+## 3) 架构边界
 
 ### Trainer
 
@@ -56,8 +132,9 @@ UnknownState
 - `evaluate_individual/evaluate_population`
 - context/snapshot/artifact 状态边界
 - adapter/representation/problem/capability/bias 装配
+- **内层多 stage 串联**（`SerialTrainer`）
 
-不负责：具体优化算法、模型结构、业务 objective、数据清洗细节、跨 trainer 编排、并行调度、资源授权。
+不负责：具体优化算法、模型结构、业务 objective、数据清洗细节、**并行调度、资源授权、跨 solver 编排**。
 
 ### Adapter
 
@@ -88,7 +165,7 @@ Problem 是唯一稳定吃数据的位置。Adapter 不直接吃数据。
 
 Capability 不应改变优化语义；如果要影响优化方向，用 `OptimizationBias` 或 adapter。
 
-## 3) 标准数据流
+## 4) 标准数据流
 
 ```text
 adapter.propose
@@ -117,7 +194,7 @@ on_fit_end
 on_error
 ```
 
-## 4) Context / Snapshot / State
+## 5) Context / Snapshot / State
 
 Context 只放轻量信息：
 
@@ -161,7 +238,7 @@ context_notes = "Reads gradients and current state; proposes next candidates."
 - `catalog` 会动态解析 import path，并把统一 contract 注入 `CatalogEntry.contract`。
 - `ComponentContract` 只是序列化兼容桥，组件源码中以 `context_*` class attrs 为主。
 
-## 5) L0 Resource
+## 6) L0 Resource
 
 `mlblack` 不拥有 L0 resource allocator。
 
@@ -183,7 +260,7 @@ nsgablack outer allocator
 
 `mlblack` 内部必须遵守外部注入的 device/thread/context，不允许私下写死 `cuda:0`、线程数或 backend。
 
-## 6) Artifact / Replay
+## 7) Artifact / Replay
 
 三类边界必须区分：
 
@@ -201,7 +278,7 @@ Typed artifact 可细化：
 
 不要把 artifact persistence 写进 adapter。
 
-## 7) Assembly / Inner Training
+## 8) Assembly / Inner Training
 
 标准 ML 组件入口：
 
@@ -221,14 +298,20 @@ build_trainer(spec, data)
 
 禁止继续提供 `build_flow / MLFlow` 执行入口。
 
-禁止把以下能力放进 `mlblack` assembly：
+禁止把以下**外层编排**能力放进 `mlblack` assembly：
 
 - trainer group / portfolio
-- serial stage / workflow runner
+- nsgablack `SerialStageSolver` 级别的跨 solver stage
 - event router
 - parallel runtime
 - backend selection
 - resource allocator / lease
+
+以下**内层编排**能力属于 mlblack 合法范围，可直接使用：
+
+- `SerialTrainer`：顺序串联多个 trainer stage，带 artifact 流转
+- `DataPipeline`：有序数据变换链（fit → transform）
+- `ModelConditionedTargetComponent`：基于已训练模型的 target 变换
 
 这些必须由 `nsgablack` 标准脚手架负责。`mlblack` 侧应该暴露 training proxy、problem bridge、inner fitter、artifact builder 和 audit/report surface，供 `nsgablack` 调用。
 
@@ -250,7 +333,7 @@ build_trainer(spec, data)
 
 `assembly/workflow` 与 `core/runtime` 不属于 mlblack 主干；`core/resources` 只允许 passive `ResourceContext` 和 audit。
 
-## 8) 当前已迁移能力
+## 9) 当前已迁移能力
 
 已落位：
 
@@ -298,7 +381,7 @@ Symbolic first pass now exists:
 - `integrations/nsgablack_symbolic/search_space.py`：index-coded function-pool search-space adapter。
 - `integrations/nsgablack_symbolic/builders.py`：`build_symbolic_orthogonal_suite(...)` exposes a problem bundle for nsgablack-facing stages; it must not become an mlblack-owned workflow runner。
 
-## 9) 实现规则
+## 10) 实现规则
 
 - 新增 ML 方法时，先判断属于哪一层：representation、codec、head、problem、adapter、capability、bias、artifact。
 - 新增优化逻辑优先放 adapter。
@@ -313,11 +396,12 @@ Symbolic first pass now exists:
 归属判断：
 
 - 如果机制回答“怎么调度多个 trainer / 多个候选 / 多个资源 / 多个阶段”，它属于 `nsgablack`。
+- 如果机制回答“一个训练任务内部怎么做多阶段/多模型组合（顺序 Trainer 串联、数据 target 变换、模型推理集成）”，它属于 `mlblack` 内层编排（`SerialTrainer`/`ModelConditionedTarget`/`IntegratedPredictionModel`/`DataPipeline`）。
 - 如果机制回答“一个 unknown state 怎么解码成 ML 模型/公式/输出 head”，它属于 `mlblack` representation/codec/head。
 - 如果机制回答“这个模型怎么吃数据并产生 feedback”，它属于 `mlblack` problem/evaluation。
 - 如果机制回答“外层怎么调用内层训练”，它属于 bridge/proxy/integration surface，编排权仍在 `nsgablack`。
 
-## 10) 常用命令
+## 11) 常用命令
 
 ```powershell
 Set-Location "C:\Users\hp\Desktop\新建文件夹 (2)"
@@ -332,13 +416,13 @@ Doctor：
 python -c "from mlblack.project import run_project_doctor, format_doctor_report; print(format_doctor_report(run_project_doctor('.', strict=True)))"
 ```
 
-## 11) 最小检查清单
+## 12) 最小检查清单
 
 - [ ] 是否保持 Trainer / Adapter / Representation / Problem / Capability 边界
 - [ ] 是否避免 adapter 直接读数据
 - [ ] 是否避免大对象写 context
 - [ ] 是否只读取/审计外部注入的 `ResourceContext`，没有自建资源授权
 - [ ] 是否能通过 `build_trainer` 或 nsgablack-facing proxy 装配
-- [ ] 是否没有新增 mlblack-owned workflow/runtime/L0 编排
+- [ ] 是否没有新增 mlblack-owned workflow/runtime/L0 编排（内层 SerialTrainer/DataPipeline/ModelConditionedTarget 除外）
 - [ ] 是否提供 `describe()` 或 contract/report surface
 - [ ] 是否至少跑过 compileall 和一个 smoke

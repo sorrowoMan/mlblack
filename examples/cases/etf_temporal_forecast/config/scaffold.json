@@ -1,0 +1,97 @@
+{
+  "inner_training": {
+    "name": "etf_temporal_forecast",
+    "pipeline": {
+      "components": [
+        "etf_return_panel_features",
+        "walk_forward_split"
+      ]
+    },
+    "report": {
+      "format": "dict"
+    },
+    "resource_context": {},
+    "trainer": {
+      "biases": [],
+      "capabilities": [
+        "resource_audit"
+      ],
+      "params": {},
+      "preset": "etf_temporal_forecast_walkforward",
+      "run_name": "etf_temporal_forecast"
+    }
+  },
+  "metadata": {
+    "created_by": "mlblack.project.scaffold",
+    "dataset": "runs/etf_temporal_forecast/cache/multi_etf_returns_momodel_kaggle.parquet",
+    "default_models": [
+      "ridge",
+      "hist_gradient_boosting"
+    ],
+    "serious_models": [
+      "ridge",
+      "elasticnet",
+      "hist_gradient_boosting",
+      "random_forest",
+      "mlp_sklearn"
+    ]
+  },
+  "name": "etf_temporal_forecast",
+  "schema": {
+    "features": [
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "ret_lag_1"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "ret_lag_2"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "mom_5"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "mom_20"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "vol_20"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "market_ret_1"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "market_mom_5"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "relative_mom_20"
+      },
+      {
+        "dtype": "numeric",
+        "encoder": "numeric",
+        "key": "ticker_code"
+      }
+    ],
+    "strict": true,
+    "targets": [
+      {
+        "dtype": "numeric",
+        "key": "target"
+      }
+    ]
+  },
+  "version": "0.1"
+}

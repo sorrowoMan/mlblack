@@ -51,6 +51,7 @@ from .symbolic import (
     SymbolicExpressionConfig,
     SymbolicExpressionRepresentation,
 )
+from .time_series import BaselineForecastRepresentation, BaselineForecastSearchConfig, FixedForecastModelRepresentation
 from .conditional import PiecewiseRepresentation, PiecewiseRepresentationConfig
 from .heads import (
     BinaryLogisticHead,
@@ -65,6 +66,8 @@ from .heads import (
 )
 
 __all__ = [
+    "BaselineForecastRepresentation",
+    "BaselineForecastSearchConfig",
     "BinaryLogisticHead",
     "BoostingContinuationSpec",
     "BoostingEarlyStoppingSpec",
@@ -74,6 +77,7 @@ __all__ = [
     "EstimatorCodecConfig",
     "EstimatorSpecCodec",
     "EstimatorSpecRepresentation",
+    "FixedForecastModelRepresentation",
     "IntervalHead",
     "LinearCodecConfig",
     "LinearPointCodec",

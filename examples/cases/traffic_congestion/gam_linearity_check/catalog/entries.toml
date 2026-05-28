@@ -1,0 +1,8 @@
+# Catalog entries for gam_linearity_check
+
+[[entries]]
+key = "example.traffic_gam_linearity"
+title = "GAM Nonlinearity Check on Traffic CI"
+kind = "example"
+tags = ["example", "traffic", "gam", "nonlinear", "diagnostic"]
+summary = "B-spline GAM vs linear regression comparison diagnosing whether linear assumptions hold for traffic CI prediction."

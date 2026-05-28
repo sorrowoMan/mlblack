@@ -20,7 +20,7 @@ def _bootstrap() -> None:
 _bootstrap()
 
 from mlblack.core import ArtifactBuilder, save_artifact_html  # noqa: E402
-from mlblack.pipeline.data import NumericDataView, PreferencePairDataView  # noqa: E402
+from mlblack.pipeline.data_views import NumericDataView, PreferencePairDataView  # noqa: E402
 from mlblack.presets import (  # noqa: E402
     build_tiny_transformer_classification_trainer,
     build_tiny_transformer_dpo_preference_trainer,

@@ -1,0 +1,8 @@
+# Catalog entries for xgboost_baseline
+
+[[entries]]
+key = "example.traffic_xgboost_baseline"
+title = "XGBoost Baseline for Traffic CI Prediction"
+kind = "example"
+tags = ["example", "traffic", "xgboost", "tree", "prediction"]
+summary = "XGBoost baseline on traffic CI forward prediction (lag-only features), using mlblack tree_boosting preset."

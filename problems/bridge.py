@@ -1,8 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from .proxy import MLBlackTrainingProxy, SpecMapper
 
 

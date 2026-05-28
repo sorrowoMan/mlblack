@@ -1,4 +1,5 @@
 ﻿from .conditional import PiecewiseHead
+from .distribution import NegativeBinomialHead, NormalHead, PoissonHead
 from .interval import CenterRadiusIntervalHead, IntervalHead, TwoModelIntervalHead
 from .point import PointHead
 from .probability import BinaryLogisticHead, ProbabilityCalibrationHead, SoftmaxHead
@@ -8,7 +9,10 @@ __all__ = [
     "BinaryLogisticHead",
     "CenterRadiusIntervalHead",
     "IntervalHead",
+    "NegativeBinomialHead",
+    "NormalHead",
     "PiecewiseHead",
+    "PoissonHead",
     "PointHead",
     "ProbabilityCalibrationHead",
     "SoftmaxHead",

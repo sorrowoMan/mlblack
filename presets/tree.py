@@ -1,10 +1,10 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Mapping
 
 from mlblack.adapters import EstimatorSpecSearchAdapter, EstimatorSpecSearchConfig
 from mlblack.core import Trainer
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.problems import SupervisedEstimatorFitRegressionProblem
 from mlblack.representations import (
     BoostingMechanismSpec,

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
@@ -8,7 +8,7 @@ import numpy as np
 from mlblack.adapters import GradientDescentAdapter, RandomSearchAdapter
 from mlblack.core import ComposableTrainer
 from mlblack.core.types import UnknownState
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.problems import FixedSymbolicRegressionProblem, SupervisedClassificationProblem, SupervisedIntervalRegressionProblem
 from mlblack.representations import SymbolicExpressionConfig, SymbolicExpressionRepresentation
 from mlblack.representations.heads import BinaryLogisticHead, CenterRadiusIntervalHead, PointHead, ProbabilityCalibrationHead, SoftmaxHead, TwoModelIntervalHead

@@ -9,7 +9,7 @@ from mlblack.adapters import RandomSearchAdapter
 from mlblack.core import ComposableTrainer
 from mlblack.core.contracts import ComponentContract, ContractMixin
 from mlblack.models.symbolic import parameterize_expression
-from mlblack.pipeline.data import NumericDataView
+from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline.symbolic import FunctionPool, FunctionPoolPipeline, FunctionPoolPipelineConfig
 from mlblack.problems import OrthogonalBasisEvaluationProblem
 from mlblack.representations import SymbolicBasisSetConfig, SymbolicBasisSetRepresentation
