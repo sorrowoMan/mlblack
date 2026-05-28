@@ -65,6 +65,8 @@ class BlankTrainer:
         self.best_feedback: Feedback | None = None
         self.best_score: float | None = None
 
+        self._l0_pool: Any = None  # PoolScheduler, created when threads > 1
+
     @property
     def representation(self) -> ModelRepresentation | None:
         """Compatibility alias for representation_pipeline."""
@@ -253,6 +255,11 @@ class BlankTrainer:
         context: Mapping[str, Any] | None = None,
     ) -> list[Feedback]:
         ctx = dict(context or {})
+        pool = self._l0_pool
+        if pool is not None and len(population) >= 4:
+            with pool.as_executor(pool.available()) as ex:
+                results = list(ex.map(self.evaluate_individual, tuple(population), [ctx] * len(population)))
+            return results
         return [self.evaluate_individual(candidate, ctx) for candidate in tuple(population)]
 
     def adjust_feedback_with_biases(
@@ -504,6 +511,12 @@ class ComposableTrainer(BlankTrainer):
             self.require_compute_backend(requirements, consumer="trainer.setup")
         _setup_component(self.representation_pipeline, self, self.build_context())
         self.adapter.setup(self)
+
+        # L0: create shared thread pool from resource grant
+        threads = int(self.resource_context.threads or 1)
+        if threads > 1:
+            from mlblack.core.resources.compute.pool import PoolScheduler
+            self._l0_pool = PoolScheduler(threads)
 
     def step(self, context: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
         if self.adapter is None:
