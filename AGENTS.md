@@ -246,6 +246,7 @@ context_notes = "Reads gradients and current state; proposes next candidates."
 
 - `nsgablack` owns resource authorization、lease、parallel scheduling、backend selection、solver fanout。
 - `mlblack` owns passive `ResourceContext` consumption and audit only。
+- `mlblack` 拥有 `ComputeBackendSession` 和 `backends/`（torch/numpy/jax/tensorflow）作为 **intra-evaluation compute layer**——负责单次评估内的张量运算、自动微分、参数优化。不管理跨 solver 的资源调度。
 - `mlblack` 不实现新的 `LocalResourceAllocator`、`SQLiteLeaseStore`、GPU lease manager、thread scheduler。
 - 不保留旧 allocator/lease-store 兼容类型。
 
@@ -404,7 +405,7 @@ Symbolic first pass now exists:
 ## 11) 常用命令
 
 ```powershell
-Set-Location "C:\Users\hp\Desktop\新建文件夹 (2)"
+Set-Location "C:\Users\hp\Desktop\mlblack"
 
 python -m compileall -q mlblack
 python examples\orthogonal_point_demo.py
