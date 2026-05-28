@@ -403,6 +403,25 @@ class BlankTrainer:
 
     run = fit
 
+    def evaluate(
+        self,
+        candidate: UnknownState | np.ndarray,
+        *,
+        resource_context: Mapping[str, Any] | ResourceContext | None = None,
+        max_steps: int | None = None,
+        **kwargs,
+    ) -> TrainerResult:
+        """nsgablack inner_runtime_evaluator interface.
+
+        Accepts a candidate state, optionally overrides resource context,
+        runs fit, and returns the result. Compatible with nsgablack nested
+        solver evaluation — no bridge layer needed.
+        """
+        if resource_context is not None:
+            from mlblack.core.resources import coerce_resource_context
+            self.resource_context = coerce_resource_context(resource_context)
+        return self.fit(max_steps=int(max_steps or 1))
+
     def _history_row(
         self,
         *,
