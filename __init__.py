@@ -26,7 +26,7 @@ from .core.artifacts import (
 )
 from .core.contracts import ComponentContract, ContractMixin
 from .core.head import HeadBlock, OutputHead
-from .core.resources import ResourceContext
+from .core.resources import PoolScheduler, ResourceContext
 from .core.state import TrainerState, build_trainer_state, replay_trainer, restore_trainer_state
 from .core.stores import InMemoryContextStore, InMemorySnapshotStore
 from .core.trainer import BlankTrainer, ComposableTrainer, Trainer
