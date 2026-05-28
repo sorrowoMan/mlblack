@@ -639,9 +639,11 @@ def init_project(target_dir, *, force=False):
     # problem/
     _write_file(root / "problem" / "example_problem.py", _problem_template(), overwrite=force)
     _write_file(root / "problem" / "template_problem.py", _problem_class_template(), overwrite=force)
+    _write_file(root / "problem" / "config.py", _problem_config_template(), overwrite=force)
 
     # pipeline/
     _write_file(root / "pipeline" / "example_pipeline.py", _pipeline_template(), overwrite=force)
+    _write_file(root / "pipeline" / "config.py", _pipeline_config_template(), overwrite=force)
 
     # representation/ (includes codec)
     _write_file(root / "representation" / "example_representation.py", _representation_template(), overwrite=force)
@@ -649,12 +651,15 @@ def init_project(target_dir, *, force=False):
 
     # adapter/
     _write_file(root / "adapter" / "example_adapter.py", _adapter_template(), overwrite=force)
+    _write_file(root / "adapter" / "config.py", _adapter_config_template(), overwrite=force)
 
     # bias/
     _write_file(root / "bias" / "example_bias.py", _bias_template(), overwrite=force)
+    _write_file(root / "bias" / "config.py", _bias_config_template(), overwrite=force)
 
     # capabilities/
     _write_file(root / "capabilities" / "example_capability.py", _capability_template(), overwrite=force)
+    _write_file(root / "capabilities" / "config.py", _capability_config_template(), overwrite=force)
 
     # assembly config
     _write_file(root / "assembly" / "scaffold.json", _assembly_config_template(project_name), overwrite=force)
@@ -686,3 +691,343 @@ def create_standard_scaffold(
         "build_trainer": root / "build_trainer.py",
         "run_trainer": root / "run_trainer.py",
     }
+
+
+# ── Config templates (mlblack registry+spec+builder pattern) ──────────
+
+
+def _problem_config_template() -> str:
+    return dedent("""\
+        # -*- coding: utf-8 -*-
+        \"\"\"Problem-layer configuration: Problem registry + builder.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any, Callable, Dict, Optional
+
+
+        @dataclass(frozen=True)
+        class ProblemSpec:
+            key: str
+            params: Dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class ProblemRegistry:
+            registry: tuple[ProblemSpec, ...] = ()
+
+
+        def get_problem_registry() -> ProblemRegistry:
+            return ProblemRegistry(
+                registry=(
+                    ProblemSpec(key="example", params={}),
+                )
+            )
+
+
+        ProblemBuilder = Callable[[Dict[str, Any]], object]
+        _PROBLEM_BUILDERS: Dict[str, ProblemBuilder] = {}
+
+
+        def register_problem_builder(key: str, builder: ProblemBuilder) -> None:
+            _PROBLEM_BUILDERS[str(key).strip().lower()] = builder
+
+
+        def _find_spec(registry: ProblemRegistry, key: str) -> ProblemSpec:
+            lookup = str(key).strip().lower()
+            for spec in tuple(registry.registry or ()):
+                if str(spec.key).strip().lower() == lookup:
+                    return spec
+            raise ValueError(f"Problem key not registered: {key}")
+
+
+        def _build_problem_from_spec(spec: ProblemSpec) -> object:
+            key = str(spec.key).strip().lower()
+            builder = _PROBLEM_BUILDERS.get(key)
+            if builder is None:
+                raise ValueError(f"Unknown problem key: {spec.key}")
+            return builder(dict(spec.params or {}))
+
+
+        def build_problem(registry: ProblemRegistry, key: str) -> object:
+            spec = _find_spec(registry, key)
+            return _build_problem_from_spec(spec)
+
+
+        def _register_builtin_problems() -> None:
+            from problem.example_problem import ExampleRegressionProblem
+            def _example_builder(params: Dict[str, Any]) -> ExampleRegressionProblem:
+                return ExampleRegressionProblem()
+            register_problem_builder("example", _example_builder)
+
+        _register_builtin_problems()
+        """)
+
+
+def _pipeline_config_template() -> str:
+    return dedent("""\
+        # -*- coding: utf-8 -*-
+        \"\"\"Pipeline-layer configuration: DataPipeline registry + builder.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any, Callable, Dict, Sequence
+
+
+        @dataclass(frozen=True)
+        class ComponentSpec:
+            name: str
+            params: Dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class PipelineSpec:
+            key: str
+            components: Sequence[ComponentSpec] = ()
+            params: Dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class PipelineRegistry:
+            registry: tuple[PipelineSpec, ...] = ()
+
+
+        def get_pipeline_registry() -> PipelineRegistry:
+            return PipelineRegistry(
+                registry=(
+                    PipelineSpec(key="default", components=()),
+                )
+            )
+
+
+        PipelineBuilder = Callable[[PipelineSpec], object]
+        _PIPELINE_BUILDERS: Dict[str, PipelineBuilder] = {}
+
+
+        def register_pipeline_builder(key: str, builder: PipelineBuilder) -> None:
+            _PIPELINE_BUILDERS[str(key).strip().lower()] = builder
+
+
+        def _find_spec(registry: PipelineRegistry, key: str) -> PipelineSpec:
+            for spec in tuple(registry.registry or ()):
+                if spec.key == key:
+                    return spec
+            raise ValueError(f"Pipeline key not registered: {key}")
+
+
+        def build_pipeline(registry: PipelineRegistry, key: str) -> object:
+            spec = _find_spec(registry, key)
+            builder = _PIPELINE_BUILDERS.get(str(spec.key).strip().lower())
+            if builder is None:
+                raise ValueError(f"Unknown pipeline key: {spec.key}")
+            return builder(spec)
+
+
+        def _register_builtin_pipelines() -> None:
+            from pipeline.example_pipeline import build_data_view
+            def _data_view_builder(spec: PipelineSpec) -> object:
+                return build_data_view(None, None)
+            register_pipeline_builder("default", _data_view_builder)
+
+        _register_builtin_pipelines()
+        """)
+
+
+def _adapter_config_template() -> str:
+    return dedent("""\
+        # -*- coding: utf-8 -*-
+        \"\"\"Adapter-layer configuration: OptimizerAdapter registry + builder.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any, Callable, Dict
+
+
+        @dataclass(frozen=True)
+        class AdapterSpec:
+            key: str
+            params: Dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class AdapterRegistry:
+            registry: tuple[AdapterSpec, ...] = ()
+
+
+        def get_adapter_registry() -> AdapterRegistry:
+            return AdapterRegistry(
+                registry=(
+                    AdapterSpec(key="example_adapter", params={"learning_rate": 0.01}),
+                )
+            )
+
+
+        AdapterBuilder = Callable[[Dict[str, Any]], object]
+        _ADAPTER_BUILDERS: Dict[str, AdapterBuilder] = {}
+
+
+        def register_adapter_builder(key: str, builder: AdapterBuilder) -> None:
+            _ADAPTER_BUILDERS[str(key).strip().lower()] = builder
+
+
+        def _find_spec(registry: AdapterRegistry, key: str) -> AdapterSpec:
+            for spec in tuple(registry.registry or ()):
+                if spec.key == key:
+                    return spec
+            raise ValueError(f"Adapter key not registered: {key}")
+
+
+        def build_adapter(registry: AdapterRegistry, key: str) -> object:
+            spec = _find_spec(registry, key)
+            builder = _ADAPTER_BUILDERS.get(str(spec.key).strip().lower())
+            if builder is None:
+                raise ValueError(f"Unknown adapter key: {spec.key}")
+            return builder(dict(spec.params or {}))
+
+
+        def _register_builtin_adapters() -> None:
+            from adapter.example_adapter import ExampleGradientDescentAdapter
+            def _gd_builder(params: Dict[str, Any]) -> object:
+                lr = float(params.get("learning_rate", 0.01))
+                return ExampleGradientDescentAdapter(learning_rate=lr)
+            register_adapter_builder("example_adapter", _gd_builder)
+
+        _register_builtin_adapters()
+        """)
+
+
+def _bias_config_template() -> str:
+    return dedent("""\
+        # -*- coding: utf-8 -*-
+        \"\"\"Bias-layer configuration: OptimizationBias registry + builder.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any, Callable, Dict
+
+
+        @dataclass(frozen=True)
+        class BiasSpec:
+            key: str
+            params: Dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class BiasRegistry:
+            registry: tuple[BiasSpec, ...] = ()
+
+
+        def get_bias_registry() -> BiasRegistry:
+            return BiasRegistry(
+                registry=(
+                    BiasSpec(key="none", params={}),
+                    BiasSpec(key="example_l2", params={"weight": 0.01}),
+                )
+            )
+
+
+        BiasBuilder = Callable[[Dict[str, Any]], object]
+        _BIAS_BUILDERS: Dict[str, BiasBuilder] = {}
+
+
+        def register_bias_builder(key: str, builder: BiasBuilder) -> None:
+            _BIAS_BUILDERS[str(key).strip().lower()] = builder
+
+
+        def _find_spec(registry: BiasRegistry, key: str) -> BiasSpec:
+            for spec in tuple(registry.registry or ()):
+                if spec.key == key:
+                    return spec
+            raise ValueError(f"Bias key not registered: {key}")
+
+
+        def build_bias(registry: BiasRegistry, key: str) -> object:
+            spec = _find_spec(registry, key)
+            if spec.key == "none":
+                return None
+            builder = _BIAS_BUILDERS.get(spec.key)
+            if builder is None:
+                raise ValueError(f"Unknown bias key: {spec.key}")
+            return builder(dict(spec.params or {}))
+
+
+        def _register_builtin_biases() -> None:
+            from bias.example_bias import ExampleL2Bias
+            def _l2_builder(params: Dict[str, Any]) -> object:
+                w = float(params.get("weight", 0.01))
+                return ExampleL2Bias(weight=w)
+            register_bias_builder("example_l2", _l2_builder)
+
+        _register_builtin_biases()
+        """)
+
+
+def _capability_config_template() -> str:
+    return dedent("""\
+        # -*- coding: utf-8 -*-
+        \"\"\"Capability-layer configuration: Capability registry + builder.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any, Callable, Dict
+
+
+        @dataclass(frozen=True)
+        class CapabilitySpec:
+            key: str
+            params: Dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class CapabilityRegistry:
+            registry: tuple[CapabilitySpec, ...] = ()
+
+
+        def get_capability_registry() -> CapabilityRegistry:
+            return CapabilityRegistry(
+                registry=(
+                    CapabilitySpec(key="none", params={}),
+                    CapabilitySpec(key="example_checkpoint", params={"interval": 10}),
+                )
+            )
+
+
+        CapabilityBuilder = Callable[[Dict[str, Any]], object]
+        _CAPABILITY_BUILDERS: Dict[str, CapabilityBuilder] = {}
+
+
+        def register_capability_builder(key: str, builder: CapabilityBuilder) -> None:
+            _CAPABILITY_BUILDERS[str(key).strip().lower()] = builder
+
+
+        def _find_spec(registry: CapabilityRegistry, key: str) -> CapabilitySpec:
+            for spec in tuple(registry.registry or ()):
+                if spec.key == key:
+                    return spec
+            raise ValueError(f"Capability key not registered: {key}")
+
+
+        def build_capability(registry: CapabilityRegistry, key: str) -> object:
+            spec = _find_spec(registry, key)
+            if spec.key == "none":
+                return None
+            builder = _CAPABILITY_BUILDERS.get(spec.key)
+            if builder is None:
+                raise ValueError(f"Unknown capability key: {spec.key}")
+            return builder(dict(spec.params or {}))
+
+
+        def _register_builtin_capabilities() -> None:
+            from capabilities.example_capability import ExampleCheckpointCapability
+            def _ckpt_builder(params: Dict[str, Any]) -> object:
+                interval = int(params.get("interval", 10))
+                return ExampleCheckpointCapability(interval=interval)
+            register_capability_builder("example_checkpoint", _ckpt_builder)
+
+        _register_builtin_capabilities()
+        """)
