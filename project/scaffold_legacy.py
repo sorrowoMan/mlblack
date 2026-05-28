@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Project scaffolding -- mlblack inner-trainer project layout."""
 
 from __future__ import annotations
@@ -17,6 +17,9 @@ _FOLDERS = [
     "bias",
     "capabilities",
     "assembly",
+    "runtime",
+    "evaluation",
+    "solver",
     "assets",
     "docs",
 ]
@@ -32,6 +35,9 @@ _FOLDER_DESCRIPTIONS: Dict[str, str] = {
     "bias": "Optimization bias layer: soft preferences (L2, sparsity, branch).",
     "capabilities": "Capability layer: checkpoint, tracking, audit, report.",
     "assembly": "Trainer assembly: build_trainer, preset wiring, spec/schema.",
+    "runtime": "L0 runtime: resources, compute pool, stores, artifact transport.",
+    "evaluation": "L4 evaluation runtime providers (optional).",
+    "solver": "Trainer/solver core profiles and configuration.",
     "assets": "Output artifacts: charts, reports, exported files.",
     "docs": "Project documentation and design notes.",
 }
@@ -611,6 +617,131 @@ def _component_contract_template() -> str:
         """)
 
 
+
+def _runtime_config_template() -> str:
+    return dedent('''\
+        # -*- coding: utf-8 -*-
+        \"\"\"L0 runtime configuration \u2014 PoolScheduler, resource profiles.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any, Mapping
+
+        from mlblack.core.resources.compute.pool import PoolScheduler
+
+
+        @dataclass(frozen=True)
+        class RuntimeProfile:
+            key: str = "local_cpu"
+            threads: int = 1
+            metadata: Mapping[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class RuntimeRegistry:
+            profiles: tuple[RuntimeProfile, ...] = ()
+
+
+        def get_runtime_registry() -> RuntimeRegistry:
+            return RuntimeRegistry(
+                profiles=(
+                    RuntimeProfile(key="local_cpu", threads=1),
+                    RuntimeProfile(key="threaded_cpu", threads=4),
+                )
+            )
+
+
+        def build_pool(profile: RuntimeProfile) -> PoolScheduler:
+            return PoolScheduler(total_threads=max(1, int(profile.threads)))
+        ''')
+
+
+def _evaluation_config_template() -> str:
+    return dedent('''\
+        # -*- coding: utf-8 -*-
+        \"\"\"L4 evaluation runtime configuration \u2014 provider registry.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any, Callable, Dict
+
+
+        @dataclass(frozen=True)
+        class EvaluationSpec:
+            key: str
+            params: Dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class EvaluationRegistry:
+            registry: tuple[EvaluationSpec, ...] = ()
+
+
+        def get_evaluation_registry() -> EvaluationRegistry:
+            return EvaluationRegistry(registry=())
+
+
+        ProviderBuilder = Callable[[Dict[str, Any]], object]
+        _EVAL_PROVIDER_BUILDERS: Dict[str, ProviderBuilder] = {}
+
+
+        def register_evaluation_provider_builder(key: str, builder: ProviderBuilder) -> None:
+            _EVAL_PROVIDER_BUILDERS[str(key).strip().lower()] = builder
+
+
+        def build_evaluation_providers(registry: EvaluationRegistry, keys) -> list:
+            providers = []
+            for spec in registry.registry:
+                if spec.key in keys:
+                    builder = _EVAL_PROVIDER_BUILDERS.get(spec.key)
+                    if builder:
+                        providers.append(builder(dict(spec.params or {})))
+            return providers
+        ''')
+
+
+def _solver_config_template() -> str:
+    return dedent('''\
+        # -*- coding: utf-8 -*-
+        \"\"\"Trainer/Solver core configuration.\"\"\"
+
+        from __future__ import annotations
+
+        from dataclasses import dataclass, field
+        from typing import Any
+
+
+        @dataclass(frozen=True)
+        class TrainerCoreConfig:
+            max_steps: int = 20
+            learning_rate: float = 0.01
+            metadata: dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class TrainerProfileSpec:
+            key: str
+            params: dict[str, Any] = field(default_factory=dict)
+
+
+        @dataclass(frozen=True)
+        class TrainerProfileRegistry:
+            registry: tuple[TrainerProfileSpec, ...] = ()
+
+
+        def get_trainer_profile_registry() -> TrainerProfileRegistry:
+            return TrainerProfileRegistry(
+                registry=(
+                    TrainerProfileSpec(key="default", params={"max_steps": 20, "learning_rate": 0.01}),
+                    TrainerProfileSpec(key="quick", params={"max_steps": 5, "learning_rate": 0.05}),
+                )
+            )
+        ''')
+
+
+
 def init_project(target_dir, *, force=False):
     """Initialize an mlblack inner-trainer project scaffold under target_dir."""
     root = Path(target_dir).resolve()
@@ -661,6 +792,15 @@ def init_project(target_dir, *, force=False):
     _write_file(root / "capabilities" / "example_capability.py", _capability_template(), overwrite=force)
     _write_file(root / "capabilities" / "config.py", _capability_config_template(), overwrite=force)
 
+    # runtime/ (L0)
+    _write_file(root / "runtime" / "config.py", _runtime_config_template(), overwrite=force)
+
+    # evaluation/ (L4)
+    _write_file(root / "evaluation" / "config.py", _evaluation_config_template(), overwrite=force)
+
+    # solver/
+    _write_file(root / "solver" / "config.py", _solver_config_template(), overwrite=force)
+
     # assembly config
     _write_file(root / "assembly" / "scaffold.json", _assembly_config_template(project_name), overwrite=force)
 
@@ -693,7 +833,7 @@ def create_standard_scaffold(
     }
 
 
-# ── Config templates (mlblack registry+spec+builder pattern) ──────────
+# Config templates (mlblack registry+spec+builder pattern)
 
 
 def _problem_config_template() -> str:
