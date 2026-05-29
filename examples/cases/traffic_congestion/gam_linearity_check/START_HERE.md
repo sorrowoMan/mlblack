@@ -9,7 +9,7 @@ Validates whether linear model assumptions hold for the traffic CI dataset by co
 ## Run
 
 ```powershell
-python build_trainer.py
+python build_solver.py
 ```
 
 Options:

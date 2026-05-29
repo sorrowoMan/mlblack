@@ -59,7 +59,7 @@ failure records
 
 ## 4. 资源审计
 
-`ResourceAuditCapability` 只记录外部注入的资源上下文。
+`ResourceAuditPlugin` 只记录外部注入的资源上下文。
 
 ```python
 spec = {
@@ -69,7 +69,7 @@ spec = {
         "threads": 1,
         "namespace": "benchmark.run.0",
     },
-    "capabilities": ["resource_audit"],
+    "plugins": ["resource_audit"],
 }
 ```
 

@@ -1,15 +1,22 @@
 ﻿# mlblack 标准脚手架教程
 
-这套教程按当前架构重新整理：`mlblack` 是 `nsgablack` 的 ML 特化层，不是第二套 workflow/runtime/L0。读者应先理解边界，再学习单 trainer，再学习复杂模型组合，最后把多阶段、并行、资源和外层搜索交给 `nsgablack` 标准脚手架。
+`mlblack` 和 `nsgablack` 共享同一个内核。**Solver = Trainer**，两者的标准脚手架完全一致，差异仅在 catalog 注册语义。`mlblack` 是 `nsgablack` 的 ML 语义特化——本质是 pipeline 中多了 model-level encode/decode。
 
 ## 0. 一句话总览
 
 ```text
-nsgablack:
-  负责外层优化、阶段、组、serial、parallel、event、resource lease、solver fanout。
+nsgablack + mlblack 统一架构:
+  共享同一套标准脚手架（project/scaffold/case_template）
+  共享同一个 Plugin 体系（plugins/base.py, 10 个钩子超集）
+  Solver 和 Trainer 是同一抽象层级
 
-mlblack:
-  负责数据视图、模型表示、codec/head、problem/evaluation、inner fitting、模型整合语义、artifact/report。
+mlblack 的独有语义:
+  pipeline 内的 model-level encode/decode（Codec/Head/ModelRepresentation）
+  ComposableTrainer（等价于 ComposableSolver + representation pipeline）
+  ML 语义组件：DataView、Spec、Problem、Adapter（梯度下降系）
+
+nsgablack 的独有语义:
+  多目标/Pareto、外层搜索、多策略编排、L0 资源调度
 ```
 
 不要把二者混在一起：
@@ -17,9 +24,11 @@ mlblack:
 ```text
 错误方向:
   在 mlblack 里新增 HybridTrainer / Workflow / StageRunner / RuntimeBackend / ResourceAllocator。
+  在 mlblack 里维护独立的脚手架系统（scaffold_legacy.py 已删除）。
 
 正确方向:
-  在 mlblack 里新增可组合 ML 语义组件，然后由 nsgablack 编排这些组件的训练顺序和资源。
+  在 mlblack 里新增可组合 ML 语义组件，通过统一的 Plugin 体系挂载能力。
+  脚手架统一走 `nsgablack.project.scaffold`。
 ```
 
 ## 1. 教程结构
@@ -27,14 +36,14 @@ mlblack:
 | 章节 | 主题 | 解决的问题 |
 | --- | --- | --- |
 | [00_assembly_api_reference.md](00_assembly_api_reference.md) | 架构地图与 API 速查 | 每层是什么、常用 API 是什么、哪些字段禁止放在 mlblack |
-| [01_create_and_run.md](01_create_and_run.md) | 第一个标准项目 | 从 `NumericDataView` 到 `build_trainer`、`fit`、`report` |
-| [02_component_configuration.md](02_component_configuration.md) | 组件配置拆解 | data / representation / codec / head / problem / adapter / backend / artifact 怎样配 |
-| [03_model_composition_and_io_contract.md](03_model_composition_and_io_contract.md) | 模型整合与 I/O contract | 残差、stacking、多模态、late fusion 怎么严谨表达 |
-| [04_nsgablack_orchestration_patterns.md](04_nsgablack_orchestration_patterns.md) | nsgablack 外层编排模式 | stage、serial、group、多 solver、resource context 怎么接 mlblack |
-| [05_symbolic_nested_case.md](05_symbolic_nested_case.md) | 符号 nested case | 符号学习为什么是 outer structure search + inner fitting |
-| [06_validation_catalog_artifacts.md](06_validation_catalog_artifacts.md) | 验收、catalog、artifact | doctor、context contract、artifact viewer、catalog dashboard |
-| [07_benchmark_dashboard_resource.md](07_benchmark_dashboard_resource.md) | benchmark、dashboard、资源审计 | benchmark suite、实验查询、资源上下文、性能报告 |
-| [08_complex_pattern_catalog.md](08_complex_pattern_catalog.md) | 复杂组合模式目录 | 把可实现的复杂组合模式系统列出来，说明怎么落层 |
+| [01_create_and_run.md](01_create_and_run.md) | 第一个标准项目 | 从 `NumericDataView` 到 `build_trainer`、`fit`、`report`、ResourceContext 注入 |
+| **[02_nested_orchestration_as_inner.md](02_nested_orchestration_as_inner.md)** | **mlblack 作为内层的嵌套编排** | **mlblack 怎么被 nsgablack 外层调用、`build_trainer()` 签名、资源上下文传递、SerialTrainer 多阶段** |
+| [03_model_composition_and_io_contract.md](03_model_composition_and_io_contract.md) | 模型整合与 I/O contract | 残差、stacking、多模态、late fusion 怎么严谨表达、artifact 跨 stage 流转 |
+| **[04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md)** | **nsgablack 编排与统一的 L0 资源层** | **嵌套编排标准、ResourceContext 垂直流、Stage/Group/SerialTrainer、符号学习、多 Trainer 并行** |
+| [05_symbolic_nested_case.md](05_symbolic_nested_case.md) | 符号 nested case | 符号学习为什么是 outer structure search + inner fitting、outer/inner 文件结构、资源授权流 |
+| [06_validation_catalog_artifacts.md](06_validation_catalog_artifacts.md) | 验收、catalog、artifact | doctor、context contract、artifact viewer、catalog dashboard、跨层 artifact 审计 |
+| [07_benchmark_dashboard_resource.md](07_benchmark_dashboard_resource.md) | benchmark、dashboard、资源审计 | benchmark suite、实验查询、资源上下文、性能报告、L0 资源使用报表 |
+| [08_complex_pattern_catalog.md](08_complex_pattern_catalog.md) | 复杂组合模式目录 | 把可实现的复杂组合模式系统列出来，说明怎么落层、L0 资源需求 |
 
 ## 2. 标准心智模型
 
@@ -137,33 +146,37 @@ torch:
 
 ## 5. 标准项目落点
 
-正式 case：
+所有 case 使用统一的脚手架模板（与 nsgablack 完全一致）：
 
 ```text
 examples/cases/<case>/
-  README.md
-  build_solver.py or build_case.py
-  run_solver.py or run_case.py
-  config/
+  build_solver.py          # canonical 装配入口
+  build_trainer.py         # 别名: from .build_solver import build_solver as build_trainer
+  run_solver.py            # CLI 薄入口
+  run_trainer.py           # 别名
+  config.py                # 组件注册聚合
   problem/
-  pipeline/
-  reporting/
+  pipeline/                # encode/decode/init/mutate/repair + data
+  adapter/
+  bias/
+  plugins/                 # 统一能力层（替代 legacy capabilities/）
+  evaluation/
+  runtime/
+  solver/
 ```
 
-跨框架 case：
+多层嵌套项目（Project / Case / Scaffold 三层结构）：
 
 ```text
-examples/cross_framework/<case>/
+<project_root>/
+  project_config.py        # 跨 case 编排
+  run_project.py           # 顶层入口
+  cases/
+    outer_solver/          # nsgablack 外层
+    inner_trainer/         # mlblack 内层（结构完全一致）
 ```
 
-benchmark：
-
-```text
-examples/benchmarks/<benchmark>.py
-examples/benchmarks/<benchmark>/
-```
-
-规则：runner 是薄入口，真实装配逻辑进 `build_*`、`problem/`、`pipeline/`、`reporting/`。
+规则：runner 是薄入口，真实装配逻辑进 `build_solver.py`、`problem/`、`pipeline/`、`plugins/`。`build_trainer.py` 是 `build_solver.py` 的别名，`run_trainer.py` 是 `run_solver.py` 的别名。`representation/` 不作为独立目录，编解码器是 `pipeline/` 的内部组件。
 
 ## 6. 读者应避免的误区
 

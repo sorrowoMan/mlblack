@@ -50,13 +50,13 @@
 
 | 路径 | 作用 |
 |---|---|
-| `build_trainer.py` | Assembly 入口 + 合成数据生成 + 标准化 + OLS 对比。 |
+| `build_solver.py` | Assembly 入口 + 合成数据生成 + 标准化 + OLS 对比。 |
 | `problem/granger_causality_problem.py` | VAR(1) MSE 损失 + L1 稀疏 + 解析梯度 dL/dA。 |
-| `representation/granger_representation.py` | A 矩阵编解码。 |
+| `pipeline/representation/granger_representation.py` | A 矩阵编解码。 |
 
 ## 运行和验证
 
 ```powershell
-python build_trainer.py
+python build_solver.py
 python -m compileall -q .
 ```

@@ -47,7 +47,7 @@ Diagnostic tool to validate whether linear model assumptions hold for the traffi
 
 | 路径 | 作用 |
 |---|---|
-| build_trainer.py | 主诊断脚本 |
+| build_solver.py | 主诊断脚本 |
 | START_HERE.md | 快速开始说明 |
 | README.md | 本文档 |
 | assembly/ catalog/ adapter/ ... | 保留的脚手架目录（本工具未使用） |
@@ -55,6 +55,6 @@ Diagnostic tool to validate whether linear model assumptions hold for the traffi
 ## 运行和验证
 
 ```powershell
-python build_trainer.py
-python build_trainer.py --n-knots 8 --degree 4
+python build_solver.py
+python build_solver.py --n-knots 8 --degree 4
 ```

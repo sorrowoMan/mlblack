@@ -1,0 +1,29 @@
+"""
+A template for building a solver.
+"""
+from nsgablack.core import ComposableSolver
+from nsgablack.adapters import RandomSearchAdapter
+from nsgablack.representation import RepresentationPipeline, RealValueRepresentation
+# from .problem import MyProblem
+
+def build_solver():
+    """Builds a simple solver for demonstration."""
+    # problem = MyProblem()
+    
+    # representation = RepresentationPipeline(
+    #     init_representation=RealValueRepresentation(problem.xl, problem.xu),
+    #     mutate_representation=None,
+    # )
+
+    # adapter = RandomSearchAdapter(
+    #     n_points=100,
+    #     representation=representation
+    # )
+
+    # solver = ComposableSolver(
+    #     problem=problem,
+    #     adapter=adapter,
+    # )
+    # return solver
+    print("Solver built from template.")
+    return None

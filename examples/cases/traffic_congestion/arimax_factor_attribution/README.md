@@ -70,12 +70,12 @@ Full ARIMAX(2,0,1): AIC=12195.5, BIC=12363.9 (1689 samples, 26 external features
 
 | Path | Role |
 |---|---|
-| build_trainer.py | ARIMAX factor attribution script |
+| build_solver.py | ARIMAX factor attribution script |
 | START_HERE.md | Quickstart and documentation |
 | README.md | This file |
 
 ## Run
 
 ```powershell
-python build_trainer.py
+python build_solver.py
 ```

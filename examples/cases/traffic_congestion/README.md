@@ -56,14 +56,14 @@ CI = 100 * (0.7 * clip(1 - v/v_ff, 0, 1) + 0.3 * clip((occ - q10)/(q90 - q10), 0
 
 ```powershell
 # 诊断
-cd arimax_factor_attribution && python build_trainer.py
-cd ../gam_linearity_check && python build_trainer.py
-cd ../shap_contribution_check && python build_trainer.py
-cd ../granger_causality_check && python build_trainer.py
+cd arimax_factor_attribution && python build_solver.py
+cd ../gam_linearity_check && python build_solver.py
+cd ../shap_contribution_check && python build_solver.py
+cd ../granger_causality_check && python build_solver.py
 
 # 机理重构
-cd ../symbolic_regression && python build_trainer.py --steps 200
+cd ../symbolic_regression && python build_solver.py --steps 200
 
 # XGBoost 基线
-cd ../xgboost_baseline && python build_trainer.py
+cd ../xgboost_baseline && python build_solver.py
 ```

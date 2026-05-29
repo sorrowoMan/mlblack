@@ -6,6 +6,8 @@ from uuid import uuid4
 
 import numpy as np
 
+from nsgablack.plugins.base import Plugin, PluginManager
+
 from .adapter import OptimizerAdapter
 from .backend_session import ComputeBackendSession, ComputeBackendSpec
 from .capability import Capability
@@ -51,7 +53,8 @@ class BlankTrainer:
             )
         )
 
-        self.capabilities: list[Capability] = []
+        self.plugin_manager = PluginManager()
+        self._capability_adapters: list[_CapabilityPluginAdapter] = []  # backward compat
         self.biases: list[Any] = []
         self.context_store: MutableMapping[str, Any] = InMemoryContextStore()
         self.snapshot_store: MutableMapping[str, Any] = InMemorySnapshotStore()
@@ -94,9 +97,17 @@ class BlankTrainer:
     def set_representation(self, representation: ModelRepresentation) -> "BlankTrainer":
         return self.set_representation_pipeline(representation)
 
-    def add_capability(self, capability: Capability) -> "BlankTrainer":
-        self.capabilities.append(capability)
+    def add_plugin(self, plugin: Plugin) -> "BlankTrainer":
+        """Register a nsgablack Plugin (unified capability layer)."""
+        self.plugin_manager.register(plugin)
+        plugin.attach(self)
         return self
+
+    def add_capability(self, capability: Capability) -> "BlankTrainer":
+        """Backward-compat: wrap a legacy Capability as a Plugin adapter."""
+        adapter = _CapabilityPluginAdapter(capability)
+        self._capability_adapters.append(adapter)
+        return self.add_plugin(adapter)
 
     def add_bias(self, bias: Any) -> "BlankTrainer":
         self.biases.append(bias)
@@ -240,13 +251,11 @@ class BlankTrainer:
         if self.problem is None:
             raise ValueError("Trainer requires problem before evaluate_individual()")
         ctx = dict(context or {})
-        for capability in self.capabilities:
-            capability.on_evaluate_start(self, candidate, ctx)
+        self.plugin_manager.on_evaluate_start(candidate, ctx)
         repaired = self.repair_candidate(candidate, ctx)
         model = self.decode_candidate(repaired, ctx)
         feedback = self.problem.evaluate(model, repaired, ctx)
-        for capability in self.capabilities:
-            capability.on_evaluate_end(self, repaired, feedback, ctx)
+        self.plugin_manager.on_evaluate_end(candidate, feedback, ctx)
         return feedback
 
     def evaluate_population(
@@ -374,24 +383,21 @@ class BlankTrainer:
         try:
             self.setup()
             start_ctx = self.build_context()
-            for capability in self.capabilities:
-                capability.on_fit_start(self, start_ctx)
+            self.plugin_manager.on_solver_init(self)
             start_step = int(self.step_index) + 1 if self.history else int(self.step_index)
             for offset in range(int(max_steps)):
                 self.step_index = int(start_step + offset)
                 self.step()
         except BaseException as exc:
             error_ctx = self.build_context({"error": type(exc).__name__})
-            for capability in self.capabilities:
-                capability.on_error(self, exc, error_ctx)
+            self.plugin_manager.on_error(exc, error_ctx)
             raise
         finally:
             self.teardown()
 
         report = self.build_report()
         end_ctx = self.build_context()
-        for capability in self.capabilities:
-            capability.on_fit_end(self, end_ctx, report)
+        self.plugin_manager.on_solver_finish({"report": report, "context": end_ctx})
 
         return TrainerResult(
             best_state=self.best_state,
@@ -467,11 +473,18 @@ class BlankTrainer:
             contracts["representation"] = self.representation_pipeline.get_contract().describe()
         if self.problem is not None and hasattr(self.problem, "get_contract"):
             contracts["problem"] = self.problem.get_contract().describe()
-        if self.capabilities:
+        plugin_contracts = []
+        for plugin in self.plugin_manager.plugins:
+            if hasattr(plugin, "get_context_contract"):
+                plugin_contracts.append(plugin.get_context_contract())
+        if plugin_contracts:
+            contracts["plugins"] = plugin_contracts
+        # Backward compat: legacy capabilities wrapped as plugins
+        if self._capability_adapters:
             contracts["capabilities"] = [
-                capability.get_contract().describe()
-                for capability in self.capabilities
-                if hasattr(capability, "get_contract")
+                adapter._capability.get_contract().describe()
+                for adapter in self._capability_adapters
+                if hasattr(adapter._capability, "get_contract")
             ]
         if self.biases:
             contracts["biases"] = [
@@ -542,8 +555,7 @@ class ComposableTrainer(BlankTrainer):
             raise ValueError("ComposableTrainer requires adapter before step()")
 
         ctx = self.build_context(context)
-        for capability in self.capabilities:
-            capability.on_step_start(self, ctx)
+        self.plugin_manager.on_generation_start(self.step_index)
 
         proposed = self.adapter.coerce_states(self.adapter.propose(self, ctx))
         population = self.repair_population(proposed, ctx)
@@ -572,8 +584,7 @@ class ComposableTrainer(BlankTrainer):
         )
         self.history.append(row)
 
-        for capability in self.capabilities:
-            capability.on_step_end(self, ctx, row)
+        self.plugin_manager.on_generation_end(self.step_index)
 
         return row
 
@@ -638,4 +649,47 @@ def _setup_component(component: Any, trainer: Any, context: Mapping[str, Any]) -
         setup(trainer, context)
     else:
         setup(context)
+
+
+class _CapabilityPluginAdapter(Plugin):
+    """Bridges a legacy mlblack Capability into the unified nsgablack Plugin system.
+
+    Translates Plugin lifecycle hooks → Capability hook calls, preserving
+    backward compatibility for existing Capability implementations.
+    """
+
+    def __init__(self, capability: Capability, name: str | None = None):
+        super().__init__(name=name or getattr(capability, "name", "capability_adapter"))
+        self._capability = capability
+
+    # -- Plugin hooks → Capability hooks --
+
+    def on_solver_init(self, solver):
+        ctx = getattr(solver, "context_store", {}) or {}
+        self._capability.on_fit_start(solver, ctx)
+
+    def on_generation_start(self, generation: int):
+        ctx = getattr(self.solver, "context_store", {}) or {}
+        self._capability.on_step_start(self.solver, ctx)
+
+    def on_generation_end(self, generation: int):
+        ctx = getattr(self.solver, "context_store", {}) or {}
+        row = {}
+        if self.solver and hasattr(self.solver, "history") and self.solver.history:
+            row = self.solver.history[-1]
+        self._capability.on_step_end(self.solver, ctx, row)
+
+    def on_evaluate_start(self, candidate, context=None):
+        self._capability.on_evaluate_start(self.solver, candidate, context or {})
+
+    def on_evaluate_end(self, candidate, feedback, context=None):
+        self._capability.on_evaluate_end(self.solver, candidate, feedback, context or {})
+
+    def on_solver_finish(self, result):
+        ctx = getattr(self.solver, "context_store", {}) or {}
+        report = result.get("report", {}) if isinstance(result, dict) else {}
+        self._capability.on_fit_end(self.solver, ctx, report)
+
+    def on_error(self, error: BaseException, context=None):
+        self._capability.on_error(self.solver, error, context or {})
 

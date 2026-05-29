@@ -15,13 +15,13 @@ This case demonstrates Granger causality testing as sparse VAR(1) coefficient op
 ## Quick Start
 
 ```powershell
-python build_trainer.py
+python build_solver.py
 ```
 
 ## Run Check Only (no fit)
 
 ```powershell
-python build_trainer.py --check
+python build_solver.py --check
 ```
 
 ## Verify

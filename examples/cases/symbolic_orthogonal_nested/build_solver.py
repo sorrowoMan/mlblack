@@ -118,8 +118,26 @@ def _build_solver(
     return solver
 
 
+def build_solver(
+    cfg: SymbolicOrthogonalNestedCaseConfig | None = None,
+    *,
+    suite_id: str = "symbolic_orthogonal_nested",
+    stage: int = 1,
+    basis_artifact: OrthogonalBasisSetArtifact | None = None,
+    data: NumericDataView | None = None,
+) -> EvolutionSolver:
+    """Canonical unified scaffold entry for the nested symbolic case."""
+
+    if int(stage) == 1:
+        return build_stage1_solver(cfg, suite_id=suite_id, data=data)
+    if basis_artifact is None:
+        raise ValueError("stage=2 requires basis_artifact")
+    return build_stage2_solver(cfg, suite_id=suite_id, basis_artifact=basis_artifact, data=data)
+
+
 __all__ = [
     "SymbolicOrthogonalNestedCaseConfig",
+    "build_solver",
     "build_stage1_solver",
     "build_stage2_solver",
 ]

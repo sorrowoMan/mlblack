@@ -17,20 +17,20 @@ Linear regression baseline on real traffic CI data. Uses `GradientDescentAdapter
 
 ```powershell
 cd C:\Users\hp\Desktop\mlblack\examples\cases\traffic_congestion\symbolic_regression
-python build_trainer.py
+python build_solver.py
 ```
 
 ## Run Check Only (no fit)
 
 ```powershell
-python build_trainer.py --check
+python build_solver.py --check
 ```
 
 ## Run With Custom Steps
 
 ```powershell
-python build_trainer.py --steps 50
-python build_trainer.py --steps 500 --lr 0.005
+python build_solver.py --steps 50
+python build_solver.py --steps 500 --lr 0.005
 ```
 
 ## Verify

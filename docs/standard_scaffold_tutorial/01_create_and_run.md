@@ -1,256 +1,166 @@
-# 01. 创建并运行第一个标准项目
+# 01. 创建并运行第一个 mlblack 标准项目
 
-这一章从最小可运行项目开始。目标不是教某个模型，而是固定标准脚手架：数据、pipeline、trainer spec、fit、report、artifact 每一步都可审计。
+mlblack 和 nsgablack 使用完全一致的标准脚手架。唯一的差异：mlblack 的 pipeline 多了 model-level encode/decode（Codec/Head/ModelRepresentation）。
 
-## 1. 运行位置
+**关键**：和 nsgablack 一样，正式运行入口在项目顶层 `run_project.py`，不在 case 内。
+
+---
+
+## 1. 创建项目
 
 ```powershell
-Set-Location "C:\Users\hp\Desktop\新建文件夹 (2)"
+python -m nsgablack project new my_ml_project
+cd my_ml_project
+python -m nsgablack project add-case my_trainer --type trainer
 ```
 
-本教程默认直接使用本地源码。正式 case 的 runner 应带 `_bootstrap.py`，不要依赖用户手工设置 `PYTHONPATH`。
+> `--type trainer` 和 `--type solver` 生成完全相同的目录结构。差异仅在 catalog 注册的 `kind` 字段。
 
-## 2. 最小回归任务
+## 2. 最小训练任务
+
+编辑 `cases/my_trainer/build_solver.py`：
 
 ```python
+"""My first mlblack trainer."""
 import numpy as np
+from mlblack.core.trainer import ComposableTrainer
+from mlblack.adapters.gradient_descent import GradientDescentAdapter
+from problem.regression_problem import RegressionProblem
+from pipeline.linear_rep import LinearRepresentation
 
-from mlblack.assembly import build_pipeline, build_trainer
-from mlblack.pipeline.data_views import train_valid_split
 
-X = np.linspace(-1.0, 1.0, 80).reshape(-1, 1)
-y = 1.0 + 2.0 * X[:, 0]
+def build_solver():
+    # 1. 准备数据
+    X = np.linspace(-1.0, 1.0, 80).reshape(-1, 1)
+    y = 1.0 + 2.0 * X[:, 0] + np.random.normal(0, 0.1, 80)
 
-raw = train_valid_split(
-    X,
-    y,
-    valid_ratio=0.2,
-    feature_names=("x",),
-)
+    # 2. 创建 Problem
+    problem = RegressionProblem(data=(X, y))
 
-pipeline = build_pipeline({
-    "name": "first_pipeline",
-    "components": [
-        "zscore",
-        "feature_space",
-    ],
-})
-data = pipeline.fit_transform(raw)
+    # 3. 创建 Representation（model encode/decode — mlblack 独有语义）
+    representation = LinearRepresentation(n_features=1)
 
-trainer = build_trainer(
-    {
-        "preset": "orthogonal_linear_point",
-        "run_name": "first_linear_run",
-        "params": {
-            "learning_rate": 0.05,
-            "l2": 0.0,
-        },
-        "capabilities": ["resource_audit"],
-        "resource_context": {
-            "device": "cpu",
-            "threads": 1,
-            "namespace": "tutorial.first",
-        },
-    },
-    data=data,
-)
+    # 4. 创建 Adapter
+    adapter = GradientDescentAdapter(learning_rate=0.05)
 
-result = trainer.fit(max_steps=40)
-print(result.report["best_score"])
-print(result.report["representation"])
-print(result.report["problem"])
-print(result.report["adapter"])
+    # 5. 装配 Trainer
+    trainer = ComposableTrainer(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name="first_linear",
+    )
+    return trainer
 ```
 
-## 3. 这段代码的职责拆解
+## 3. Problem 定义
 
-| 步骤 | 对象 | 说明 |
-| --- | --- | --- |
-| 1 | `train_valid_split` | 生成 `NumericDataView` |
-| 2 | `build_pipeline` | 声明数据处理链 |
-| 3 | `pipeline.fit_transform` | 输出准备好的数据视图 |
-| 4 | `build_trainer` | 只构造一个 inner trainer |
-| 5 | `trainer.fit` | 单 trainer 内部优化 |
-| 6 | `result.report` | 审计模型、问题、adapter、资源、contract |
-
-关键点：
-
-```text
-Problem 吃数据。
-Representation 解码模型。
-Adapter 更新候选。
-Trainer 只跑一个 inner training lifecycle。
-```
-
-## 4. 不要把外层编排塞进 spec
-
-错误示例：
+`cases/my_trainer/problem/regression_problem.py`：
 
 ```python
-spec = {
-    "preset": "orthogonal_linear_point",
-    "workflow": {
-        "stages": ["baseline", "residual"],
-    },
-    "runtime": {
-        "backend": "thread",
-    },
-    "resource_request": {
-        "gpu": 1,
-    },
-}
+"""Supervised regression with MSE loss."""
+import numpy as np
+from mlblack.core.problem import LearningProblem
+from mlblack.core.types import Feedback
+
+
+class RegressionProblem(LearningProblem):
+    """Minimize MSE between prediction and target."""
+
+    def __init__(self, data, *, name="regression"):
+        self.X = np.asarray(data[0], dtype=float)
+        self.y = np.asarray(data[1], dtype=float).ravel()
+        super().__init__(name=name)
+
+    def evaluate(self, model, state=None, context=None):
+        pred = np.asarray(model, dtype=float).ravel()
+        if len(pred) != len(self.y):
+            pred = np.full_like(self.y, pred[0] if len(pred) else 0.0)
+        residuals = pred - self.y
+        mse = float(np.mean(residuals ** 2))
+        return Feedback(
+            objectives=np.array([mse]),
+            gradients=residuals,
+            loss=mse,
+            metrics={"mse": mse},
+        )
 ```
 
-正确拆法：
+## 4. Representation 定义
 
-```text
-nsgablack case config:
-  stages / groups / parallel / resource lease / solver budget
-
-mlblack trainer spec:
-  preset / params / resource_context / capabilities / biases
-```
-
-## 5. 第一个 artifact
+`cases/my_trainer/pipeline/linear_rep.py`：
 
 ```python
-from mlblack.core import ArtifactBuilder
+"""Linear model encode/decode (mlblack pipeline component)."""
+import numpy as np
+from mlblack.core.representation import ModelRepresentation
 
-bundle = ArtifactBuilder().build(trainer, result)
-print(bundle.describe())
-bundle.save("runs/first_linear/artifact_bundle")
+
+class LinearRepresentation(ModelRepresentation):
+    """Encode/decode a linear coefficient vector."""
+
+    def __init__(self, n_features=1, *, name="linear"):
+        self.n_features = max(1, int(n_features))
+        self.dimension = n_features
+        super().__init__(name=name)
+
+    def init(self, rng=None):
+        rng = rng or np.random.default_rng()
+        return rng.normal(0.0, 0.1, size=(self.n_features,))
+
+    def encode(self, coefficients):
+        return np.asarray(coefficients, dtype=float).ravel()
+
+    def decode(self, encoded):
+        return np.asarray(encoded, dtype=float).ravel()
+
+    def repair(self, state):
+        # No constraints on linear coefficients
+        return np.asarray(state, dtype=float)
 ```
 
-Artifact 不是日志。它是可复现边界：
-
-```text
-model_artifact:
-  保存 best_model 的类型、family、head、metadata
-
-trainer_state:
-  保存恢复/回放所需状态摘要
-
-run_report:
-  保存 metrics、components、resources、metadata
-```
-
-## 6. 手工装配一个 trainer
-
-如果你在开发新组件，可以绕过 preset，直接装配：
-
-```python
-from mlblack.adapters import GradientDescentAdapter, GradientDescentConfig
-from mlblack.core import Trainer
-from mlblack.pipeline.data_views import NumericDataView
-from mlblack.problems import SupervisedRegressionProblem
-from mlblack.representations import OrthogonalPointLinearRepresentation
-
-representation = OrthogonalPointLinearRepresentation.from_data(
-    data.X_train,
-    feature_names=data.effective_feature_names,
-)
-problem = SupervisedRegressionProblem(data)
-adapter = GradientDescentAdapter(GradientDescentConfig(learning_rate=0.05))
-
-trainer = Trainer(
-    problem=problem,
-    representation=representation,
-    adapter=adapter,
-    run_name="manual_linear",
-)
-result = trainer.fit(max_steps=40)
-```
-
-这个写法适合单元测试和新组件 smoke，但正式 case 仍建议把装配逻辑放进 `build_trainer.py` 或 `build_case.py`。
-
-## 7. 标准 case 目录
-
-正式 case 不要写成一个很长的脚本。建议结构：
-
-```text
-examples/cases/<case>/
-  README.md
-  build_case.py or build_solver.py
-  run_case.py or run_solver.py
-  config/
-    case_config.py
-  problem/
-    data.py
-    factories.py
-  pipeline/
-    representation.py
-    transforms.py
-  reporting/
-    report_writer.py
-```
-
-职责：
-
-| 文件 | 职责 |
-| --- | --- |
-| `run_case.py` | CLI 薄入口，只解析参数和调用 builder |
-| `build_case.py` | 组装 trainer/problem/model composition surface |
-| `build_solver.py` | 组装 nsgablack outer solver |
-| `config/` | 可复现配置，不散落 magic number |
-| `problem/` | 数据、problem、task factory |
-| `pipeline/` | data transform、outer representation adapter |
-| `reporting/` | summary、artifact、dashboard 输出 |
-
-## 8. 单 trainer 与复杂 case 的分界线
-
-| 如果你只需要 | 用 |
-| --- | --- |
-| 一个模型训练一次 | `build_trainer` |
-| 一个模型 spec 搜索 | `build_trainer` + estimator/neural/symbolic representation |
-| 一个模型产出 artifact | `ArtifactBuilder` |
-| 多阶段训练 | `nsgablack` outer stage + mlblack inner trainers |
-| 多模型并行训练 | `nsgablack` group/parallel + mlblack trainer specs |
-| 组合多个已训练模型 | `IntegratedPredictionModel` |
-| 根据上阶段模型生成下阶段数据 | `ModelConditionedTargetComponent` |
-
-## 9. 运行现有 smoke
+## 5. 验证装配
 
 ```powershell
-python examples\orthogonal_point_demo.py
-python -m pytest -q tests\test_model_integration.py
+cd cases/my_trainer
+python run_solver.py --check
+# → [check] assembly ok | problem=RegressionProblem | pipeline=LinearRepresentation | adapter=GradientDescentAdapter
 ```
 
-如果改到神经图后端：
+## 6. 训练
 
 ```powershell
-python -m pytest -q tests\test_neural_graph_codec.py
+python run_solver.py
 ```
 
-如果改到跨框架/符号：
-
-```powershell
-python examples\cases\symbolic_orthogonal_nested\run_solver.py --check
-```
-
-## 10. 常见错误
-
-### 10.1 unknown preset
-
-检查 `mlblack/assembly/builders.py` 的 `_build_preset_trainer(...)` 是否注册。
-
-### 10.2 adapter requires gradients
-
-`GradientDescentAdapter` 需要 `feedback.gradients`。如果 problem 无梯度，换 random/search adapter，或实现 problem-owned gradient hook。
-
-### 10.3 backend capability missing
-
-后端不支持某能力时应该报错。不要在 component 内偷偷换 backend。
-
-### 10.4 report 缺 components/contracts
-
-说明装配绕过了标准 `Trainer` surface。正式 case 必须能看到：
+输出类似：
 
 ```text
-representation
-problem
-adapter
-resources
-compute_backend
-contracts
-state_signature
+best_score: 0.0234
+representation: LinearRepresentation(n_features=1)
+adapter: GradientDescentAdapter(lr=0.05)
 ```
+
+## 7. 从项目根运行
+
+```powershell
+cd ../..  # 回到 my_ml_project/
+python run_project.py
+```
+
+## 8. mlblack 独有语义速查
+
+| 组件 | nsgablack | mlblack |
+|---|---|---|
+| Pipeline 中的 encode/decode | 搜索空间向量 ↔ 候选解 | **模型参数 ↔ 向量**（Codec/Head） |
+| Adapter | 搜索策略（NSGA2, VNS...） | 梯度下降策略（GD, Adam, backprop） |
+| Problem | 目标/约束评估 | 损失/梯度/指标评估（LearningProblem） |
+| Plugin | 统一 10 钩子体系 | 统一 10 钩子体系（同 nsgablack） |
+
+## 9. 常见错误
+
+| 现象 | 原因 |
+|---|---|
+| `adapter requires gradients` | Problem 的 Feedback 没提供 `gradients` |
+| `representation has no decode_candidate` | Representation 没实现 `decode()` |
+| `trainer.fit() shape mismatch` | X/y 维度不匹配，或 representation 输出维度不对 |

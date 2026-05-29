@@ -1,0 +1,25 @@
+# Catalog entries for mall_ai_assistant
+# Register discoverable components here.
+#
+# Format:
+#   [[entries]]
+#   key = "kind.component_name"
+#   title = "..."
+#   kind = "problem|pipeline|representation|adapter|bias|plugin|..."
+#   import_path = "module:Class"
+
+[[entries]]
+key = "problem.mall_ai_assistant_regression"
+title = "Mall_Ai_Assistant Regression Problem"
+kind = "problem"
+import_path = "problem.example_problem:ExampleRegressionProblem"
+tags = ["example", "regression"]
+summary = "Custom regression problem for mall_ai_assistant."
+
+[[entries]]
+key = "adapter.mall_ai_assistant_gd"
+title = "Mall_Ai_Assistant Gradient Descent Adapter"
+kind = "adapter"
+import_path = "adapter.example_adapter:ExampleGradientDescentAdapter"
+tags = ["example", "gradient_descent"]
+summary = "Custom gradient descent adapter for mall_ai_assistant."

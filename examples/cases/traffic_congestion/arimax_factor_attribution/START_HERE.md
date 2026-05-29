@@ -24,9 +24,9 @@ Decompose Traffic CI variation into contributions from distinct factor groups us
 ## Run
 
 ```powershell
-python build_trainer.py
-python build_trainer.py --ar-order 3 --ma-order 2
-python build_trainer.py --diff 1
+python build_solver.py
+python build_solver.py --ar-order 3 --ma-order 2
+python build_solver.py --diff 1
 ```
 
 ## Output

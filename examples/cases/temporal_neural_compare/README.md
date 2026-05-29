@@ -47,12 +47,12 @@ Demonstrates pure framework preset composition. All 7 temporal neural architectu
 
 | 路径 | 作用 |
 |---|---|
-| build_trainer.py | Assembly: imports all 7 presets, runs comparison |
+| build_solver.py | Assembly: imports all 7 presets, runs comparison |
 | pipeline/data_generator.py | Synthetic sin+noise data with lag features |
-| run_trainer.py | CLI entrypoint |
+| run_solver.py | CLI entrypoint |
 
 ## 运行和验证
 
 ```powershell
-python run_trainer.py
+python run_solver.py
 ```

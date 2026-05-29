@@ -1,6 +1,6 @@
 ﻿# 03. 复杂模型组合与 I/O Contract
 
-这一章是当前教程的核心增强：`mlblack` 现在可以严谨表达多模型组合，但不把组合训练顺序写成新的 workflow。组合模型负责 inference/evaluation 语义；训练顺序、并行和资源仍由 `nsgablack` 外层编排。
+这一章是当前教程的核心增强：`mlblack` 现在可以严谨表达多模型组合，但不把组合训练顺序写成新的 workflow。组合模型负责 inference/evaluation 语义；训练顺序、并行和资源仍由 `nsgablack` 外层编排。详见 [04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md) 的**完整多阶段示例**和 [nsgablack 嵌套编排标准](../../nsgablack/docs/standard_scaffold_tutorial/07_nested_orchestration_standard.md)。
 
 ## 1. 核心原则
 
@@ -419,7 +419,19 @@ orchestration_owner = nsgablack
 source stage ids
 ```
 
-## 14. 什么时候要新增新组件
+## 14. 多阶段残差编排示例（外层 nsgablack + 内层 mlblack）
+
+核心模式见 [04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md) 的串行阶段部分，每个 stage 执行：
+
+1. 外层 build_trainer(hyperparams, data, resource_context, stage)
+2. 内层不关心 data 来源，统一构造，不同 stage 雖然数据不同
+3. ResourceContext 垂直流通，mlblack 被动消费
+4. Artifact 水平流转、序列传递
+5. 最后 IntegratedPredictionModel 整合
+
+---
+
+## 15. 什么时候要新增新组件
 
 | 需求 | 新增位置 |
 | --- | --- |
@@ -429,3 +441,11 @@ source stage ids
 | 顺序调用模型 | sequential model wrapper |
 | 训练阶段编排 | nsgablack case，不进 mlblack |
 | 多设备分配 | nsgablack L0，不进 mlblack |
+| artifact 跨阶段 | nsgablack SerialStageSolver，不进 mlblack |
+
+---
+
+## 参考
+
+- 嵌套编排完整设计：[04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md)
+- nsgablack 嵌套标准：[nsgablack 07_nested_orchestration_standard.md](../../nsgablack/docs/standard_scaffold_tutorial/07_nested_orchestration_standard.md)

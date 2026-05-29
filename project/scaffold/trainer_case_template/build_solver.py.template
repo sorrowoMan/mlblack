@@ -1,0 +1,21 @@
+"""Canonical build entry for a unified Solver = Trainer case."""
+
+from __future__ import annotations
+
+
+def build_solver():
+    """Build and return the configured Trainer/Solver instance."""
+
+    # Wire problem, pipeline/representation, adapter, bias, plugins, runtime here.
+    # Keep cross-case orchestration in nsgablack project-level surfaces.
+    return None
+
+
+def main(argv=None) -> None:
+    del argv
+    solver = build_solver()
+    print(f"build_solver ok: {type(solver).__name__ if solver is not None else 'None'}")
+
+
+if __name__ == "__main__":
+    main()

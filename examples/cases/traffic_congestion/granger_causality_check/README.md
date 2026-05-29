@@ -81,14 +81,14 @@
 
 | 路径 | 作用 |
 |---|---|
-| build_trainer.py | Granger 因果检验主脚本 |
-| run_trainer.py | CLI 入口（委托 build_trainer.main） |
+| build_solver.py | Granger 因果检验主脚本 |
+| run_solver.py | CLI 入口（委托 build_trainer.main） |
 | START_HERE.md | 快速入门 |
 | README.md | 本文档 |
-| adapter/, bias/, capabilities/, pipeline/, problem/, representation/ | 脚手架占位目录 |
+| adapter/, bias/, plugins/, pipeline/, problem/, pipeline/representation/ | 脚手架占位目录 |
 
 ## 运行和验证
 
 ```powershell
-python build_trainer.py --maxlag 7
+python build_solver.py --maxlag 7
 ```

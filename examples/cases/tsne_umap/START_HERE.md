@@ -10,7 +10,7 @@
 ## 2) 运行
 ```powershell
 Set-Location "C:\Users\hp\Desktop\mlblack\examples\cases\tsne_umap"
-python build_trainer.py --steps 50
+python build_solver.py --steps 50
 ```
 
 ## 3) 关键指标

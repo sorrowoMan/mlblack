@@ -51,13 +51,13 @@ t-SNE 被表达为模型参数（2D 嵌入）上的梯度优化：
 
 | 路径 | 作用 |
 |---|---|
-| `build_trainer.py` | Assembly entry + sklearn digits 数据集 + 训练循环。 |
+| `build_solver.py` | Assembly entry + sklearn digits 数据集 + 训练循环。 |
 | `problem/tsne_problem.py` | 高斯 perplexity 搜索 + Student-t 亲和度 + KL 梯度。 |
-| `representation/tsne_representation.py` | 扁平状态 ↔ 2D 嵌入矩阵的编解码。 |
+| `pipeline/representation/tsne_representation.py` | 扁平状态 ↔ 2D 嵌入矩阵的编解码。 |
 
 ## 运行和验证
 
 ```powershell
-python build_trainer.py --steps 50 --perplexity 30 --lr 200
+python build_solver.py --steps 50 --perplexity 30 --lr 200
 python -m compileall -q .
 ```

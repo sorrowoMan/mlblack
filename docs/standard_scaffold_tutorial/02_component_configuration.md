@@ -10,7 +10,7 @@ Data / Pipeline
   -> Problem
   -> Adapter
   -> Backend
-  -> Capability / Bias
+  -> Plugin / Bias
   -> Artifact / Report
 ```
 
@@ -26,7 +26,7 @@ Data / Pipeline
 | Problem | model + data | `Feedback` | regression, classification, LM, DPO |
 | Adapter | feedback + state | next state | GD, random, estimator search, backprop |
 | Backend | tensor/model op | executable op | torch, jax, tensorflow, numpy |
-| Capability | lifecycle event | side effect/report | checkpoint, tracking, resource audit |
+| Plugin | lifecycle event | side effect/report | checkpoint, tracking, resource audit |
 | Artifact | result/model/report | reproducible payload | model artifact, integrated model artifact |
 
 ## 2. Data 与 NumericDataView
@@ -264,17 +264,29 @@ Bias 是软偏好。
 
 硬约束必须进 Problem/constraints，不能用 Bias 偷偷替代。
 
-## 9. Capability
+## 9. Plugin
 
-Capability 处理生命周期副作用：
+mlblack 的生命周期能力统一走 nsgablack Plugin 体系。旧 `Capability` 类已归入 Plugin，`capabilities/` 目录不再作为 case 级能力目录。
 
-| capability | 作用 |
-| --- | --- |
-| `CheckpointCapability` | state snapshot |
-| `ExperimentTrackerCapability` | SQLite/experiment records |
-| `ResourceAuditCapability` | audit injected ResourceContext |
+Plugin 基类包含 10 个钩子超集：`on_solver_init`、`on_generation_start`、`on_evaluate_start`、`on_evaluate_end`、`on_generation_end`、`on_solver_finish`、`on_error` 等。
 
-Capability 不改变 candidate 选择方向。如果要影响优化，写 Adapter 或 Bias。
+| plugin | 作用 | 对应旧 Capability |
+| --- | --- | --- |
+| `CheckpointPlugin` | state snapshot | CheckpointCapability |
+| `ExperimentTrackerPlugin` | SQLite/experiment records | ExperimentTrackerCapability |
+| `ResourceAuditPlugin` | audit injected ResourceContext | ResourceAuditCapability |
+
+Plugin 不改变 candidate 选择方向。如果要影响优化，写 Adapter 或 Bias。注册方式：
+
+```python
+from nsgablack.plugins.base import Plugin
+
+class MyPlugin(Plugin):
+    def on_generation_end(self, generation: int):
+        pass  # your logic here
+
+trainer.add_plugin(MyPlugin())
+```
 
 ## 10. Artifact
 

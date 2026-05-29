@@ -14,6 +14,12 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent
 
+# Unified architecture: ensure nsgablack (sibling package) is importable.
+_NSGABLACK_ROOT = _ROOT.parent / "nsgablack"
+_NSGABLACK_PARENT = str(_NSGABLACK_ROOT.parent)
+if _NSGABLACK_ROOT.is_dir() and _NSGABLACK_PARENT not in sys.path:
+    sys.path.insert(0, _NSGABLACK_PARENT)
+
 if __name__ == "__main__":
     parent = str(_ROOT.parent)
     if parent not in sys.path:

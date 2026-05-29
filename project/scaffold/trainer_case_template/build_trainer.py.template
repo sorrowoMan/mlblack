@@ -1,0 +1,7 @@
+"""Alias build entry for a unified Solver = Trainer case."""
+
+from __future__ import annotations
+
+from .build_solver import build_solver as build_trainer
+
+__all__ = ["build_trainer"]

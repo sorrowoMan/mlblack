@@ -61,8 +61,8 @@
 | 路径 | 作用 |
 |---|---|
 | `run_case.py` | 兼容 mlblack case 风格的 CLI 入口。 |
-| `run_trainer.py` | 标准脚手架生成入口，已改为 ETF walk-forward runner。 |
-| `build_trainer.py` | 标准脚手架保留的 trainer assembly 入口。 |
+| `run_solver.py` | 标准脚手架生成入口，已改为 ETF walk-forward runner。 |
+| `build_solver.py` | 标准脚手架保留的 trainer assembly 入口。 |
 | `config/scaffold.json` | 脚手架配置和 ETF case metadata。 |
 | `mlblack.integrations.etf_temporal_forecast` | 可被 nsgablack 调用的稳定 integration surface。 |
 

@@ -60,17 +60,17 @@
 
 | 路径 | 作用 |
 |---|---|
-| build_trainer.py | 主分析入口：训练、SHAP、排列重要性、排名对比 |
+| build_solver.py | 主分析入口：训练、SHAP、排列重要性、排名对比 |
 | START_HERE.md | 快速起步指南 |
 | README.md | 本文件 |
 | assembly/ | mlblack 脚手架（本 case 不使用） |
-| problem/ adapter/ bias/ capabilities/ | mlblack 脚手架目录 |
-| representation/ pipeline/ catalog/ | mlblack 脚手架目录 |
+| problem/ adapter/ bias/ plugins/ | mlblack 脚手架目录 |
+| pipeline/representation/ pipeline/ catalog/ | mlblack 脚手架目录 |
 
 ## 运行和验证
 
 ```powershell
-python build_trainer.py
-python build_trainer.py --n-estimators 300 --top-k 15
+python build_solver.py
+python build_solver.py --n-estimators 300 --top-k 15
 python -m compileall -q .
 ```

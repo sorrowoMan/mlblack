@@ -7,7 +7,7 @@
 ## 1) 运行诊断
 
 ```powershell
-python build_trainer.py --maxlag 7
+python build_solver.py --maxlag 7
 ```
 
 参数：
@@ -38,5 +38,5 @@ pip install statsmodels scipy
 
 | 路径 | 作用 |
 |---|---|
-| build_trainer.py | Granger 因果检验主脚本 |
+| build_solver.py | Granger 因果检验主脚本 |
 | ../data/ci_interval_opt_table_no_flow_speed_occ_lag.csv | 输入数据（无流量/速度/占有率泄漏） |

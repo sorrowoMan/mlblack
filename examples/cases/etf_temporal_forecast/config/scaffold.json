@@ -13,7 +13,7 @@
     "resource_context": {},
     "trainer": {
       "biases": [],
-      "capabilities": [
+      "plugins": [
         "resource_audit"
       ],
       "params": {},

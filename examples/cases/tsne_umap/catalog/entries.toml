@@ -5,7 +5,7 @@
 #   [[entries]]
 #   key = "kind.component_name"
 #   title = "..."
-#   kind = "problem|pipeline|representation|adapter|bias|capability|..."
+#   kind = "problem|pipeline|representation|adapter|bias|plugin|..."
 #   import_path = "module:Class"
 
 [[entries]]

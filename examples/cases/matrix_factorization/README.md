@@ -53,13 +53,13 @@
 
 | 路径 | 作用 |
 |---|---|
-| `build_trainer.py` | Assembly entry + 合成数据生成 + GD vs SVD 对比。 |
+| `build_solver.py` | Assembly entry + 合成数据生成 + GD vs SVD 对比。 |
 | `problem/matrix_factorization_problem.py` | 稀疏 MSE 损失 + 解析梯度 dL/dU、dL/dV。 |
-| `representation/mf_representation.py` | U、V 矩阵编解码 + NMF 非负投影。 |
+| `pipeline/representation/mf_representation.py` | U、V 矩阵编解码 + NMF 非负投影。 |
 
 ## 运行和验证
 
 ```powershell
-python build_trainer.py
+python build_solver.py
 python -m compileall -q .
 ```

@@ -53,18 +53,18 @@
 
 | 路径 | 作用 |
 |---|---|
-| `build_trainer.py` | Assembly 入口 + 数据加载 + z-score 标准化 + GD 训练 + RMSE 报告 + 系数分析。 |
+| `build_solver.py` | Assembly 入口 + 数据加载 + z-score 标准化 + GD 训练 + RMSE 报告 + 系数分析。 |
 | `assembly/` | 项目 scaffold 配置。 |
 | `catalog/` | Catalog entries 注册。 |
 | `problem/` | 自定义问题目录（本 case 内置 Problem 在 build_trainer.py）。 |
-| `representation/` | 自定义表示目录（本 case 内置 Representation 在 build_trainer.py）。 |
+| `pipeline/representation/` | 自定义表示目录（本 case 内置 Representation 在 build_trainer.py）。 |
 
 ## 运行和验证
 
 ```powershell
 cd C:\Users\hp\Desktop\mlblack\examples\cases\traffic_congestion\symbolic_regression
-python build_trainer.py --steps 50
-python build_trainer.py --steps 200
-python build_trainer.py --check
+python build_solver.py --steps 50
+python build_solver.py --steps 200
+python build_solver.py --check
 python -m compileall -q .
 ```

@@ -1,0 +1,25 @@
+# Catalog entries for cross_framework
+# Register discoverable components here.
+#
+# Format:
+#   [[entries]]
+#   key = "kind.component_name"
+#   title = "..."
+#   kind = "problem|pipeline|representation|adapter|bias|plugin|..."
+#   import_path = "module:Class"
+
+[[entries]]
+key = "problem.cross_framework_regression"
+title = "Cross_Framework Regression Problem"
+kind = "problem"
+import_path = "problem.example_problem:ExampleRegressionProblem"
+tags = ["example", "regression"]
+summary = "Custom regression problem for cross_framework."
+
+[[entries]]
+key = "adapter.cross_framework_gd"
+title = "Cross_Framework Gradient Descent Adapter"
+kind = "adapter"
+import_path = "adapter.example_adapter:ExampleGradientDescentAdapter"
+tags = ["example", "gradient_descent"]
+summary = "Custom gradient descent adapter for cross_framework."

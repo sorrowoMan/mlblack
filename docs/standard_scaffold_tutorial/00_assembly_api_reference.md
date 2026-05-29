@@ -10,7 +10,7 @@ NumericDataView / DataPipeline
   -> LearningProblem
   -> OptimizerAdapter
   -> Trainer
-  -> Capability / Artifact / Report
+  -> Plugin / Artifact / Report
 ```
 
 外层复杂编排不在这条链里，它属于 `nsgablack`：
@@ -32,7 +32,7 @@ nsgablack Solver / Adapter / Representation / Plugin / L0 Resource
 | `LearningProblem` | 消费数据和模型，返回 `Feedback` | 调度多个 trainer |
 | `OptimizerAdapter` | propose/update 参数或候选 | 直接读数据、保存 artifact |
 | `Trainer` | 单 inner trainer 生命周期 | workflow、parallel、resource lease |
-| `Capability` | checkpoint/tracking/resource audit/report | 改变优化语义 |
+| `Plugin` | checkpoint/tracking/resource audit/report | 改变优化语义 |
 | `Artifact` | 可复现产物 | 临时 context 大对象 |
 | `IntegratedPredictionModel` | 合并已训练模型预测 | 决定训练顺序 |
 
@@ -42,7 +42,7 @@ nsgablack Solver / Adapter / Representation / Plugin / L0 Resource
 | --- | --- | --- |
 | `build_pipeline(spec)` | `pipeline = build_pipeline({...})` | 构造数据 pipeline |
 | `pipeline.fit_transform(data)` | `prepared = pipeline.fit_transform(raw)` | 输出新 `NumericDataView` |
-| `build_trainer(spec, data)` | `trainer = build_trainer(spec, data)` | 构造一个 inner trainer |
+| `build_solver()` canonical | `solver = build_solver()` | 构造 solver/trainer（统一入口）。`build_trainer` 是别名 |
 | `trainer.fit(max_steps=n)` | `result = trainer.fit(max_steps=50)` | 单 trainer 优化 |
 | `trainer.evaluate_individual(state, ctx)` | 返回 `Feedback` | 单候选评估 |
 | `trainer.evaluate_population(states, ctx)` | 返回 feedback list | 当前是简单顺序语义，不负责外层并行 |
@@ -67,7 +67,7 @@ spec = {
         "threads": 1,
         "namespace": "manual.demo",
     },
-    "capabilities": [
+    "plugins": [
         "resource_audit",
         {"name": "checkpoint", "params": {"interval": 5}},
     ],
@@ -88,7 +88,7 @@ spec = {
 | `params` | preset builder | 学习率、模型维度、搜索规模等 |
 | `run_name` | trainer report | run id |
 | `resource_context` | 外层注入 | `mlblack` 被动读取和审计 |
-| `capabilities` | lifecycle side effect | checkpoint、tracking、audit |
+| `plugins` | lifecycle side effect | checkpoint、tracking、audit |
 | `biases` | soft preference | objective weight、L2、policy |
 | `metadata` | audit | 不参与优化语义 |
 

@@ -11,7 +11,7 @@
 ## 2) 运行
 ```powershell
 Set-Location "C:\Users\hp\Desktop\mlblack\examples\cases\matrix_factorization"
-python build_trainer.py
+python build_solver.py
 ```
 
 ## 3) 关键指标

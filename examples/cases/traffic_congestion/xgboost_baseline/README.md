@@ -37,13 +37,13 @@ XGBoost baseline for predicting Congestion Index (CI) from 38 engineered feature
 
 | 路径 | 作用 |
 |---|---|
-| build_trainer.py | 主入口：加载数据、组装 trainer、运行、输出报告 |
-| assembly/scaffold.json | 脚手架配置 |
+| build_solver.py | 主入口：加载数据、组装 trainer、运行、输出报告 |
+| build_solver.py | 脚手架配置 |
 | catalog/ | 组件注册表 |
 
 ## 运行和验证
 
 ```powershell
-python build_trainer.py
-python build_trainer.py --check
+python build_solver.py
+python build_solver.py --check
 ```

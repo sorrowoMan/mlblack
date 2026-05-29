@@ -106,6 +106,7 @@ def run_project_doctor(path: str | Path | None = None, *, strict: bool = False) 
     _check_text_contract(package_root / "representations" / "heads" / "probability.py", diags, required=("BinaryLogisticHead", "SoftmaxHead", "ProbabilityCalibrationHead"))
     _check_text_contract(package_root / "problems" / "classification.py", diags, required=("auc_roc", "average_precision", "f1"))
     _check_context_contracts(package_root, diags, strict=strict)
+    _check_standard_case_scaffolds(package_root, diags)
 
     if strict:
         _check_no_large_context_antipatterns(package_root, diags)
@@ -159,7 +160,7 @@ def _check_text_contract(path: Path, diags: list[DoctorDiagnostic], *, required:
 
 def _check_no_large_context_antipatterns(root: Path, diags: list[DoctorDiagnostic]) -> None:
     for path in root.rglob("*.py"):
-        if "__pycache__" in path.parts:
+        if any(part in {".conda", ".git", ".pytest_cache", "__pycache__", "site-packages"} for part in path.parts):
             continue
         if path.name == "doctor.py" and "project" in path.parts:
             continue
@@ -167,6 +168,207 @@ def _check_no_large_context_antipatterns(root: Path, diags: list[DoctorDiagnosti
         for token in ('context["population"]', "context['population']", 'context["history"]', "context['history']"):
             if token in text:
                 diags.append(DoctorDiagnostic("warn", "large-context-write", f"Potential large object context write: {token}", str(path)))
+
+
+_CASE_MARKER_FILES = {
+    "build_solver.py",
+    "build_trainer.py",
+    "run_solver.py",
+    "run_trainer.py",
+    "project_registry.py",
+}
+_CASE_MARKER_DIRS = {
+    "problem",
+    "pipeline",
+    "adapter",
+    "plugins",
+    "solver",
+    "runtime",
+    "evaluation",
+    "bias",
+}
+_NON_CASE_DIR_NAMES = {
+    "problem",
+    "pipeline",
+    "adapter",
+    "plugins",
+    "solver",
+    "runtime",
+    "evaluation",
+    "bias",
+    "assembly",
+    "catalog",
+    "config",
+    "original",
+    "assets",
+    "docs",
+}
+
+
+def _check_standard_case_scaffolds(root: Path, diags: list[DoctorDiagnostic]) -> None:
+    examples_cases = root / "examples" / "cases"
+    if not examples_cases.is_dir():
+        return
+
+    case_roots = tuple(_iter_case_roots(examples_cases))
+    for case_root in case_roots:
+        _check_case_root_scaffold(case_root, diags)
+    diags.append(
+        DoctorDiagnostic(
+            "info",
+            "case-scaffold-scope",
+            f"Validated {len(case_roots)} examples/cases standard scaffold roots.",
+            str(examples_cases),
+        )
+    )
+
+
+def _iter_case_roots(examples_cases: Path) -> Iterable[Path]:
+    candidates = [examples_cases]
+    candidates.extend(path for path in examples_cases.rglob("*") if path.is_dir())
+    for directory in sorted(candidates):
+        if directory == examples_cases:
+            continue
+        rel_parts = directory.relative_to(examples_cases).parts
+        if any(part in _NON_CASE_DIR_NAMES or part == "__pycache__" for part in rel_parts):
+            continue
+        child_files = {path.name for path in directory.iterdir() if path.is_file()}
+        child_dirs = {path.name for path in directory.iterdir() if path.is_dir()}
+        if child_files & _CASE_MARKER_FILES or child_dirs & _CASE_MARKER_DIRS:
+            yield directory
+
+
+def _check_case_root_scaffold(case_root: Path, diags: list[DoctorDiagnostic]) -> None:
+    build_solver = case_root / "build_solver.py"
+    build_trainer = case_root / "build_trainer.py"
+    run_solver = case_root / "run_solver.py"
+    run_trainer = case_root / "run_trainer.py"
+
+    if not build_solver.is_file():
+        diags.append(
+            DoctorDiagnostic(
+                "error",
+                "case-missing-build-solver",
+                "Case must use build_solver.py as canonical assembly entry.",
+                str(build_solver),
+            )
+        )
+    elif "def build_solver" not in _read_text(build_solver):
+        diags.append(
+            DoctorDiagnostic(
+                "error",
+                "case-build-solver-missing-function",
+                "build_solver.py must define build_solver().",
+                str(build_solver),
+            )
+        )
+
+    if build_trainer.is_file():
+        if not build_solver.is_file():
+            diags.append(
+                DoctorDiagnostic(
+                    "error",
+                    "case-build-trainer-without-build-solver",
+                    "build_trainer.py is only an alias and requires build_solver.py.",
+                    str(build_trainer),
+                )
+            )
+        _check_alias_file(
+            build_trainer,
+            diags,
+            required_tokens=("build_solver", "build_trainer"),
+            forbidden_tokens=("def build_trainer", "def build_project_trainer"),
+            code="case-build-trainer-not-alias",
+            message="build_trainer.py must be a thin alias to build_solver.build_solver.",
+        )
+
+    if not run_solver.is_file():
+        diags.append(
+            DoctorDiagnostic(
+                "error",
+                "case-missing-run-solver",
+                "Case must use run_solver.py as canonical CLI entry.",
+                str(run_solver),
+            )
+        )
+
+    if run_trainer.is_file():
+        if not run_solver.is_file():
+            diags.append(
+                DoctorDiagnostic(
+                    "error",
+                    "case-run-trainer-without-run-solver",
+                    "run_trainer.py is only an alias and requires run_solver.py.",
+                    str(run_trainer),
+                )
+            )
+        _check_alias_file(
+            run_trainer,
+            diags,
+            required_tokens=("run_solver", "main"),
+            forbidden_tokens=("build_trainer", "def main("),
+            code="case-run-trainer-not-alias",
+            message="run_trainer.py must be a thin alias to run_solver.main.",
+        )
+
+    legacy_capabilities = case_root / "capabilities"
+    if legacy_capabilities.is_dir():
+        diags.append(
+            DoctorDiagnostic(
+                "error",
+                "case-legacy-capabilities-dir",
+                "Case-level capabilities/ is forbidden; use plugins/.",
+                str(legacy_capabilities),
+            )
+        )
+
+    legacy_representation = case_root / "representation"
+    if legacy_representation.is_dir():
+        diags.append(
+            DoctorDiagnostic(
+                "error",
+                "case-legacy-representation-dir",
+                "Case-level representation/ is forbidden; use pipeline/representation/.",
+                str(legacy_representation),
+            )
+        )
+
+    legacy_scaffold_json = case_root / "assembly" / "scaffold.json"
+    if legacy_scaffold_json.is_file():
+        diags.append(
+            DoctorDiagnostic(
+                "error",
+                "case-legacy-assembly-scaffold-json",
+                "assembly/scaffold.json is forbidden; assembly logic belongs in build_solver.py.",
+                str(legacy_scaffold_json),
+            )
+        )
+
+
+def _check_alias_file(
+    path: Path,
+    diags: list[DoctorDiagnostic],
+    *,
+    required_tokens: tuple[str, ...],
+    forbidden_tokens: tuple[str, ...],
+    code: str,
+    message: str,
+) -> None:
+    text = _read_text(path)
+    if not all(token in text for token in required_tokens):
+        diags.append(DoctorDiagnostic("error", code, message, str(path)))
+        return
+    for token in forbidden_tokens:
+        if token in text:
+            diags.append(DoctorDiagnostic("error", code, message, str(path)))
+            return
+
+
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return path.read_text(encoding="utf-8-sig", errors="replace")
 
 
 def _check_context_contracts(root: Path, diags: list[DoctorDiagnostic], *, strict: bool) -> None:
@@ -205,10 +407,28 @@ def _check_context_contracts(root: Path, diags: list[DoctorDiagnostic], *, stric
 
 def _iter_python_modules(root: Path) -> Iterable[tuple[str, Path]]:
     package_name = root.name
+    include_top_level = {
+        "adapters",
+        "assembly",
+        "backends",
+        "bias",
+        "capabilities",
+        "catalog",
+        "core",
+        "integrations",
+        "models",
+        "pipeline",
+        "presets",
+        "problems",
+        "project",
+        "representations",
+    }
     for path in root.rglob("*.py"):
         if "__pycache__" in path.parts:
             continue
         rel = path.relative_to(root)
+        if rel.parts and rel.parts[0] not in include_top_level and path.name not in {"__init__.py", "mlblack.py"}:
+            continue
         parts = list(rel.with_suffix("").parts)
         if parts[-1] == "__init__":
             parts = parts[:-1]

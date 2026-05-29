@@ -19,9 +19,9 @@ trustworthy even under nonlinear data.
 ## Run
 
 ```powershell
-python build_trainer.py
+python build_solver.py
 # With options:
-python build_trainer.py --n-estimators 300 --top-k 15
+python build_solver.py --n-estimators 300 --top-k 15
 ```
 
 ## Dependencies

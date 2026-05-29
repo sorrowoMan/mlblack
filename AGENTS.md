@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 ## 0) 使用方式
 
@@ -159,11 +159,12 @@ nsgablack outer orchestration (groups, parallel, events, resources)
 
 Problem 是唯一稳定吃数据的位置。Adapter 不直接吃数据。
 
-### Capability
+### Plugin
 
-负责 checkpoint、experiment tracking、resource audit、report writer、lifecycle side effects。
+Owns checkpointing, experiment tracking, resource audit, report writing, and other lifecycle side effects. Legacy Capability semantics are folded into the Plugin vocabulary; new cases must not create case-level `capabilities/` directories.
 
-Capability 不应改变优化语义；如果要影响优化方向，用 `OptimizationBias` 或 adapter。
+Plugin must not change optimization semantics. If a component needs to change optimization direction, use `OptimizationBias` or an adapter.
+
 
 ## 4) 标准数据流
 
@@ -261,169 +262,180 @@ nsgablack outer allocator
 
 `mlblack` 内部必须遵守外部注入的 device/thread/context，不允许私下写死 `cuda:0`、线程数或 backend。
 
+## 6.1 Project / Case / Scaffold Directory Rule
+
+Use the same three-layer structure as nsgablack: Project -> Case -> Standard Scaffold. Solver and Trainer are the same abstraction level. The directory template is identical; catalog kind and ML semantics are the only difference.
+
+### 6.1.1 Three Layers
+
+1. Project
+   - Owns cross-case orchestration, ResourceContext injection, and one project entrypoint.
+   - Typical shape: project_config.py, run_project.py, cases/.
+
+2. Case
+   - Owns one independently discoverable and testable Solver/Trainer unit.
+   - Typical location: cases/<case_name>/ or examples/cases/<case_name>/.
+
+3. Standard Scaffold
+   - Owns problem, pipeline, adapter, plugins, runtime surface, and local config.
+   - build_solver.py is canonical. build_trainer.py is only an alias.
+
+### 6.1.2 Unified Case Template
+
+```text
+<case_name>/
+  __init__.py
+  build_solver.py           # canonical assembly entry
+  build_trainer.py          # alias: from .build_solver import build_solver as build_trainer
+  run_solver.py             # canonical CLI entry
+  run_trainer.py            # alias: from .run_solver import main
+  config.py                 # component registry aggregator
+  problem/
+  pipeline/                 # data pipeline + representation/codec sublayer
+    representation/
+  adapter/
+  bias/
+  plugins/                  # lifecycle capabilities; replaces legacy capabilities/
+  evaluation/
+  runtime/
+  solver/
+```
+
+### 6.1.3 Hard Rules
+
+- build_solver.py is the canonical assembly entry; build_trainer.py must be a thin alias only.
+- run_solver.py is the canonical CLI entry; run_trainer.py must be a thin alias only.
+- Case-level capabilities/ is forbidden; use plugins/.
+- Case-level representation/ is forbidden; use pipeline/representation/.
+- assembly/scaffold.json is forbidden; assembly logic belongs in build_solver.py.
+- assembly/ may temporarily hold preset registry docs, but not the runtime truth source.
+- Cross-case dependencies must flow through Artifact, SnapshotStore, ResourceContext, or result payloads.
+- New or migrated examples must make their real problem / pipeline / adapter / plugins visible from build_solver.py or an equivalent --check path.
+
 ## 7) Artifact / Replay
 
-三类边界必须区分：
+Keep these boundaries separate:
 
-- `ModelArtifact`：训练产物
-- `TrainerStateArtifact`：恢复/回放状态
-- `RunReport`：审计报告
+- ModelArtifact: fitted model output.
+- TrainerStateArtifact: resume/replay state.
+- RunReport: audit/report payload.
 
-Typed artifact 可细化：
-
-- `TreeEnsembleArtifact`
-- `XGBoostArtifact`
-- `SklearnMLPArtifact`
-- `TorchModelArtifact`
-- symbolic artifact 后续再接
-
-不要把 artifact persistence 写进 adapter。
+Do not put artifact persistence into adapters.
 
 ## 8) Assembly / Inner Training
 
-标准 ML 组件入口：
+Standard ML component entry remains:
 
 ```python
 build_trainer(spec, data)
 ```
 
-`TrainerAssemblySpec` 只负责单个 inner trainer 的 ML 组件装配：
+TrainerAssemblySpec only builds one inner trainer:
 
 - preset
 - params
 - biases
-- capabilities
+- plugins / legacy capabilities
 - component_overrides
 
-`InnerTrainingAssemblySpec` 只允许表示 pipeline + single trainer 的声明数据。
+InnerTrainingAssemblySpec may describe pipeline + single trainer only.
 
-禁止继续提供 `build_flow / MLFlow` 执行入口。
-
-禁止把以下**外层编排**能力放进 `mlblack` assembly：
+Forbidden in mlblack assembly:
 
 - trainer group / portfolio
-- nsgablack `SerialStageSolver` 级别的跨 solver stage
+- nsgablack SerialStageSolver-level cross-solver stage
 - event router
 - parallel runtime
 - backend selection
 - resource allocator / lease
 
-以下**内层编排**能力属于 mlblack 合法范围，可直接使用：
+Allowed mlblack inner orchestration:
 
-- `SerialTrainer`：顺序串联多个 trainer stage，带 artifact 流转
-- `DataPipeline`：有序数据变换链（fit → transform）
-- `ModelConditionedTargetComponent`：基于已训练模型的 target 变换
+- SerialTrainer: sequential trainer stages with artifact flow
+- DataPipeline: ordered fit/transform data chain
+- ModelConditionedTargetComponent: target transformation using prior model output
 
-这些必须由 `nsgablack` 标准脚手架负责。`mlblack` 侧应该暴露 training proxy、problem bridge、inner fitter、artifact builder 和 audit/report surface，供 `nsgablack` 调用。
+Cross-solver orchestration belongs to nsgablack. mlblack should expose training proxy, problem bridge, inner fitter, artifact builder, and audit/report surface.
 
-### 7.1 Canonical Package Layout
+### 8.1 Canonical Package Layout
 
-当前实现主干已收敛到这些 canonical namespace：
+- core/: Trainer, Adapter, Problem, Representation, Head, contracts, passive ResourceContext, state, artifacts, stores.
+- adapters/: GD, random search, estimator search, torch backprop.
+- representations/: representation, codec, model-space decode.
+- representations/heads/: point, interval, probability, piecewise, symbolic heads.
+- problems/: supervised/classification/conditional problems, bridge/proxy, training task/result/contract.
+- pipeline/: data views, pipeline components, feature space, numericizer, conditional, data_views.
+- assembly/: build_trainer, single-trainer assembly spec, schema/config. Do not add assembly/workflow.
+- catalog/: registry/query/dashboard and experiment catalog.
+- plugins/: case-level lifecycle side effects.
+- capabilities/: top-level legacy/backend capability namespace only; do not create case-level capabilities/.
+- bias/, models/, presets/: keep their independent responsibilities.
 
-- `core/`：Trainer、Adapter、Problem、Representation、Head、contracts、passive ResourceContext、state、artifact、store。
-- `adapters/`：GD、random search、estimator search、torch backprop。
-- `representations/`：representation、codec、model-space 解码。
-- `representations/heads/`：point、interval、probability、piecewise head。
-- `problems/`：监督/分类/条件 problem、跨框架 proxy/bridge、`problems/training/` task/result/contract。
-- `pipeline/`：data view、pipeline components、feature_space、`pipeline/numericizer/`、`pipeline/conditional/`。
-- `assembly/`：build_trainer、single-trainer assembly spec、schema/config。不要新增 `assembly/workflow` 机制。
-- `catalog/`：registry/query/dashboard、`catalog/experiment/`。
-- `capabilities/`、`bias/`、`models/`、`presets/`：保持独立主职责。
+## 9) Current Migrated Capabilities
 
-旧顶层包 `heads/`、`numericizer/`、`conditional/`、`workflow/`、`training/`、`problem/`、`experiment/`、`schema/`、`config/`、`data/` 已迁走。新增实现必须使用 canonical namespace，不要重新创建这些顶层包。
-
-`assembly/workflow` 与 `core/runtime` 不属于 mlblack 主干；`core/resources` 只允许 passive `ResourceContext` 和 audit。
-
-## 9) 当前已迁移能力
-
-已落位：
+Already present:
 
 - linear / orthogonal linear
 - point / interval head
 - logistic / softmax / probability calibration / piecewise head
 - tree / xgboost estimator spec
-- tree/boosting mechanism metadata: splitter / sampling / pruning / warm_start / continuation / early_stopping
 - sklearn MLP spec
-- numpy MLP + torch backprop with optimizer state / batching lifecycle / device policy
-- supervised regression / interval regression / classification with AUC/F1/PR metrics
+- numpy MLP + torch backprop
+- supervised regression / interval regression / classification metrics
 - piecewise representation / piecewise head / piecewise regression problem
 - schema/config/scaffold
 - training contract / problem bridge / proxy
 - numericizer / feature_space
 - conditional primitives / composer / branch model composition
 - bias: noop / objective weight / state L2 / L2 scale / objective policy / branch policy / dynamic pool
-- capability: checkpoint / experiment tracker / resource audit
+- plugin: checkpoint / experiment tracker / resource audit
 - artifact bundle + typed model artifact + estimator state summary
-- catalog / doctor / query/facet/deep-link / lightweight dashboard export
-- experiment sqlite query/facet / lightweight dashboard export
-- cross-framework resource-context case under `examples/cross_framework/`
+- catalog / doctor / query/facet/deep-link / dashboard export
+- time-series DataView, temporal neural presets, ARIMA/SARIMAX provider route
+- symbolic model/codec/head/problem/pipeline and nsgablack-facing symbolic integrations
 
-已移除/迁出到 nsgablack-owned 语义：
+Moved to nsgablack-owned semantics:
 
-- `assembly/workflow/*`：trainer candidate/group/stage/event/portfolio result 属于 `nsgablack` 编排层。
-- `core/runtime.py`：serial/thread/batch/stream/facade backend 属于 `nsgablack` 外层 runtime/backend 管理。
-- `core/resources.py`：allocator、lease store、heartbeat 等 L0 资源授权属于 `nsgablack`；`mlblack` 只保留 passive context/audit。
-- `build_flow / MLFlow.workflow`：不再作为 mlblack 入口。
+- assembly/workflow/* group/stage/event/portfolio orchestration
+- core/runtime.py serial/thread/batch/stream runtime backend
+- resource allocator / lease store / heartbeat
+- build_flow / MLFlow.workflow
 
-Symbolic first pass now exists:
+## 10) Implementation Rules
 
-- `models/symbolic.py`：fixed expression tree, `ParameterSpec`, numpy evaluator, expression stringification。
-- `representations/codecs/symbolic.py`：fixed symbolic expression codec and multi-expression codec。
-- `representations/symbolic.py`：fixed expression representation and fixed basis-set representation。
-- `representations/heads/symbolic.py`：multi-symbol / basis-set head。
-- `problems/symbolic.py`：fixed symbolic regression and orthogonal basis evaluation。
-- `pipeline/symbolic/`：primitive registry, function-space objects, function-pool pipeline。
-- `models/symbolic_gradient.py`：symbolic derivative expressions, chain-rule derivative values, parameter Jacobians, residual-gradient signals。
-- `pipeline/symbolic/dynamic_pool.py`：residual/gradient/gate expansion and budget/redundancy pruning。
-- `integrations/nsgablack_symbolic/orthogonal_problem.py`：Stage 1 outer basis problem; this optional integration may import `nsgablack` and delegates inner parameter fitting to mlblack。
-- `pipeline/symbolic/grammar.py`：full primitive grammar, recursive unary/pair expansion, conditional lowering, dynamic activation config, family budgets。
-- `integrations/nsgablack_symbolic/artifacts.py`：Stage 1 basis artifact, Stage 2 task artifact, lightweight symbolic artifact schema。
-- `integrations/nsgablack_symbolic/task_symbolic_problem.py`：Stage 2 basis-conditioned outer task problem; outer selects function-pool terms over basis atoms, inner fits symbolic parameters。
-- `integrations/nsgablack_symbolic/search_space.py`：index-coded function-pool search-space adapter。
-- `integrations/nsgablack_symbolic/builders.py`：`build_symbolic_orthogonal_suite(...)` exposes a problem bundle for nsgablack-facing stages; it must not become an mlblack-owned workflow runner。
+- Before adding a capability, classify it as representation, codec, head, problem, adapter, plugin, bias, artifact, backend provider, or nsgablack orchestration.
+- Put optimization logic in adapters.
+- Put model output semantics in heads or model wrappers.
+- Put data preparation in pipeline, pipeline/data_views, numericizer, or conditional.
+- Put lifecycle side effects in plugins.
+- Put soft guidance in bias.
+- Put resource control, parallel scheduling, backend selection, group/stage/event orchestration in nsgablack or an nsgablack-facing integration surface.
+- Put reproducible outputs in artifact/state/report surfaces.
 
-## 10) 实现规则
+Ownership decision:
 
-- 新增 ML 方法时，先判断属于哪一层：representation、codec、head、problem、adapter、capability、bias、artifact。
-- 新增优化逻辑优先放 adapter。
-- 新增模型输出形态优先放 head/model wrapper。
-- 新增模型输出形态优先放 `representations/heads` 或 `models`。
-- 新增数据准备优先放 `pipeline`、`pipeline/numericizer` 或 `pipeline/conditional`。
-- 新增运行副作用优先放 capability。
-- 新增软引导优先放 bias。
-- 新增资源控制、并行调度、backend selection、group/stage/event 编排必须放到 `nsgablack` 或 `mlblack.integrations/nsgablack_*` 的 nsgablack-facing surface，不放到 `mlblack` 主干。
-- 新增可复现产物优先放 artifact/state。
+- Multiple trainers/candidates/resources/stages scheduling -> nsgablack.
+- One training task internal sequence/composition -> mlblack inner orchestration.
+- Unknown state to ML model/formula/head -> mlblack representation/codec/head.
+- Data + model to feedback -> mlblack problem/evaluation.
+- Outer layer calling inner training -> bridge/proxy/integration, with orchestration authority still in nsgablack.
 
-归属判断：
-
-- 如果机制回答“怎么调度多个 trainer / 多个候选 / 多个资源 / 多个阶段”，它属于 `nsgablack`。
-- 如果机制回答“一个训练任务内部怎么做多阶段/多模型组合（顺序 Trainer 串联、数据 target 变换、模型推理集成）”，它属于 `mlblack` 内层编排（`SerialTrainer`/`ModelConditionedTarget`/`IntegratedPredictionModel`/`DataPipeline`）。
-- 如果机制回答“一个 unknown state 怎么解码成 ML 模型/公式/输出 head”，它属于 `mlblack` representation/codec/head。
-- 如果机制回答“这个模型怎么吃数据并产生 feedback”，它属于 `mlblack` problem/evaluation。
-- 如果机制回答“外层怎么调用内层训练”，它属于 bridge/proxy/integration surface，编排权仍在 `nsgablack`。
-
-## 11) 常用命令
+## 11) Common Commands
 
 ```powershell
 Set-Location "C:\Users\hp\Desktop\mlblack"
 
-python -m compileall -q mlblack
-python examples\orthogonal_point_demo.py
+python -m compileall -q project examples\cases
+python -c "from mlblack.project.doctor import run_project_doctor, format_doctor_report; print(format_doctor_report(run_project_doctor('.', strict=True)))"
 ```
 
-Doctor：
+## 12) Minimum Checklist
 
-```powershell
-python -c "from mlblack.project import run_project_doctor, format_doctor_report; print(format_doctor_report(run_project_doctor('.', strict=True)))"
-```
-
-## 12) 最小检查清单
-
-- [ ] 是否保持 Trainer / Adapter / Representation / Problem / Capability 边界
-- [ ] 是否避免 adapter 直接读数据
-- [ ] 是否避免大对象写 context
-- [ ] 是否只读取/审计外部注入的 `ResourceContext`，没有自建资源授权
-- [ ] 是否能通过 `build_trainer` 或 nsgablack-facing proxy 装配
-- [ ] 是否没有新增 mlblack-owned workflow/runtime/L0 编排（内层 SerialTrainer/DataPipeline/ModelConditionedTarget 除外）
-- [ ] 是否提供 `describe()` 或 contract/report surface
-- [ ] 是否至少跑过 compileall 和一个 smoke
+- [ ] Keep Trainer / Adapter / Representation / Problem / Plugin boundaries.
+- [ ] Avoid adapters reading data directly.
+- [ ] Avoid writing large objects to context.
+- [ ] Only read/audit injected ResourceContext; do not create a resource allocator.
+- [ ] Provide canonical build_solver and alias build_trainer when this is a case scaffold.
+- [ ] Do not add mlblack-owned workflow/runtime/L0 orchestration, except inner SerialTrainer/DataPipeline/ModelConditionedTarget.
+- [ ] Provide describe(), contract, artifact, or report surface where appropriate.
+- [ ] Run compileall and at least one smoke/doctor check.

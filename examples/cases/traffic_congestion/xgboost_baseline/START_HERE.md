@@ -7,8 +7,8 @@ which tunes `max_depth` and `learning_rate` via `EstimatorSpecSearchAdapter`.
 ## Quickstart
 
 ```powershell
-python build_trainer.py
-python build_trainer.py --check
+python build_solver.py
+python build_solver.py --check
 ```
 
 ## What this baseline covers
