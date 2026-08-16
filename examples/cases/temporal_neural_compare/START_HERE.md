@@ -1,15 +1,20 @@
-# START_HERE
+# 开始：时序神经模型 Project 比较
 
-## 1) Health Baseline
-python -m mlblack project doctor --path . --strict
+先检查七个独立 Trainer Case 的实际装配和资源上下文：
 
-## 2) Run Comparison
-python run_solver.py
+```powershell
+python examples/cases/temporal_neural_compare/run_project.py --check --build-check
+```
 
-## 3) Verify
-python -m compileall -q .
+正式运行：
 
-## 4) Structure
-- `build_solver.py`: main assembly entry -- imports all 7 temporal presets, runs comparison
-- `pipeline/data_generator.py`: generates synthetic sine+noise time series data
-- `run_solver.py`: simple CLI entrypoint delegates to build_solver.main()
+```powershell
+python examples/cases/temporal_neural_compare/run_project.py
+```
+
+单 Case 调试示例：
+
+```powershell
+python examples/cases/temporal_neural_compare/cases/temporal_lstm/run_solver.py --check
+python examples/cases/temporal_neural_compare/cases/temporal_lstm/run_solver.py --steps 5
+```

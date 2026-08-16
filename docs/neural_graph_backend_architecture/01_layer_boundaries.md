@@ -11,7 +11,8 @@
 | Adapter | `OptimizerAdapter` | 根据 feedback 或 backend-native loss 更新 unknown state。 | 不直接吃业务数据。 |
 | Backend | `mlblack.backends.*` | tensor、lowering、loss、autograd、optimizer、artifact。 | 不定义搜索语义，不做 Trainer 编排。 |
 | Trainer/L0 context | `Trainer.compute_backend_session` | 本次 run 的 compute backend 选择和能力预检。 | 不实现具体 tensor kernel。 |
-| nsgablack outer | solver/group/serial/resource | 外层结构搜索、并行、资源授权、阶段编排。 | 不写死 mlblack 内部 trainer 后端细节。 |
+| Project substrate | project_config/run_project/L0 | 阶段编排、并行、资源授权、ResourceContext grant。 | 不定义 ML 模型语义，不写死 trainer 后端细节。 |
+| nsgablack search Case | solver/adapter/problem/representation | 需要优化搜索、Pareto、结构候选生成时提供搜索语义。 | 不拥有跨 Case 编排和全局资源授权。 |
 
 ## 正确依赖方向
 

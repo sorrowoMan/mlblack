@@ -19,7 +19,7 @@ Benchmark 不应复制 case 装配逻辑。
 推荐：
 
 ```text
-examples/benchmarks/runs/<benchmark_id>/
+examples/cases/benchmarks/runs/<benchmark_id>/
   benchmark_summary.json
   benchmark_dashboard.html
   runs/
@@ -86,12 +86,12 @@ compute_backend.resolved_name
 
 | 能力 | 归属 |
 | --- | --- |
-| outer solver fanout | nsgablack |
-| worker pool | nsgablack |
-| GPU/CPU lease | nsgablack |
-| backend/thread/process scheduling | nsgablack |
+| outer solver fanout | shared Project substrate |
+| worker pool | shared Project L0 substrate |
+| GPU/CPU lease | shared Project L0 substrate |
+| backend/thread/process scheduling | shared Project L0 substrate |
 | inner compute backend | mlblack trainer/backend |
-| resource audit | mlblack capability |
+| resource audit | mlblack Plugin |
 
 `mlblack` 可以遵守 `ResourceContext`，不能自己授权资源。
 
@@ -164,7 +164,7 @@ python -c "from mlblack.project import run_project_doctor, format_doctor_report;
 单 trainer：
 
 ```powershell
-python examples\orthogonal_point_demo.py
+python examples\cases\orthogonal_point_demo\run_project.py --check --build-check
 ```
 
 组合模型：
@@ -182,7 +182,7 @@ python -m pytest -q tests\test_neural_graph_codec.py
 符号 nested：
 
 ```powershell
-python examples\cases\symbolic_orthogonal_nested\run_solver.py --check
+python examples\cases\symbolic_orthogonal_nested\run_project.py --check --build-check
 python -m pytest -q tests\test_symbolic_nsgablack_integration.py
 ```
 

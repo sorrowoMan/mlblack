@@ -42,6 +42,7 @@ from .symbolic import (
     resolve_dynamic_activation_kwargs,
     select_activation_plan,
 )
+from .slot_kernel import MLPipelineKernelBuild, PipelineSlotSpec, PipelineSpec, build_pipeline_kernel
 
 __all__ = [
     "BinaryGate",
@@ -118,5 +119,9 @@ __all__ = [
     "resolve_dynamic_activation_kwargs",
     "seasonal_decompose",
     "select_activation_plan",
+    "MLPipelineKernelBuild",
+    "PipelineSlotSpec",
+    "PipelineSpec",
+    "build_pipeline_kernel",
     "train_valid_split",
 ]

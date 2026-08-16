@@ -1,19 +1,11 @@
 # cross_framework
 
-mlblack scaffold (inner-trainer project layout).
+This directory is a Project wrapper for standard mlblack Case scaffold(s).
 
-## Quickstart
-1. python -m mlblack project doctor --path .
-2. python run_solver.py
-3. python build_solver.py
+Formal entrypoint:
 
-## Structure
-- build_solver.py: canonical assembly entry
-- problem/, pipeline/, pipeline/representation/
-- adapter/, bias/, plugins/
-- assembly/, catalog/entries.toml
+```powershell
+python examples/cases/cross_framework/run_project.py --check
+```
 
-## Notes
-- Multi-stage/group/event orchestration belongs to nsgablack.
-- This scaffold provides a single inner trainer.
-- Use project doctor to validate contracts early.
+Runnable Case internals are under `cases/`. Case-local `run_solver.py` remains a debug entry only; Project orchestration and ResourceContext grants belong here.

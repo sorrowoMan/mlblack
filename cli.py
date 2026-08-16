@@ -35,14 +35,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     webui_cat = catalog_subparsers.add_parser("webui", help="Refresh DB and launch the catalog WebUI.")
     _add_webui_args(webui_cat)
 
-    p_project = subparsers.add_parser("project", help="Project scaffold & local catalog")
-    project_sub = p_project.add_subparsers(dest="project_command")
+    p_project = subparsers.add_parser("project", help="Project scaffold & shared substrate")
+    from blackbase.project.cli import add_project_subcommands
 
-    p_init = project_sub.add_parser("init", help="Create a local project scaffold")
-    p_init.add_argument("path", help="Target directory for the project")
-    p_init.add_argument("--name", default="mlblack_project", help="Project name")
-    p_init.add_argument("--force", action="store_true", help="Overwrite existing files")
-    p_init.set_defaults(func=_cmd_project_init)
+    add_project_subcommands(
+        p_project,
+        default_case_type="trainer",
+        include_framework_option=False,
+    )
+    p_project.set_defaults(func=_cmd_project)
 
     args = parser.parse_args(argv)
     if args.command == "webui":
@@ -61,26 +62,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 2
 
 
-def _cmd_project_init(args: argparse.Namespace) -> int:
-    from pathlib import Path
+def _cmd_project(args: argparse.Namespace) -> int:
+    from blackbase.project.cli import handle_project_command
 
-    from .project import create_standard_scaffold
+    from .project import (
+        add_case,
+        add_component,
+        create_project,
+        format_doctor_report,
+        run_project,
+        run_project_doctor,
+    )
 
-    try:
-        result = create_standard_scaffold(
-            Path(args.path),
-            name=args.name,
-            exist_ok=bool(args.force),
-        )
-    except FileExistsError:
-        print(f"Directory already exists and is non-empty: {args.path}", file=sys.stderr)
-        print("Use --force to overwrite.", file=sys.stderr)
-        return 1
-    print(f"Project created at: {result['root']}")
-    print("Next:")
-    print(f"  cd {args.path}")
-    print("  python build_trainer.py")
-    return 0
+    return handle_project_command(
+        args,
+        framework="mlblack",
+        create_project=create_project,
+        add_case=add_case,
+        add_component=add_component,
+        run_project_doctor=run_project_doctor,
+        format_doctor_report=format_doctor_report,
+        run_project=run_project,
+    )
 
 
 def _add_catalog_filters(parser: argparse.ArgumentParser) -> None:

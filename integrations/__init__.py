@@ -21,6 +21,20 @@ from .nsgablack_neural import (
     TransformerSpecSearchProblem,
     TransformerSpecSearchSpace,
 )
+from .nsgablack_pipeline_kernel import (
+    MLPipelineKernelBuild,
+    PipelineSlotSpec,
+    PipelineSpec,
+    build_pipeline_kernel,
+)
+from .nsgablack_trainer_evaluator import (
+    ComponentOverrideBuilder,
+    NsgablackTrainerCaseEvaluator,
+    NsgablackTrainerEvaluator,
+    ResultProjector,
+    TrainerFactory,
+    project_trainer_result,
+)
 
 __all__ = [
     "PretrainedCheckpointMapper",
@@ -34,4 +48,14 @@ __all__ = [
     "TransformerSpecSearchConfig",
     "TransformerSpecSearchProblem",
     "TransformerSpecSearchSpace",
+    "MLPipelineKernelBuild",
+    "PipelineSlotSpec",
+    "PipelineSpec",
+    "build_pipeline_kernel",
+    "ComponentOverrideBuilder",
+    "NsgablackTrainerCaseEvaluator",
+    "NsgablackTrainerEvaluator",
+    "ResultProjector",
+    "TrainerFactory",
+    "project_trainer_result",
 ]

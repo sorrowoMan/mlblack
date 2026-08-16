@@ -1,6 +1,6 @@
 ﻿# 03. 复杂模型组合与 I/O Contract
 
-这一章是当前教程的核心增强：`mlblack` 现在可以严谨表达多模型组合，但不把组合训练顺序写成新的 workflow。组合模型负责 inference/evaluation 语义；训练顺序、并行和资源仍由 `nsgablack` 外层编排。详见 [04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md) 的**完整多阶段示例**和 [nsgablack 嵌套编排标准](../../nsgablack/docs/standard_scaffold_tutorial/07_nested_orchestration_standard.md)。
+这一章是当前教程的核心增强：`mlblack` 现在可以严谨表达多模型组合，但不把组合训练顺序写成私有运行器。组合模型负责 inference/evaluation 语义；训练顺序、并行和资源属于共享 Project substrate。详见 [04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md)。
 
 ## 1. 核心原则
 
@@ -13,7 +13,7 @@
 
 ```text
 HybridTrainer
-ResidualWorkflow
+ResidualPrivateRunner
 MultiModalTrainer
 StackingRuntime
 BoostingFlow
@@ -28,7 +28,7 @@ ModelConditionedTargetComponent:
 IntegratedPredictionModel:
   用显式 I/O contract 路由输入，并组合多个已训练模型的输出。
 
-nsgablack stage/group/serial:
+Project stage/group/serial:
   决定这些 component model 如何训练、何时训练、并行还是串行。
 ```
 
@@ -236,7 +236,7 @@ image_model: tiny CNN / pretrained wrapper
 text_model: tiny Transformer / pretrained wrapper
 ```
 
-训练顺序由 `nsgablack` 控制。
+训练顺序由共享 Project substrate 控制；如果训练选择本身需要优化搜索，再由 `nsgablack` 语义 Case 提供外层搜索。
 
 ## 8. Stacking
 
@@ -276,7 +276,7 @@ meta_result = meta_trainer.fit(max_steps=80)
   写一个 composition wrapper，先调用 base_model 生成 base_pred，再调用 meta_model。
 ```
 
-当前已有能力覆盖方式 A。方式 B 后续可作为 `SequentialPredictionModel` 扩展，仍然是 model semantic，不是 workflow。
+当前已有能力覆盖方式 A。方式 B 后续可作为 `SequentialPredictionModel` 扩展，仍然是 model semantic，不是私有运行器。
 
 ## 9. Boosting-like 多轮残差
 
@@ -293,7 +293,7 @@ final = sum_i model_i
 落层：
 
 ```text
-nsgablack serial stages:
+Project serial stages:
   stage i decides whether to train another residual learner and with what budget
 
 mlblack:
@@ -323,7 +323,7 @@ for i in range(num_rounds):
     )
 ```
 
-注意：这个循环如果是正式工程，不应在 `mlblack` 主干里做成 workflow；应在 `nsgablack` case 的 stage 编排里做。
+注意：这个循环如果是正式工程，不应在 `mlblack` 主干里做成私有运行器；应在 Project stage 编排里做。
 
 ## 10. 主线 + 修正器
 
@@ -348,7 +348,7 @@ final_model = PredictionIntegrationComponent.additive(
 })
 ```
 
-`alpha` 可以固定，也可以由 nsgablack outer search 搜索。
+`alpha` 可以固定，也可以作为外层搜索 Case 的候选字段。
 
 ## 11. 专家模型 + Late Fusion
 
@@ -373,7 +373,7 @@ GatedIntegratedPredictionModel:
   final = sum_i gate_i(X) * expert_i(X)
 ```
 
-这仍然属于 `mlblack.models.composition`，不是 workflow。
+这仍然属于 `mlblack.models.composition`，不是私有运行器。
 
 ## 12. Contract fail-fast 示例
 
@@ -415,17 +415,17 @@ component artifact refs
 integration kind
 weights
 I/O contract
-orchestration_owner = nsgablack
+orchestration_owner = project_substrate
 source stage ids
 ```
 
-## 14. 多阶段残差编排示例（外层 nsgablack + 内层 mlblack）
+## 14. 多阶段残差编排示例（Project substrate + mlblack Cases）
 
 核心模式见 [04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md) 的串行阶段部分，每个 stage 执行：
 
-1. 外层 build_trainer(hyperparams, data, resource_context, stage)
+1. Project runner 按 stage 调用标准 Case builder，并注入 `resource_context`
 2. 内层不关心 data 来源，统一构造，不同 stage 雖然数据不同
-3. ResourceContext 垂直流通，mlblack 被动消费
+3. ResourceContext 垂直流通，mlblack case 消费并审计 grant
 4. Artifact 水平流转、序列传递
 5. 最后 IntegratedPredictionModel 整合
 
@@ -439,13 +439,12 @@ source stage ids
 | 行级动态 gate | composition model + gate model |
 | 多输出融合 | `PredictionOutputSpec` 扩展 |
 | 顺序调用模型 | sequential model wrapper |
-| 训练阶段编排 | nsgablack case，不进 mlblack |
-| 多设备分配 | nsgablack L0，不进 mlblack |
-| artifact 跨阶段 | nsgablack SerialStageSolver，不进 mlblack |
+| 训练阶段编排 | Project substrate，不进 mlblack |
+| 多设备分配 | shared Project L0 substrate，不进 mlblack 语义组件 |
+| artifact 跨阶段 | Project substrate，不进 mlblack |
 
 ---
 
 ## 参考
 
 - 嵌套编排完整设计：[04_nsgablack_orchestration_and_resource_layers.md](04_nsgablack_orchestration_and_resource_layers.md)
-- nsgablack 嵌套标准：[nsgablack 07_nested_orchestration_standard.md](../../nsgablack/docs/standard_scaffold_tutorial/07_nested_orchestration_standard.md)

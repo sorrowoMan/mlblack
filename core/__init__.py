@@ -38,6 +38,7 @@ from .context_keys import (
     unknown_context_keys,
     validate_context_keys,
 )
+from .diagnostic import DiagnosticProblem, DiagnosticRunner, DiagnosticTrainer, build_diagnostic_trainer
 from .contracts import ComponentContract, ContractMixin, combine_contracts
 from .head import HeadBlock, OutputHead
 from .problem import LearningProblem
@@ -63,6 +64,9 @@ __all__ = [
     "CONTEXT_KEY_ALIASES",
     "CONTEXT_KEY_SET",
     "ContextContract",
+    "DiagnosticProblem",
+    "DiagnosticRunner",
+    "DiagnosticTrainer",
     "ContractMixin",
     "EstimatorStateArtifact",
     "Feedback",
@@ -103,6 +107,7 @@ __all__ = [
     "UnknownState",
     "XGBoostArtifact",
     "build_trainer_state",
+    "build_diagnostic_trainer",
     "combine_contracts",
     "get_compute_backend_from_context",
     "normalize_context_key",

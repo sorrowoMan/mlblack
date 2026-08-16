@@ -1467,7 +1467,7 @@ then
 (basis-conditioned structure + parameter fitting) -> task artifact
 ```
 
-编排层属于 `nsgablack`，内层训练和评估 surface 属于 `mlblack`。
+编排层属于共享 Project / Case / L0 substrate；需要优化搜索时可由 `nsgablack` 语义 Case 提供外层搜索。内层训练和评估 surface 属于 `mlblack`。
 
 ## 20. Artifact
 
@@ -1555,8 +1555,8 @@ Ablation 是消融实验。
 代表性入口：
 
 ```text
-examples/cases/tiny_transformer_smoke/run_case.py
-examples/benchmarks/neural_graph_benchmark_matrix.py
+examples/cases/tiny_transformer_smoke/run_project.py
+examples/cases/benchmarks/run_project.py
 ```
 
 已验证的模型路线包括：
@@ -1736,13 +1736,13 @@ I model machine learning as an optimization-first pipeline. A representation def
 回答模板：
 
 ```text
-nsgablack owns outer optimization, orchestration, resource scheduling, groups, stages, and runtime control. mlblack owns ML-specific representation, codec, head, problem evaluation, inner fitting, and artifacts. For symbolic learning or architecture search, nsgablack searches the outer structure while mlblack evaluates and fits the inner ML task.
+The shared Project / Case / L0 substrate provides orchestration, resource scheduling, groups, stages, and runtime control. nsgablack provides optimization/search semantics. mlblack provides ML-specific representation, codec, head, problem evaluation, fitting, and artifacts. For symbolic learning or architecture search, a nsgablack Case may search the outer structure while a mlblack Case evaluates and fits the ML task.
 ```
 
 中文：
 
 ```text
-nsgablack 是成熟优化编排底座，mlblack 是 ML 特化层。mlblack 不重复实现 runtime/group/stage/resource 编排。
+Project / Case / L0 substrate 是统一编排与资源底座；nsgablack 是优化搜索语义层，mlblack 是 ML 语义层。mlblack 不重复实现私有 runtime/group/stage/resource 编排。
 ```
 
 ## 24. 术语速查表
@@ -1855,10 +1855,10 @@ nsgablack 是成熟优化编排底座，mlblack 是 ML 特化层。mlblack 不�
 | `plugin = 算法逻辑` | `plugin` 主要是能力扩展（日志、归档、审计、监控、持久化）。 |
 | `representation = 参数本身` | `representation` 是参数/结构的编码与合法空间定义。 |
 | `problem = 只有 objective` | `problem` 还包含约束、数据视图、评估流程与反馈协议。 |
-| `nsgablack 只适合 NSGA` | `nsgablack` 是编排和优化框架，不绑定单一算法家族。 |
+| `nsgablack 只适合 NSGA` | `nsgablack` 是优化搜索语义层，不绑定单一算法家族；跨 Case 编排属于共享 Project substrate。 |
 
 ### 27.2 面试一句话模板
 
 ```text
-nsgablack separates optimization into explicit layers: problem defines evaluation semantics, representation defines the search space, adapter defines search strategy, solver controls lifecycle orchestration, and plugins provide runtime capabilities. This maps cleanly to classical optimization terms while keeping complex workflows auditable and composable.
+nsgablack separates optimization into explicit layers: problem defines evaluation semantics, representation defines the search space, adapter defines search strategy, solver controls the search lifecycle, and plugins provide runtime capabilities. Cross-Case workflow orchestration and resource grants belong to the shared Project substrate.
 ```

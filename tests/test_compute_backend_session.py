@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from mlblack.backends import BackendContract, explain_backend_requirements, list_backend_catalog_entries, list_backends, register_backend
+from mlblack.backends import BackendContract, explain_backend_requirements, get_backend, list_backend_catalog_entries, list_backends, register_backend
 from mlblack.catalog import backend_capability_matrix, render_backend_matrix_markdown
 from mlblack.core import ComputeBackendSession, ComputeBackendSpec, Trainer, get_compute_backend_from_context
 
@@ -76,6 +76,21 @@ def test_tensorflow_backend_catalog_and_gradient_tape_capability_boundaries() ->
 
     entries = list_backend_catalog_entries()
     assert any(entry["name"] == "tensorflow.autograd" for entry in entries)
+
+
+def test_torch_backend_exposes_probabilistic_forecast_loss() -> None:
+    torch = pytest.importorskip("torch")
+    requirement = explain_backend_requirements("torch", ("loss.gaussian_nll",))
+    assert requirement["ok"] is True
+
+    backend = get_backend("torch")
+    output = {"head_outputs": {"deepar": {"mu": torch.zeros((2, 1)), "log_sigma": torch.zeros((2, 1))}}}
+    target = torch.tensor([[1.0], [-1.0]])
+    loss, mean, scale = backend.losses.gaussian_nll(output, target, "deepar")
+
+    assert loss.requires_grad is False
+    assert tuple(mean.shape) == (2, 1)
+    assert torch.allclose(scale, torch.ones_like(scale))
 
 
 def test_backend_capability_matrix_dashboard_surface() -> None:

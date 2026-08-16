@@ -1,19 +1,8 @@
-# START_HERE
+# Start Here: catalog_assistant
 
-## 1) Health Baseline
-python -m mlblack project doctor --path . --strict
+```powershell
+python examples/cases/catalog_assistant/run_project.py --check
+python examples/cases/catalog_assistant/run_project.py --check --build-check
+```
 
-## 2) Define the Core Layers
-- problem/: evaluate model -> produce Feedback
-- pipeline/: prepare data for the problem
-- pipeline/representation/: encode/decode unknown state + head output
-- adapter/: propose/update optimization strategy
-
-## 3) Wire the Assembly
-- build_solver.py is the canonical assembly entry; build_trainer.py is an alias
-
-## 4) Run
-python run_solver.py
-
-## 5) Verify
-python -m compileall -q .
+Use `cases/<case>/run_solver.py` only for single-Case debugging. Formal runs start at `run_project.py`.

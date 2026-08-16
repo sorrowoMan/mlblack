@@ -1,0 +1,3 @@
+name = temporal_tcn
+kind = trainer
+framework = mlblack

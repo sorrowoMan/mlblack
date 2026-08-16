@@ -1,0 +1,42 @@
+"""Case-level solver pipeline primary entry.
+
+Keep one pipeline entry per case. Slot orchestration is delegated to the
+shared pipeline kernel while mlblack retains ML component semantics.
+"""
+
+from typing import Any, Mapping
+
+from blackbase.kernel import PipelineSpec, build_pipeline_kernel
+
+
+def _build_kernel(*, component_overrides: Mapping[str, Any] | None = None):
+    overrides = dict(component_overrides or {})
+    registry = dict(overrides.get("pipeline_operators", {}) or {})
+    spec = PipelineSpec.from_value(
+        overrides.get("pipeline_spec", {"key": "solver_default", "slots": ()})
+    )
+    return build_pipeline_kernel(spec, operator_registry=registry)
+
+
+def build_pipeline(
+    *,
+    resource_context: Mapping[str, Any] | None = None,
+    component_overrides: Mapping[str, Any] | None = None,
+):
+    """Build one case-level ML representation pipeline."""
+
+    del resource_context
+    return _build_kernel(component_overrides=component_overrides).representation_pipeline
+
+
+def run_pipeline_slot(
+    slot: str,
+    value,
+    *,
+    component_overrides: Mapping[str, Any] | None = None,
+    context: Mapping[str, Any] | None = None,
+):
+    """Run one pipeline slot through the canonical kernel."""
+
+    kernel = _build_kernel(component_overrides=component_overrides)
+    return kernel.run_slot(slot, value, dict(context or {}))

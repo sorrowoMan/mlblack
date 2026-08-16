@@ -5,7 +5,7 @@
 Behavior:
 - For each entry in mlblack/examples (files and directories), except 'cases',
   create a standardized scaffold under examples/cases/<name> using
-  mlblack.project.scaffold_legacy.init_project.
+  the mlblack trainer case template over the shared blackbase substrate.
 - Move original files/directories into the new scaffold's 'original' subdir.
 - Create a lightweight run entry `run_solver.py` in the scaffold root that
   imports and invokes a main() from the original script if available, otherwise
@@ -24,11 +24,11 @@ CASES_DIR = EXAMPLES_DIR / "cases"
 
 SKIP_NAMES = {"cases", "__pycache__"}
 
-from nsgablack.project.scaffold import _CASE_TEMPLATE
+_CASE_TEMPLATE = ROOT / "project" / "scaffold" / "trainer_case_template"
 
 
 def init_case_scaffold(target_dir: Path):
-    """Create a unified case scaffold at target_dir using nsgablack template."""
+    """Create a unified case scaffold at target_dir using the mlblack template."""
     import shutil as _shutil
     target_dir.mkdir(parents=True, exist_ok=True)
     _shutil.copytree(_CASE_TEMPLATE, target_dir, dirs_exist_ok=True)

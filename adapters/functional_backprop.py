@@ -64,9 +64,9 @@ class FunctionalBackpropAdapter(OptimizerAdapter):
         self.last_gradient_norm: float | None = None
         self.step_index = 0
 
-    def setup(self, trainer: Any) -> None:
-        if hasattr(trainer, "require_compute_backend"):
-            self.backend = trainer.require_compute_backend(self.backend_requires, consumer=self.name)
+    def setup(self, control: Any) -> None:
+        if hasattr(control, "require_compute_backend"):
+            self.backend = control.require_compute_backend(self.backend_requires, consumer=self.name)
         else:
             self.backend = None
         if self.current_state is None:
@@ -74,14 +74,14 @@ class FunctionalBackpropAdapter(OptimizerAdapter):
             self.last_gradient_norm = None
             self.step_index = 0
 
-    def propose(self, trainer: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
+    def propose(self, control: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
         if self.current_state is None:
-            self.current_state = trainer.init_candidate(context)
+            self.current_state = control.init_candidate(context)
         return (self.current_state,)
 
     def update(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
@@ -92,9 +92,9 @@ class FunctionalBackpropAdapter(OptimizerAdapter):
         self.backend = get_compute_backend_from_context(context, self.backend_requires, consumer=self.name)
         state = states[0]
         eval_context = self._context_with_backend(context)
-        model = trainer.decode_candidate(state, eval_context)
+        model = control.decode_candidate(state, eval_context)
 
-        problem = getattr(trainer, "problem", None)
+        problem = getattr(control, "problem", None)
         if problem is None:
             raise ValueError("FunctionalBackpropAdapter requires trainer.problem")
         gradient_fn = getattr(problem, "compute_functional_gradient", None)
@@ -144,6 +144,14 @@ class FunctionalBackpropAdapter(OptimizerAdapter):
             "backend_contract": None if self.backend is None else self.backend.contract().as_dict(),
             "learning_rate": float(self.config.learning_rate),
         }
+
+    def get_population(self) -> tuple[UnknownState, ...] | None:
+        return None if self.current_state is None else (self.current_state,)
+
+    def set_population(self, population: Sequence[UnknownState]) -> bool:
+        states = tuple(population)
+        self.current_state = states[0] if states else None
+        return True
 
     def set_state(self, state: Mapping[str, Any]) -> None:
         values = state.get("current_state")

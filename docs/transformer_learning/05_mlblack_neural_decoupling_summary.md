@@ -6,7 +6,7 @@
 
 - 神经网络的语义定义（representation/codec/head/problem）与执行后端（torch/jax/tf）分离。
 - Transformer 已进入统一神经图路线，不再是框架绑定的单脚本实现。
-- 外层编排与内层训练边界清晰：`nsgablack` 负责编排与资源，`mlblack` 负责模型语义与拟合。
+- 外层编排与内层训练边界清晰：共享 Project / Case / L0 substrate 负责编排与资源，`mlblack` 负责模型语义与拟合；需要搜索时由 `nsgablack` 语义 Case 提供优化/search 能力。
 
 一句话：
 
@@ -38,7 +38,7 @@ NeuralGraphSpec / typed representation
 
 ### 2.2 编排层与训练层解耦
 
-- 外层：`nsgablack`（stage/group/serial/parallel/resource/budget）。
+- 外层：共享 Project substrate（stage/group/serial/parallel/resource/budget）；需要优化搜索时使用 `nsgablack` 语义 Case。
 - 内层：`mlblack`（模型构建、数据评估、参数拟合、artifact）。
 
 这使复杂流程（多阶段、多模型组合、嵌套优化）可维护。
@@ -223,4 +223,3 @@ mlblack has decoupled neural modeling semantics from execution backends.
 Transformer is treated as a declarative neural-graph route under the same representation/codec/problem/adapter scaffold, rather than a framework-specific hardcoded training script.
 Current focus is hardening capability contracts, unifying functional backprop protocol, suite-level benchmarking, and end-to-end resource-context propagation.
 ```
-

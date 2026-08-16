@@ -32,7 +32,7 @@ from .facade import (
 )
 from .query import CatalogQuery, CatalogQueryResult, build_catalog_deep_link, build_catalog_facets, query_catalog, query_catalog_db
 from .relations import build_entry_relation_payload, build_relation_payload_index, flow_payload, relation_fields, usage_profile
-from .registry import Catalog, CatalogEntry, enrich_catalog_entry, get_catalog
+from .registry import Catalog, CatalogEntry, CatalogRegistry, enrich_catalog_entry, get_catalog
 from .store import (
     PostgresCatalogStore,
     SQLiteCatalogStore,
@@ -48,6 +48,7 @@ from .web_app import catalog_summary_payload, catalog_web_payload, render_catalo
 __all__ = [
     "Catalog",
     "CatalogEntry",
+    "CatalogRegistry",
     "CatalogQuery",
     "CatalogQueryResult",
     "ExperimentQuery",

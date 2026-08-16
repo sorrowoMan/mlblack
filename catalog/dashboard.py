@@ -48,3 +48,60 @@ def export_catalog_html(path: str | Path, catalog: Catalog | None = None) -> Pat
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(html, encoding="utf-8")
     return target
+
+
+def build_streamlit_command(
+    *,
+    script_path: str | Path,
+    profile: str = "default",
+    db_path: str | Path | None = None,
+    host: str | None = None,
+    port: int = 8765,
+    headless: bool = False,
+) -> list[str]:
+    """Build the Streamlit command used by the catalog WebUI launcher."""
+
+    import sys
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(script_path),
+        "--server.port",
+        str(int(port)),
+    ]
+    if host:
+        cmd.extend(["--server.address", str(host)])
+    if headless:
+        cmd.extend(["--server.headless", "true"])
+    cmd.extend(["--", "--profile", str(profile)])
+    if db_path is not None:
+        cmd.extend(["--db-path", str(db_path)])
+    cmd.append("--no-refresh")
+    return cmd
+
+
+def launch_catalog_dashboard(
+    *,
+    script_path: str | Path,
+    profile: str = "default",
+    db_path: str | Path | None = None,
+    host: str | None = None,
+    port: int = 8765,
+    headless: bool = False,
+) -> int:
+    """Launch the Streamlit catalog dashboard."""
+
+    import subprocess
+
+    cmd = build_streamlit_command(
+        script_path=script_path,
+        profile=profile,
+        db_path=db_path,
+        host=host,
+        port=port,
+        headless=headless,
+    )
+    return int(subprocess.run(cmd, check=False).returncode)

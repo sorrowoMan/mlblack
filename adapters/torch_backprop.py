@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
@@ -80,8 +80,8 @@ class TorchBackpropAdapter(OptimizerAdapter):
         self.optimizer_state: dict[str, Any] = {}
         self._rng = np.random.default_rng(int(self.config.random_seed))
 
-    def setup(self, trainer: Any) -> None:
-        _ = trainer
+    def setup(self, control: Any) -> None:
+        _ = control
         if self.current_state is None:
             self.last_loss = None
             self.last_gradient_norm = None
@@ -91,14 +91,14 @@ class TorchBackpropAdapter(OptimizerAdapter):
             self.last_batch_indices = tuple()
             self.optimizer_state = {}
 
-    def propose(self, trainer: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
+    def propose(self, control: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
         if self.current_state is None:
-            self.current_state = trainer.init_candidate(context)
+            self.current_state = control.init_candidate(context)
         return (self.current_state,)
 
     def update(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
@@ -107,7 +107,7 @@ class TorchBackpropAdapter(OptimizerAdapter):
         if not states:
             return
         state = states[0]
-        grad, loss = self._compute_gradient(trainer, state, context)
+        grad, loss = self._compute_gradient(control, state, context)
         values = state.as_array()
         if grad.shape[0] != values.shape[0]:
             raise ValueError(f"gradient dimension {grad.shape[0]} does not match state dimension {values.shape[0]}")
@@ -146,6 +146,14 @@ class TorchBackpropAdapter(OptimizerAdapter):
             "actual_device": str(self.actual_device),
             "device_policy": str(self.config.device_policy),
         }
+
+    def get_population(self) -> tuple[UnknownState, ...] | None:
+        return None if self.current_state is None else (self.current_state,)
+
+    def set_population(self, population: Sequence[UnknownState]) -> bool:
+        states = tuple(population)
+        self.current_state = states[0] if states else None
+        return True
 
     def set_state(self, state: Mapping[str, Any]) -> None:
         values = state.get("current_state")
@@ -186,7 +194,7 @@ class TorchBackpropAdapter(OptimizerAdapter):
 
     def _compute_gradient(
         self,
-        trainer: Any,
+        control: Any,
         state: UnknownState,
         context: Mapping[str, Any],
     ) -> tuple[np.ndarray, float]:
@@ -196,12 +204,12 @@ class TorchBackpropAdapter(OptimizerAdapter):
             raise RuntimeError("TorchBackpropAdapter requires the optional dependency 'torch'") from exc
         torch.manual_seed(int(self.config.random_seed) + int(self.step_index))
 
-        problem = getattr(trainer, "problem", None)
+        problem = getattr(control, "problem", None)
         data = getattr(problem, "data", None)
         if data is None:
             raise ValueError("TorchBackpropAdapter requires trainer.problem.data")
 
-        representation = getattr(trainer, "representation_pipeline", None)
+        representation = getattr(control, "representation_pipeline", None)
         config = getattr(representation, "config", None)
         shapes = getattr(representation, "shapes", None)
         if config is None or shapes is None:

@@ -55,12 +55,12 @@ class ObjectiveWeightBias(OptimizationBias):
 
     def adjust_feedback(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
     ) -> tuple[Feedback, ...]:
-        _ = trainer
+        _ = control
         _ = states
         _ = context
         weights = np.asarray(tuple(self.weights), dtype=float).reshape(-1)
@@ -103,12 +103,12 @@ class StateL2Bias(OptimizationBias):
 
     def adjust_feedback(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
     ) -> tuple[Feedback, ...]:
-        _ = trainer
+        _ = control
         _ = context
         out: list[Feedback] = []
         for state, fb in zip(states, feedback):
@@ -153,9 +153,9 @@ class L2ScaleBias(OptimizationBias):
         metadata={"bias": "l2_scale"},
     )
 
-    def project_context(self, trainer: Any, context: Mapping[str, Any]) -> Mapping[str, Any]:
+    def project_context(self, control: Any, context: Mapping[str, Any]) -> Mapping[str, Any]:
         ctx = dict(context)
-        step = int(getattr(trainer, "step_index", ctx.get("step", 0)) or 0)
+        step = int(getattr(control, "step_index", ctx.get("step", 0)) or 0)
         value = float(self.base) + (float(self.step_scale) * float(step))
         if self.max_value is not None:
             value = min(value, float(self.max_value))
@@ -203,12 +203,12 @@ class ObjectivePolicyBias(OptimizationBias):
 
     def adjust_feedback(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
     ) -> tuple[Feedback, ...]:
-        _ = trainer
+        _ = control
         _ = states
         _ = context
         base_weights = np.asarray(tuple(self.weights), dtype=float).reshape(-1)
@@ -265,8 +265,8 @@ class BranchPolicyBias(OptimizationBias):
         metadata={"bias": "branch_policy"},
     )
 
-    def project_context(self, trainer: Any, context: Mapping[str, Any]) -> Mapping[str, Any]:
-        _ = trainer
+    def project_context(self, control: Any, context: Mapping[str, Any]) -> Mapping[str, Any]:
+        _ = control
         ctx = dict(context)
         if self.preferred_branch is not None:
             ctx[f"{self.context_key}.preferred"] = int(self.preferred_branch)
@@ -309,8 +309,8 @@ class DynamicPoolBias(OptimizationBias):
         metadata={"bias": "dynamic_pool"},
     )
 
-    def project_context(self, trainer: Any, context: Mapping[str, Any]) -> Mapping[str, Any]:
-        _ = trainer
+    def project_context(self, control: Any, context: Mapping[str, Any]) -> Mapping[str, Any]:
+        _ = control
         ctx = dict(context)
         active = tuple(str(v) for v in self.members)
         if self.signal_key and ctx.get(self.signal_key) == "fallback":

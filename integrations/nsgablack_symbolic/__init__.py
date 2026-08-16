@@ -1,5 +1,6 @@
 ﻿from .artifacts import OrthogonalBasisSetArtifact, SymbolicArtifactSchema, SymbolicTaskArtifact, symbolic_artifact_schema_descriptor
 from .basis_consensus import BasisConsensusConfig, BasisConsensusReport, SymbolicBasisConsensusAnalyzer
+from .benchmarks import build_symbolic_benchmark_data
 from .builders import SymbolicOrthogonalNestedSuite, build_symbolic_orthogonal_suite
 from .evaluation import (
     SymbolicBranchEvaluationConfig,
@@ -73,6 +74,7 @@ __all__ = [
     "SymbolicFoldEvaluationReport",
     "SymbolicFoldEvaluator",
     "build_symbolic_orthogonal_suite",
+    "build_symbolic_benchmark_data",
     "default_path_memory_db",
     "symbolic_artifact_schema_descriptor",
 ]

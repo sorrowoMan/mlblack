@@ -907,7 +907,7 @@ class TemporalNeuralProbabilisticForecastingProblem(LearningProblem):
     """
 
     name = "temporal_neural_probabilistic_forecast"
-    backend_requires = (*_BACKEND_MODE_REQUIREMENTS, "tensor.float_tensor", "loss.computation")
+    backend_requires = (*_BACKEND_MODE_REQUIREMENTS, "tensor.float_tensor", "loss.gaussian_nll")
     context_requires = ("candidate.model", "data.X_train", "data.y_train")
     context_optional = ("data.X_valid", "data.y_valid", "resource.device", "autograd.optim.config")
     context_provides = _NEURAL_EVALUATION_PROVIDES
@@ -955,42 +955,27 @@ class TemporalNeuralProbabilisticForecastingProblem(LearningProblem):
         *,
         differentiable: bool = True,
     ) -> BackendLossEvaluation:
-        import torch
-
-        backend = _backend(context, ("tensor.float_tensor",))
-        device = str(context.get("resource.device", "cpu"))
+        _ = state
+        backend = _backend(context, ("tensor.float_tensor", "loss.gaussian_nll"))
+        device = backend.tensor.device(context)
         if differentiable:
             backend.autograd.train(model, device=device)
         else:
-            backend.autograd.eval(model)
-        if backend.autograd.no_grad_available():
-            ctx = torch.no_grad()
-        else:
-            ctx = nullcontext()
-        has_gpu = torch.cuda.is_available()
-        effective_device = device if has_gpu else "cpu"
-        X_train = backend.tensor.float_tensor(self.data.X_train, device=effective_device)
-        y_train = backend.tensor.float_tensor(self.data.y_train, device=effective_device)
-        with ctx:
+            backend.autograd.eval(model, device=device)
+        evaluation_context = nullcontext() if differentiable else backend.autograd.no_grad()
+        X_train = backend.tensor.float_tensor(self.data.X_train, device=device)
+        y_train = backend.tensor.float_tensor(self.data.y_train, device=device)
+        with evaluation_context:
             output = model(X_train)
-        mu = _extract_head_output(output, "mu")
-        log_sigma = _extract_head_output(output, "log_sigma")
-        if mu is None or log_sigma is None:
-            raise ValueError(f"probabilistic model output must contain 'mu' and 'log_sigma' keys; got keys={list(output.keys()) if isinstance(output, dict) else type(output)}")
-        mu = mu.reshape(y_train.shape)
-        sigma_raw = torch.exp(log_sigma.reshape(y_train.shape))
-        sigma = torch.clamp(sigma_raw, min=1e-4, max=1e6)
-        nll = 0.5 * torch.log(2 * torch.tensor(torch.pi, device=mu.device)) + log_sigma + 0.5 * ((y_train - mu) / sigma) ** 2
-        loss = nll.mean()
+            loss, mu, sigma = backend.losses.gaussian_nll(output, y_train, self.head_name)
         if not differentiable:
-            with ctx:
-                metrics = _probabilistic_forecast_metrics(
-                    y_train.detach().cpu().numpy().reshape(-1),
-                    mu.detach().cpu().numpy().reshape(-1),
-                    sigma.detach().cpu().numpy().reshape(-1),
-                    alpha=self.alpha,
-                    prefix="train",
-                )
+            metrics = _probabilistic_forecast_metrics(
+                y_train.detach().cpu().numpy().reshape(-1),
+                mu.detach().cpu().numpy().reshape(-1),
+                sigma.detach().cpu().numpy().reshape(-1),
+                alpha=self.alpha,
+                prefix="train",
+            )
         else:
             metrics = {}
         valid_loss = None
@@ -998,26 +983,21 @@ class TemporalNeuralProbabilisticForecastingProblem(LearningProblem):
         X_valid = getattr(self.data, "X_valid", None)
         y_valid = getattr(self.data, "y_valid", None)
         if X_valid is not None and y_valid is not None and len(X_valid) > 0 and len(y_valid) > 0:
-            X_val = backend.tensor.float_tensor(X_valid, device=effective_device)
-            y_val = backend.tensor.float_tensor(y_valid, device=effective_device)
-            with ctx:
+            X_val = backend.tensor.float_tensor(X_valid, device=device)
+            y_val = backend.tensor.float_tensor(y_valid, device=device)
+            with backend.autograd.no_grad():
                 val_output = model(X_val)
-            val_mu = _extract_head_output(val_output, "mu")
-            val_log_sigma = _extract_head_output(val_output, "log_sigma")
-            if val_mu is not None and val_log_sigma is not None:
-                val_mu = val_mu.reshape(y_val.shape)
-                val_sigma = torch.exp(val_log_sigma.reshape(y_val.shape)).clamp(1e-4, 1e6)
-                valid_nll = (0.5 * torch.log(2 * torch.tensor(torch.pi, device=val_mu.device))
-                             + val_log_sigma + 0.5 * ((y_val - val_mu) / val_sigma) ** 2).mean()
+                valid_nll_tensor, val_mu, val_sigma = backend.losses.gaussian_nll(val_output, y_val, self.head_name)
+            if val_mu is not None and val_sigma is not None:
+                valid_nll = valid_nll_tensor
                 valid_loss = float(valid_nll.detach().cpu())
-                with ctx:
-                    valid_metrics = _probabilistic_forecast_metrics(
-                        y_val.detach().cpu().numpy().reshape(-1),
-                        val_mu.detach().cpu().numpy().reshape(-1),
-                        val_sigma.detach().cpu().numpy().reshape(-1),
-                        alpha=self.alpha,
-                        prefix="valid",
-                    )
+                valid_metrics = _probabilistic_forecast_metrics(
+                    y_val.detach().cpu().numpy().reshape(-1),
+                    val_mu.detach().cpu().numpy().reshape(-1),
+                    val_sigma.detach().cpu().numpy().reshape(-1),
+                    alpha=self.alpha,
+                    prefix="valid",
+                )
         loss_value = float(loss.detach().cpu())
         all_metrics = {**metrics, **valid_metrics}
         if valid_loss is not None:
@@ -1029,7 +1009,7 @@ class TemporalNeuralProbabilisticForecastingProblem(LearningProblem):
             metrics=all_metrics,
             signals={
                 "has_gradient": True,
-                "has_gpu": has_gpu,
+                "device": str(device),
                 "head": "deepar",
                 "loss_type": "gaussian_nll",
                 "task": "probabilistic_forecasting",

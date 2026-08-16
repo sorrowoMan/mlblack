@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -324,7 +325,14 @@ def test_graph_cache_and_structure_guard_use_canonical_expression_keys() -> None
 
 
 def test_formal_case_check_runs() -> None:
-    case = Path("examples") / "cases" / "symbolic_orthogonal_nested" / "run_solver.py"
+    case = (
+        Path("examples")
+        / "cases"
+        / "symbolic_orthogonal_nested"
+        / "cases"
+        / "symbolic_orthogonal_nested"
+        / "run_solver.py"
+    )
     result = subprocess.run(
         [sys.executable, str(case), "--check"],
         cwd=Path(__file__).resolve().parents[1],
@@ -333,6 +341,8 @@ def test_formal_case_check_runs() -> None:
         timeout=90,
         check=True,
     )
-    assert "symbolic_orthogonal_nested scaffold ok" in result.stdout
+    payload = json.loads(result.stdout.removeprefix("[check] "))
+    assert payload["status"] == "assembly ok"
+    assert payload["adapter"] == "symbolic_orthogonal_stage1_nsga2"
 
 

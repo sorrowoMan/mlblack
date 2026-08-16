@@ -504,6 +504,7 @@ def build_temporal_lstm_forecast_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "temporal_lstm_forecast",
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Trainer:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
@@ -533,6 +534,7 @@ def build_temporal_lstm_forecast_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
         compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
@@ -557,6 +559,7 @@ def build_temporal_tcn_forecast_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "temporal_tcn_forecast",
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Trainer:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
@@ -587,6 +590,7 @@ def build_temporal_tcn_forecast_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
         compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
@@ -612,6 +616,7 @@ def build_temporal_transformer_forecast_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "temporal_transformer_forecast",
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Trainer:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
@@ -643,6 +648,7 @@ def build_temporal_transformer_forecast_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
         compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
@@ -668,6 +674,7 @@ def build_temporal_nbeats_forecast_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "temporal_nbeats_forecast",
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Trainer:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
@@ -699,6 +706,7 @@ def build_temporal_nbeats_forecast_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
         compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
@@ -723,6 +731,7 @@ def build_temporal_deepar_forecast_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "temporal_deepar_forecast",
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Trainer:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
@@ -752,6 +761,7 @@ def build_temporal_deepar_forecast_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
         compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
@@ -778,6 +788,7 @@ def build_temporal_patchtst_forecast_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "temporal_patchtst_forecast",
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Trainer:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
@@ -810,6 +821,7 @@ def build_temporal_patchtst_forecast_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
         compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
@@ -833,6 +845,7 @@ def build_temporal_tft_forecast_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "temporal_tft_forecast",
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Trainer:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
@@ -862,6 +875,7 @@ def build_temporal_tft_forecast_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
         compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
@@ -996,6 +1010,5 @@ def _compute_backend_spec(compute_backend: Any, device: str, device_policy: str)
         payload.setdefault("device_policy", device_policy)
         return ComputeBackendSpec.from_value(payload)
     return ComputeBackendSpec(name=str(compute_backend), device=str(device), device_policy=str(device_policy))
-
 
 

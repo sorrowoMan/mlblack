@@ -1,58 +1,29 @@
 # temporal_neural_compare
 
-Compare 7 temporal neural forecasting models on synthetic sine wave data.
+这是一个正式的 Project 级时序神经模型比较示例。
 
-## 是否使用 mlblack / nsgablack
+比较任务已拆成七个独立 Trainer Case：
 
-Pure mlblack -- zero custom ML components.
+- `temporal_lstm`
+- `temporal_tcn`
+- `temporal_transformer`
+- `temporal_nbeats`
+- `temporal_deepar`
+- `temporal_patchtst`
+- `temporal_tft`
 
-## 这个 case 验证什么
+每个 Case 独立装配一个 `ComposableTrainer`，共享同一套确定性正弦序列数据协议。模型顺序、资源授权和运行编排由本 Project 的 `project_config.py` 管理，不再由单个 Case 返回 Trainer 字典。
 
-Demonstrates pure framework preset composition. All 7 temporal neural architectures (LSTM, TCN, Transformer, N-BEATS, DeepAR, PatchTST, TFT) are compared on a common synthetic forecasting task using only existing framework presets, adapter, problem, and representation components.
+历史目录 `cases/temporal_neural_compare` 仅保留为单 LSTM Trainer 的兼容入口，不参与正式比较阶段。
 
-## 搜索向量
-
-| 变量 | 含义 | 范围 |
-|---|---|---|
-| Neural graph weights/biases | Model parameters | float, network-dependent |
-
-## 目标和指标
-
-| 目标 | 方向 | 含义 |
-|---|---|---|
-| MSE (via NeuralGraphBackprop) | minimize | Forecast error on sin(0.1*t) + noise |
-
-## 组件组合
-
-| 层 | 组件 | 来源 |
-|---|---|---|
-| Problem | TemporalNeuralForecastingProblem | framework problem.temporal_neural_forecasting |
-| Representation | NeuralGraphRepresentation (7 variants) | framework preset (via NeuralGraphSpec) |
-| Adapter | NeuralGraphBackpropAdapter | framework adapter.neural_graph_backprop |
-| Bias | (none) | -- |
-
-## 效果对比
-
-| Model | RMSE | Time (s) | vs baseline |
-|---|---|---|---|
-| LSTM | TBD | TBD | TBD |
-| TCN | TBD | TBD | TBD |
-| Transformer | TBD | TBD | TBD |
-| N-BEATS | TBD | TBD | TBD |
-| DeepAR | TBD | TBD | TBD |
-| PatchTST | TBD | TBD | TBD |
-| TFT | TBD | TBD | TBD |
-
-## 结构
-
-| 路径 | 作用 |
-|---|---|
-| build_solver.py | Assembly: imports all 7 presets, runs comparison |
-| pipeline/data_generator.py | Synthetic sin+noise data with lag features |
-| run_solver.py | CLI entrypoint |
-
-## 运行和验证
+验证装配及实际 L0 grant：
 
 ```powershell
-python run_solver.py
+python examples/cases/temporal_neural_compare/run_project.py --check --build-check
+```
+
+执行七个模型：
+
+```powershell
+python examples/cases/temporal_neural_compare/run_project.py
 ```

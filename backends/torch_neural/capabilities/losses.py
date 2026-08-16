@@ -16,6 +16,7 @@ class TorchLossesCapability:
             "loss.lm_next_token",
             "loss.dpo",
             "loss.triplet",
+            "loss.gaussian_nll",
             "metrics.classification",
         ),
         methods={
@@ -23,6 +24,7 @@ class TorchLossesCapability:
             "loss.lm_next_token": "lm_loss(model, tokens, head_name) -> loss",
             "loss.dpo": "dpo_loss_and_metrics(model, chosen, rejected, head_name, beta, reference_model, prefix) -> (loss, metrics)",
             "loss.triplet": "triplet_loss(anchor, positive, negative, margin) -> (loss, metrics)",
+            "loss.gaussian_nll": "gaussian_nll(output, target, head_name) -> (loss, mean, scale)",
             "metrics.classification": "classification_metrics(logits, labels, prefix) -> dict",
         },
         tensor_kinds=("torch.Tensor",),
@@ -137,6 +139,26 @@ class TorchLossesCapability:
             "train.negative_distance": float(torch.mean(neg_dist).detach().cpu().item()),
         }
         return loss, metrics
+
+    def gaussian_nll(self, output: Any, target: Any, head_name: str) -> tuple[Any, Any, Any]:
+        """Return differentiable Gaussian NLL and normalized distribution tensors."""
+        torch = self.torch()
+        head_output = output.get("head_outputs", {}).get(head_name, output) if isinstance(output, dict) else output
+        if not isinstance(head_output, dict):
+            raise ValueError(f"probabilistic head output must be a mapping; got {type(head_output).__name__}")
+        mean = head_output.get("mu")
+        log_scale = head_output.get("log_sigma")
+        if mean is None or log_scale is None:
+            raise ValueError(
+                "probabilistic head output must contain 'mu' and 'log_sigma'; "
+                f"got keys={list(head_output)}"
+            )
+        mean = mean.reshape(target.shape)
+        log_scale = log_scale.reshape(target.shape)
+        scale = torch.exp(log_scale).clamp(min=1e-4, max=1e6)
+        normalizer = 0.5 * torch.log(torch.as_tensor(2.0 * torch.pi, dtype=mean.dtype, device=mean.device))
+        loss = (normalizer + log_scale + 0.5 * ((target - mean) / scale) ** 2).mean()
+        return loss, mean, scale
 
     def scalar(self, loss: Any) -> float:
         return float(loss.detach().cpu().item())

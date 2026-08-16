@@ -7,7 +7,10 @@ name = "mlblack"
 version = "0.1.0"
 description = "Optimization-first ML prototype aligned with nsgablack architecture."
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.23"]
+dependencies = [
+    "blackbase>=0.2.0,<0.3.0",
+    "numpy>=1.23",
+]
 
 [project.scripts]
 mlblack = "mlblack.cli:main"
@@ -47,6 +50,10 @@ packages = [
     "mlblack.catalog.experiment",
     "mlblack.catalog.store",
     "mlblack.core",
+    "mlblack.core.resources",
+    "mlblack.core.resources.compute",
+    "mlblack.core.resources.storage",
+    "mlblack.core.resources.transport",
     "mlblack.integrations",
     "mlblack.integrations.nsgablack_neural",
     "mlblack.integrations.nsgablack_symbolic",
@@ -60,11 +67,23 @@ packages = [
     "mlblack.problems",
     "mlblack.problems.training",
     "mlblack.project",
+    "mlblack.project.scaffold",
+    "mlblack.project.scaffold.solver_case_template",
+    "mlblack.project.scaffold.solver_case_template.pipeline",
+    "mlblack.project.scaffold.solver_case_template.problem",
+    "mlblack.project.scaffold.trainer_case_template",
+    "mlblack.project.scaffold.trainer_case_template.pipeline",
+    "mlblack.project.scaffold.trainer_case_template.problem",
     "mlblack.representations",
     "mlblack.representations.codecs",
     "mlblack.representations.codecs.neural",
     "mlblack.representations.heads",
 ]
+
+[tool.setuptools.package-data]
+"mlblack.project.scaffold.solver_case_template" = ["*.template"]
+"mlblack.project.scaffold.trainer_case_template" = ["*.template"]
+"mlblack.project.scaffold.trainer_case_template.pipeline" = ["*.template", "operators/.gitkeep"]
 
 [tool.pytest.ini_options]
 pythonpath = [".."]

@@ -59,12 +59,12 @@ class EstimatorSpecSearchAdapter(OptimizerAdapter):
         self.best_score: float | None = None
         self.step_index = 0
 
-    def propose(self, trainer: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
+    def propose(self, control: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
         n = max(1, int(self.config.population_size))
         states: list[UnknownState] = []
 
         if self.best_state is None:
-            initial = trainer.init_candidate(context)
+            initial = control.init_candidate(context)
             if self.config.include_center_candidate:
                 states.append(initial)
             base = initial.as_array()
@@ -81,12 +81,12 @@ class EstimatorSpecSearchAdapter(OptimizerAdapter):
 
     def update(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
     ) -> None:
-        _ = trainer
+        _ = control
         _ = context
         self.step_index += 1
         for state, fb in zip(states, feedback):
@@ -103,6 +103,14 @@ class EstimatorSpecSearchAdapter(OptimizerAdapter):
             "population_size": int(self.config.population_size),
             "mutation_scale": float(self.config.mutation_scale),
         }
+
+    def get_population(self) -> tuple[UnknownState, ...] | None:
+        return None if self.best_state is None else (self.best_state,)
+
+    def set_population(self, population: Sequence[UnknownState]) -> bool:
+        states = tuple(population)
+        self.best_state = states[0] if states else None
+        return True
 
     def set_state(self, state: Mapping[str, Any]) -> None:
         values = state.get("best_state")

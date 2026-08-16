@@ -1,0 +1,27 @@
+{
+  "typeCheckingMode": "basic",
+  "reportMissingImports": false,
+  "pythonVersion": "3.13",
+  "include": [
+    "mlblack",
+    "examples",
+    "integrations",
+    "tests",
+    "project",
+    "adapters",
+    "bias",
+    "capabilities",
+    "catalog",
+    "core",
+    "models",
+    "pipeline",
+    "presets",
+    "problems",
+    "representations",
+    "assembly"
+  ],
+  "exclude": ["**/node_modules", "**/__pycache__", "**/.*"],
+  "strictParameterNoneType": false,
+  "reportUnusedImport": "warning",
+  "reportUnusedVariable": "warning"
+}

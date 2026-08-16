@@ -35,7 +35,10 @@ class ComputeBackendSpec:
             payload: dict[str, Any] = {"name": value}
         else:
             payload = dict(value or {})
-        raw_name = payload.get("name", payload.get("backend", payload.get("compute_backend")))
+        raw_name = payload.get(
+            "name",
+            payload.get("requested_name", payload.get("backend", payload.get("compute_backend"))),
+        )
         if raw_name is None:
             raw_name = _resource_backend_name(resource)
         raw_device = payload.get("device", resource.get("device", "cpu"))
@@ -118,6 +121,18 @@ class ComputeBackendSession:
             "backend.device_policy": self.device_policy,
             "backend.contract": self.contract_dict(),
         }
+
+    def close(self) -> None:
+        """Release backend-local resources when a session is replaced."""
+        backend = self._backend
+        if backend is None:
+            return
+        for name in ("close", "shutdown", "teardown"):
+            fn = getattr(backend, name, None)
+            if callable(fn):
+                fn()
+                break
+        self._backend = None
 
     def _resolve(self, requirements: tuple[str, ...], *, consumer: str = "") -> Any:
         name = self.requested_name.strip().lower()

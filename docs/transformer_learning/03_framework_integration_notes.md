@@ -65,14 +65,14 @@ nsgablack outer candidate
 不要在 `mlblack` 里新增：
 
 ```text
-LLMFlow
-AgentWorkflow
+LLMPrivateFlow
+AgentPrivateRunner
 TransformerRuntimeBackend
 GPULeaseAllocator
 PromptStageRunner
 ```
 
-这些属于 `nsgablack` 的编排、runtime、resource 语义。
+这些属于共享 Project substrate 的编排、runtime、resource 语义；如果需要搜索语义，再由 `nsgablack` Case 提供。
 
 `mlblack` 只应该暴露：
 

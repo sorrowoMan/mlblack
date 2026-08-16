@@ -1,10 +1,11 @@
 # mlblack
 
 `mlblack` is an optimization-first machine learning layer aligned with `nsgablack`.
-It is not a second orchestration framework. `nsgablack` owns solver groups,
-stages, event routing, parallel/runtime backends, and L0 resource leases.
-`mlblack` owns ML-specific components: representations, codecs, heads, problems,
-inner fitting, artifacts, reports, and the symbolic engine.
+Both frameworks share one Project / Case / Scaffold / L0 substrate. Orchestration
+belongs to that substrate, not to either semantic layer privately. `nsgablack`
+is responsible for optimization/search semantics; `mlblack` is responsible for
+ML semantics: representations, codecs, heads, problems, inner fitting, artifacts,
+reports, and the symbolic engine.
 
 ```text
 UnknownState
@@ -24,7 +25,7 @@ UnknownState
 | `Representation + Codec + Head` | decode unknown state into model/output semantics | computing objectives |
 | `LearningProblem` | consume data and return feedback | scheduling resources |
 | `Capability` | checkpoint/tracking/audit/report side effects | changing optimization semantics |
-| `ResourceContext` | passive resource context injected from outside | resource allocation or leases |
+| `ResourceContext` | project-level L0 grant consumed by a case | resource allocation or global leases |
 
 ## Quick Start: Single Inner Trainer
 
@@ -52,34 +53,35 @@ print(result.report["best_score"])
 
 ## Complex Orchestration
 
-Use `nsgablack` for complex orchestration. `mlblack` exposes problem/proxy surfaces
-that `nsgablack` can call as inner evaluation tasks.
+Use the shared Project/Case substrate for complex orchestration. A `mlblack` case
+can be outer or inner; it should not recreate a private orchestration or L0 stack.
 
 Current formal cross-framework examples:
 
 ```powershell
-python examples\cross_framework\nsgablack_outer_mlblack_inner\run_case.py
-python examples\cases\symbolic_orthogonal_nested\run_solver.py --check
-python examples\cases\symbolic_orthogonal_nested\run_solver.py --stage1-generations 1 --stage2-generations 1 --stage1-pop-size 4 --stage2-pop-size 4 --stage1-inner-steps 2 --stage2-inner-steps 2
+python examples\cases\cross_framework\run_project.py --check --build-check
+python examples\cases\symbolic_orthogonal_nested\run_project.py --check --build-check
+python examples\cases\symbolic_orthogonal_nested\run_project.py -- --stage1-generations 1 --stage2-generations 1 --stage1-pop-size 4 --stage2-pop-size 4 --stage1-inner-steps 2 --stage2-inner-steps 2
 ```
 
 ## Symbolic Nested Learning
 
 Symbolic learning is represented as nested optimization, not as an isolated
-symbolic trainer family.
+symbolic training stack with private orchestration.
 
 ```text
-Stage 1: nsgablack outer symbolic basis search
+Stage 1: outer symbolic basis search Case
   -> mlblack inner parameter fitting
   -> orthogonality, stability, complexity, rank metrics
 
-Stage 2: nsgablack outer basis-conditioned task expression search
+Stage 2: outer basis-conditioned task expression search Case
   -> mlblack inner parameter fitting
   -> RMSE / interval / probability / classification metrics
 ```
 
-The symbolic integration surface lives under `mlblack.integrations.nsgablack_symbolic`.
-The core package remains nsgablack-free.
+When these stages need optimization/search semantics, the outer Case is usually
+implemented with `nsgablack`. The symbolic integration surface lives under
+`mlblack.integrations.nsgablack_symbolic`; the core package remains nsgablack-free.
 
 ## Implemented Surface
 
@@ -90,7 +92,7 @@ The core package remains nsgablack-free.
 - numpy MLP and torch backprop adapter
 - numericizer, feature-space, conditional primitives/composer
 - nsgablack-style context contracts and doctor validation
-- passive `ResourceContext` only; no mlblack-owned L0 allocator
+- Project L0 `ResourceContext` consumption and audit; no private L0 allocator
 - catalog, experiment query, dashboard export, artifact HTML viewer
 - symbolic expression model, codec, multi-symbol head, symbolic gradients
 - function pool, grammar, dynamic pool, graph cache, path memory
@@ -101,8 +103,8 @@ The core package remains nsgablack-free.
 ## Checks
 
 ```powershell
-python -m compileall -q mlblack tests examples\cases\symbolic_orthogonal_nested examples\cross_framework
+python -m compileall -q project core catalog examples
 python -m pytest -q tests\test_symbolic_nsgablack_integration.py
 python -c "from mlblack.project import run_project_doctor, format_doctor_report; print(format_doctor_report(run_project_doctor('.', strict=True)))"
-python examples\orthogonal_point_demo.py
+python examples\cases\orthogonal_point_demo\run_project.py --check --build-check
 ```

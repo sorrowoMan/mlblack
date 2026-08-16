@@ -24,7 +24,7 @@ Doctor 关注：
 ```text
 context contract key 是否注册
 component contract 是否可解析
-是否重新出现 workflow/runtime/resource_request 等禁用口径
+是否重新出现私有运行器、私有调度器、私有资源申请等禁用口径
 core/resource 是否仍为 passive ResourceContext
 single-trainer assembly 是否没有外层编排字段
 catalog 是否能解析组件
@@ -68,7 +68,7 @@ cache:
 
 ## 4. Catalog
 
-Catalog 的目标是组件发现，不是 workflow 执行。
+Catalog 的目标是组件发现，不是私有执行面。
 
 应能查到：
 
@@ -200,14 +200,14 @@ basis artifact lineage
 每次大改后，人工检查是否出现：
 
 ```text
-mlblack.workflow
-mlblack.runtime
+mlblack.private_orchestrator
+mlblack.private_runtime
 ResourceRequest
-LocalResourceAllocator
+PrivateResourceAllocator
 StageRunner
 HybridTrainer
-MultiModalWorkflow
-ResidualWorkflow
+MultiModalPrivateRunner
+ResidualPrivateRunner
 adapter directly reads X/y
 problem directly chooses backend by get_backend("torch")
 codec silently switches backend
@@ -226,7 +226,7 @@ codec silently switches backend
 [ ] 是否能进 catalog 或文档索引
 [ ] 是否有至少一个 smoke/unit test
 [ ] 是否能被 ArtifactBuilder 或 reporting surface 描述
-[ ] 是否没有新增 mlblack-owned workflow/runtime/L0
+[ ] 是否没有新增 mlblack 私有编排或私有 L0
 ```
 
 ## 12. 推荐验证矩阵

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import importlib
 import inspect
@@ -810,7 +810,7 @@ def _default_entries() -> tuple[CatalogEntry, ...]:
             kind="assembly",
             import_path="mlblack.assembly.builders:build_trainer",
             tags=("scaffold", "trainer", "inner-training"),
-            summary="Builds one inner ML trainer; orchestration is delegated to nsgablack.",
+            summary="Builds one ML trainer Case surface; orchestration belongs to the shared Project substrate.",
         ),
         CatalogEntry(
             key="schema.scaffold_config",
@@ -1151,4 +1151,7 @@ def _default_entries() -> tuple[CatalogEntry, ...]:
         ),
     )
 
+
+# Alias: CatalogRegistry is the historical name for Catalog
+CatalogRegistry = Catalog
 

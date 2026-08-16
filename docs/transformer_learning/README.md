@@ -120,8 +120,9 @@ TransformerAdapter:
 TransformerArtifact:
   config、weights ref、LoRA delta、token trace、attention summary、eval report
 
-nsgablack outer:
+outer search Case:
   搜 architecture mechanism、head choice、LoRA rank、prompt/RAG/tool policy
+  需要优化搜索/Pareto 语义时通常由 nsgablack 实现
 ```
 
 ## 当前工程边界

@@ -48,7 +48,7 @@ class RandomSearchAdapter(OptimizerAdapter):
         self.best_state: UnknownState | None = None
         self.best_score: float | None = None
 
-    def propose(self, trainer: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
+    def propose(self, control: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
         n = max(1, int(self.config.population_size))
         states: list[UnknownState] = []
         if self.config.exploit_best and self.best_state is not None:
@@ -58,16 +58,16 @@ class RandomSearchAdapter(OptimizerAdapter):
                 noise = self._rng.normal(0.0, float(self.config.mutation_scale), size=base.shape[0])
                 states.append(self.best_state.with_values(base + noise, adapter=self.name, source="mutated_best"))
             return tuple(states)
-        return tuple(trainer.init_population(n, context))
+        return tuple(control.init_population(n, context))
 
     def update(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
     ) -> None:
-        _ = trainer
+        _ = control
         _ = context
         for state, fb in zip(states, feedback):
             score = fb.scalar_score()
@@ -82,6 +82,14 @@ class RandomSearchAdapter(OptimizerAdapter):
             "population_size": int(self.config.population_size),
             "mutation_scale": float(self.config.mutation_scale),
         }
+
+    def get_population(self) -> tuple[UnknownState, ...] | None:
+        return None if self.best_state is None else (self.best_state,)
+
+    def set_population(self, population: Sequence[UnknownState]) -> bool:
+        states = tuple(population)
+        self.best_state = states[0] if states else None
+        return True
 
     def set_state(self, state: Mapping[str, Any]) -> None:
         values = state.get("best_state")

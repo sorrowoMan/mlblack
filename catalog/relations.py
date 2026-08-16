@@ -10,7 +10,7 @@ from .registry import CatalogEntry
 _ARTIFACT_HINTS = ("artifact", "_ref", "_path", "model_path", "snapshot", "report")
 
 _FLOW_STAGES: tuple[dict[str, Any], ...] = (
-    {"id": "outer_bridge", "label": "nsgablack outer search / orchestration", "kinds": ("integration", "nsgablack_symbolic", "nsgablack_neural", "problem_bridge")},
+    {"id": "outer_bridge", "label": "standard outer Case / search bridge", "kinds": ("integration", "nsgablack_symbolic", "nsgablack_neural", "problem_bridge")},
     {"id": "resource_backend", "label": "ResourceContext / backend capability", "kinds": ("backend", "backend_capability")},
     {"id": "data_view", "label": "DataView / numericizer / feature pipeline", "kinds": ("data_view", "numericizer", "pipeline", "conditional", "symbolic_pipeline")},
     {"id": "model_space", "label": "Representation / Codec / Model spec", "kinds": ("representation", "codec", "model", "provider")},
@@ -53,7 +53,7 @@ _KIND_USAGE: dict[str, dict[str, tuple[str, ...]]] = {
         "required_roles": ("trainer", "assembly", "artifact"),
     },
     "trainer": {
-        "use_when": ("需要运行一个单体 ML training/evaluation 生命周期时使用；跨 trainer 编排交给 nsgablack。",),
+        "use_when": ("需要运行一个单体 ML training/evaluation 生命周期时使用；跨 trainer 编排属于共享 Project substrate，需要搜索语义时再使用 nsgablack Case。",),
         "minimal_wiring": ("Trainer = Adapter + Representation + Problem + Capability + Bias",),
         "required_roles": ("adapter", "representation", "problem"),
     },
@@ -113,18 +113,18 @@ _KIND_USAGE: dict[str, dict[str, tuple[str, ...]]] = {
         "required_roles": ("backend",),
     },
     "integration": {
-        "use_when": ("需要把 mlblack inner training/evaluation 暴露给 nsgablack 或其它外层系统时使用。",),
-        "minimal_wiring": ("nsgablack task/component_overrides/ResourceContext -> mlblack bridge -> artifact/result payload",),
+        "use_when": ("需要把 mlblack training/evaluation 暴露给标准外层 Case 或其它外层系统时使用。",),
+        "minimal_wiring": ("outer task/component_overrides/ResourceContext -> mlblack bridge -> artifact/result payload",),
         "required_roles": ("problem_bridge", "trainer", "artifact"),
     },
     "nsgablack_symbolic": {
-        "use_when": ("需要让 nsgablack 外层搜索 symbolic basis/function pool/task，而 mlblack 负责内层模型语义和参数拟合时使用。",),
-        "minimal_wiring": ("nsgablack outer candidate -> symbolic integration problem -> mlblack fitter/artifact -> feedback.objectives",),
+        "use_when": ("需要用 nsgablack 搜索语义搜索 symbolic basis/function pool/task，而 mlblack 负责模型语义和参数拟合时使用。",),
+        "minimal_wiring": ("nsgablack search candidate -> symbolic integration problem -> mlblack fitter/artifact -> feedback.objectives",),
         "required_roles": ("symbolic_pipeline", "problem", "artifact"),
     },
     "nsgablack_neural": {
-        "use_when": ("需要让 nsgablack 搜 neural spec/结构/外层任务，而 mlblack 负责 neural codec/problem/backend 能力时使用。",),
-        "minimal_wiring": ("nsgablack outer candidate/spec -> mlblack neural codec/problem -> artifact/result payload",),
+        "use_when": ("需要用 nsgablack 搜索语义搜索 neural spec/结构/任务，而 mlblack 负责 neural codec/problem/backend 能力时使用。",),
+        "minimal_wiring": ("nsgablack search candidate/spec -> mlblack neural codec/problem -> artifact/result payload",),
         "required_roles": ("codec", "problem", "backend"),
     },
     "assembly": {
@@ -186,7 +186,7 @@ _EXACT_USAGE_HINTS: dict[str, dict[str, tuple[str, ...]]] = {
         ),
         "minimal_wiring": (
             "NumericDataView + reference_model.predict(X) -> ModelConditionedTargetComponent -> transformed NumericDataView",
-            "外层阶段/多模型编排交给 nsgablack；mlblack 只负责这一个数据变换组件。",
+            "外层阶段/多模型编排属于共享 Project substrate；mlblack 只负责这一个数据变换组件。",
         ),
         "required_roles": ("data_view", "reference_model", "problem"),
         "config_keys": ("mode", "reference_name", "append_prediction_feature", "prediction_feature_name", "reference_context_key"),
@@ -194,7 +194,7 @@ _EXACT_USAGE_HINTS: dict[str, dict[str, tuple[str, ...]]] = {
     "model.integrated_prediction": {
         "use_when": (
             "已有多个 fitted component models，并希望把它们的 prediction 按 additive/mean 等策略组合成一个集成预测模型时使用。",
-            "它只组合预测，不拥有训练编排；多模型训练、选择和资源编排应交给 nsgablack。",
+            "它只组合预测，不拥有训练编排；多模型训练、选择和资源编排属于共享 Project substrate，需要搜索时再使用 nsgablack Case。",
         ),
         "minimal_wiring": ("component models + PredictionIntegrationSpec + PredictionIOContract -> IntegratedPredictionModel.predict",),
         "required_roles": ("component_models", "prediction_io_contract", "problem"),
@@ -234,7 +234,7 @@ _PATTERN_RULES: tuple[tuple[tuple[str, ...], dict[str, tuple[str, ...]]], ...] =
     (("postgres",), {"use_when": ("当 catalog 需要落到 PostgreSQL 供多进程/远端查询，而不是只用本地 SQLite 时使用。",), "minimal_wiring": ("PostgreSQL URL -> PostgresCatalogStore -> materialize/query",)}),
     (("sqlite",), {"use_when": ("当 catalog 需要本地默认 DB 快照和离线查询时使用。",), "minimal_wiring": (".mlblack/catalog.sqlite -> SQLiteCatalogStore -> webui/query",)}),
     (("backend",), {"use_when": ("当组件需要显式执行能力边界，例如 parameters.layout、neural.lowering、optimizer step 或 estimator fit 时使用。",), "minimal_wiring": ("backend provider/session -> capability contract -> consuming Adapter/Codec/Problem",)}),
-    (("nsgablack",), {"use_when": ("当能力涉及外层搜索、阶段、嵌套评估、Pareto 或 ResourceContext 注入时使用；mlblack 不在内部私造 workflow/runtime。",), "minimal_wiring": ("nsgablack outer solver/task -> mlblack bridge/proxy -> Feedback/artifact/result payload",)}),
+    (("nsgablack",), {"use_when": ("当能力涉及优化搜索、Pareto 或结构/策略候选生成时使用 nsgablack 语义；阶段、嵌套评估和 ResourceContext 注入属于共享 Project substrate。",), "minimal_wiring": ("nsgablack search Case/task -> mlblack bridge/proxy -> Feedback/artifact/result payload",)}),
     (("time_series",), {"use_when": ("当数据具有时间顺序、lag/window/horizon、rolling backtest 或 forecast 语义时使用。",), "minimal_wiring": ("TimeSeriesDataView -> TimeSeriesWindowing/ForecastRepresentation -> forecast model -> TimeSeriesForecastingProblem",)}),
     (("forecast",), {"use_when": ("当组件负责生成、包装或评估未来 horizon 预测时使用。",), "minimal_wiring": ("history + horizon + optional exogenous_future -> forecast(...) -> metrics/artifact",)}),
     (("rolling",), {"use_when": ("当需要滚动起点 backtest，而不是一次性 holdout tail 评估时使用。",), "minimal_wiring": ("rolling origins -> repeated forecast(history, horizon) -> aggregate RMSE/MAE/MAPE/MASE",)}),
@@ -368,13 +368,13 @@ def _dynamic_usage_hint(entry: CatalogEntry, *, fields: Mapping[str, Sequence[st
     elif kind in {"data_view", "pipeline", "numericizer", "conditional", "symbolic_pipeline"}:
         minimal_wiring.append(f"{title} 位于数据/特征进入 Problem 前的准备链，输入输出以 DataView 或 context 字段为边界。")
     elif kind in {"nsgablack_symbolic", "nsgablack_neural", "integration", "problem_bridge"}:
-        minimal_wiring.append(f"{title} 是跨框架边界：外层 nsgablack 负责编排/资源，mlblack 只提供 inner semantic/evaluation surface。")
+        minimal_wiring.append(f"{title} 是跨框架边界：共享 Project substrate 负责编排/资源，nsgablack 只在需要搜索语义时作为 Case 参与，mlblack 提供 ML semantic/evaluation surface。")
     elif kind in {"capability", "dashboard", "catalog", "experiment"}:
         minimal_wiring.append(f"{title} 增强观测、查询、持久化或展示，不改变模型优化语义。")
     elif kind == "model":
         minimal_wiring.append(f"{title} 表示可预测/可描述的模型对象，由 Representation、Artifact 或组合组件产生后交给 Problem。")
     elif kind == "provider":
-        minimal_wiring.append(f"{title} 根据 Spec/DataView 构建模型或 artifact；外层阶段、并行和资源授权仍由 nsgablack/Trainer context 提供。")
+        minimal_wiring.append(f"{title} 根据 Spec/DataView 构建模型或 artifact；外层阶段、并行和资源授权仍由共享 Project substrate 提供。")
 
     contract_line = _contract_summary_line(fields)
     if contract_line:
@@ -432,7 +432,7 @@ def _capability_notes(entry: CatalogEntry, *, fields: Mapping[str, Sequence[str]
     if fields.get("resource_refs"):
         notes.append("包含 resource 字段；运行时必须读取外层注入的 ResourceContext，不应在 mlblack 内私自分配资源。")
     if entry.kind.startswith("nsgablack") or entry.kind in {"integration", "problem_bridge"}:
-        notes.append("跨框架入口：nsgablack 负责编排、并行、Pareto 和资源授权；mlblack 只暴露 inner task/result/artifact surface。")
+        notes.append("跨框架入口：共享 Project substrate 负责编排、并行和资源授权；nsgablack 负责搜索/Pareto 语义；mlblack 暴露 task/result/artifact surface。")
     return tuple(notes)
 
 

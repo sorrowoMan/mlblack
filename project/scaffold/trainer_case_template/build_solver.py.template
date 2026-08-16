@@ -1,14 +1,37 @@
-"""Canonical build entry for a unified Solver = Trainer case."""
+"""Canonical build entry for a unified standard case (mlblack trainer)."""
 
-from __future__ import annotations
+from mlblack.core.problem import LearningProblem
+from mlblack.core.adapter import OptimizerAdapter
+from mlblack.core.representation import ModelRepresentation
+from mlblack.bias.base import OptimizationBias
+from blackbase.plugin import PluginBase
+
+from .pipeline import build_pipeline
 
 
-def build_solver():
-    """Build and return the configured Trainer/Solver instance."""
+def build_solver(config=None, *, resource_context=None, component_overrides=None):
+    """Build and return the configured Trainer/Solver instance.
 
+    Components inherit from blackbase ABC base classes via mlblack:
+      - Problem: LearningProblem(ProblemBase, ContractMixin) → implement evaluate(candidate, context)
+      - Adapter: OptimizerAdapter(AdapterBase, ContractMixin) → implement propose/update
+      - Representation: ModelRepresentation(RepresentationBase, ContractMixin) → implement init/decode
+      - Bias: OptimizationBias(BiasBase, ContractMixin) → implement project_context
+      - Capability: PluginBase → override lifecycle hooks
+
+    ``resource_context`` is granted by the shared Project/Case/Scaffold/L0
+    substrate. ``component_overrides`` is the standard nested/cross-framework
+    customization payload.
+    """
+
+    pipeline = build_pipeline(
+        resource_context=resource_context,
+        component_overrides=component_overrides,
+    )
+    del config, pipeline
     # Wire problem, pipeline/representation, adapter, bias, plugins, runtime here.
-    # Keep cross-case orchestration in nsgablack project-level surfaces.
-    return None
+    # Keep cross-case orchestration in the shared project-level substrate.
+    raise NotImplementedError("TODO: implement build_solver")
 
 
 def main(argv=None) -> None:

@@ -1,109 +1,85 @@
-﻿# Model Composition And Orchestration Boundary
+# Model Composition Boundary
 
-这份文档记录当前结论：复杂机器学习结构不应该在 `mlblack` 里新增 workflow/runtime，而应该拆成可组合的 ML 语义组件，再交给 `nsgablack` 做阶段、组、串行和资源编排。
+Complex ML structures should be expressed as composable ML semantic components, then run through the shared Project / Case / Scaffold substrate.
 
-## 1. 核心判断
+This means:
 
-```text
-复杂模型 = 多个已训练模型 + 一个模型整合语义
-多阶段训练 = 外层编排调用多个 inner trainer
-残差学习 = 下一阶段 target transform 的一种策略
-多模态融合 = 多个 component model 各自吃自己的输入，然后在整合层融合输出
-```
+- `mlblack` defines what a model, target transform, composition rule, artifact, and metric mean.
+- the shared substrate defines stage order, parallelism, nested Case calls, resource grants, and run audit.
+- `nsgablack` may provide the outer search semantics when the Project needs optimization over structures, budgets, or choices.
 
-不要新增：
+## Core Judgment
 
 ```text
-HybridTrainer
-ResidualWorkflow
-MultiModalWorkflow
-mlblack SerialRuntime
+complex model = fitted components + explicit composition semantics
+multi-step training = Project runs multiple standard Cases or nested Case calls
+residual learning = target transform plus additive model composition
+multi-modal fusion = explicit per-component I/O contract plus integration model
 ```
 
-应该新增和复用：
+Do not create a private mlblack orchestration stack to express those patterns. Add or reuse semantic components instead:
 
 ```text
 IntegratedPredictionModel
 PredictionIntegrationComponent
 PredictionIOContract
 ModelConditionedTargetComponent
+ArtifactBuilder
 ```
 
-## 2. 为什么需要 I/O contract
+## Why I/O Contracts Matter
 
-模型整合不能假设所有 component 都吃同一个 `X`。
+Composition cannot assume every component consumes the same `X`.
 
-典型场景：
+Examples:
 
 ```text
-残差模型:
+residual:
   main_model.predict(X_numeric)
   residual_model.predict(X_numeric)
 
 stacking:
-  stage2_model.predict([X_numeric, stage1_prediction])
+  meta_model.predict([X_numeric, stage1_prediction])
 
-多模态:
+multi-modal:
   text_model.predict(input_ids)
   image_model.predict(image_tensor)
   tabular_model.predict(tabular_features)
-
-主线 + 修正器:
-  main_model.predict(global_features)
-  correction_model.predict(local_features)
 ```
 
-所以整合层必须显式声明：
+The integration layer must declare:
 
-```text
-每个 component 从输入 mapping 的哪个 key 取数据
-该输入应该是什么 kind / ndim / feature count
-component prediction 应该是什么输出形态
-不同 component prediction 是否必须 row-aligned
-最终 integration 如何组合 prediction
-```
+- which input key each component consumes
+- expected kind, rank, and feature count
+- output shape and row alignment
+- final integration rule
 
-## 3. 当前 I/O contract
+## Current I/O Contract
 
-位置：
+Location:
 
 ```text
 mlblack.models.composition
 ```
 
-核心对象：
+Key objects:
 
 ```text
-PredictionInputSpec:
-  key: 从输入 mapping 中取哪个字段
-  kind: numeric_array / array / tensor_like / any
-  ndim: 输入维度要求，例如 tabular=2, image=4
-  n_features: 二维 tabular 的特征数要求
-  required: 缺失时是否报错
-
-PredictionOutputSpec:
-  kind: point_vector
-  requires_aligned_rows: component 输出行数是否必须一致
-
-PredictionIOContract:
-  component_inputs: 每个 component 的输入要求
-  shared_input_key: mapping 中的共享输入 key，默认 shared
-  output: 统一输出要求
+PredictionInputSpec
+PredictionOutputSpec
+PredictionIOContract
+PredictionIntegrationComponent
+IntegratedPredictionModel
 ```
 
-当前 additive/mean integration 消费的是 `point_vector`：
+Current additive and mean integration consume point-vector outputs:
 
 ```text
-允许输出:
-  shape = (n,)
-  shape = (n, 1)
-
-拒绝输出:
-  shape = (n, k), k > 1
-  未对齐 row count
+allowed: shape = (n,) or (n, 1)
+rejected: shape = (n, k), k > 1, or row-count mismatch
 ```
 
-## 4. 同输入残差模型
+## Residual Example
 
 ```python
 from mlblack.models import PredictionIntegrationComponent
@@ -121,12 +97,11 @@ final_model = PredictionIntegrationComponent.additive(
 ).compose(
     {"main": main_model, "residual": residual_result.best_model},
 )
-
-# 非 mapping 输入会作为 shared input 传给每个 component
-prediction = final_model.predict(X_numeric)
 ```
 
-## 5. 不同输入多分支模型
+The Project decides when these Cases run and what resources they receive. The model objects only define ML semantics.
+
+## Multi-Input Example
 
 ```python
 from mlblack.models import (
@@ -147,109 +122,12 @@ final_model = PredictionIntegrationComponent.additive(
     component_order=("tabular", "image", "text"),
     weights={"tabular": 0.4, "image": 0.3, "text": 0.3},
     io_contract=io_contract,
-).compose(
-    {
-        "tabular": tabular_model,
-        "image": image_model,
-        "text": text_model,
-    }
-)
-
-prediction = final_model.predict(
-    {
-        "tabular": X_tabular,
-        "image": X_image,
-        "input_ids": X_tokens,
-    }
-)
+).compose({...})
 ```
 
-这个模型只定义 inference/evaluation 的组合语义。哪个分支先训练、并行训练还是串行训练、用什么资源，仍然归 `nsgablack` 编排。
+## Boundary Checklist
 
-## 6. ModelConditionedTargetComponent
-
-位置：
-
-```text
-mlblack.pipeline.model_conditioning
-```
-
-职责：
-
-```text
-读取 NumericDataView
-调用 reference_model.predict(X)
-生成下一阶段训练用的 y
-可选把 reference prediction 追加成新 feature
-```
-
-残差场景：
-
-```text
-y_next = y - main_model.predict(X)
-```
-
-stacking 场景：
-
-```text
-X_next = [X, main_model.predict(X)]
-y_next = y
-```
-
-它不是 trainer，也不是 workflow。它只是数据/目标变换组件。
-
-## 7. IntegratedPredictionModel
-
-位置：
-
-```text
-mlblack.models.composition
-```
-
-职责：
-
-```text
-保存多个已训练 component models
-按 PredictionIOContract 路由输入
-调用每个 component.predict(...)
-校验输出 shape
-按 PredictionIntegrationSpec 组合输出
-```
-
-当前支持的 integration：
-
-```text
-additive / sum / residual_sum
-mean / average
-```
-
-后续可以扩展：
-
-```text
-learned linear fusion
-router/gated fusion
-rank fusion
-probability calibration fusion
-multi-output fusion
-```
-
-扩展时仍然只新增 integration spec/model 语义，不新增 mlblack workflow。
-
-## 8. 当前验收
-
-对应测试：
-
-```powershell
-python -m pytest -q tests\test_model_integration.py
-```
-
-覆盖：
-
-```text
-ModelConditionedTargetComponent 生成 residual target
-普通 mlblack trainer 训练 residual target
-IntegratedPredictionModel 合成 main + residual
-IntegratedPredictionModel 路由不同 component 输入
-输入 key / ndim / n_features / output shape contract 失败时 fail-fast
-ArtifactBuilder 输出 integrated_model artifact
-```
+- Does this object define prediction, target transform, metric, or artifact semantics? Put it in `mlblack`.
+- Does it choose stage order, fanout, or resource grants? Put it in the shared Project substrate.
+- Does it search over structures, configurations, budgets, or tradeoffs? Use `nsgablack` search semantics as a Case.
+- Does it need another runnable unit? Make another standard Case rather than adding a hidden runner.

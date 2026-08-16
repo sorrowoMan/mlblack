@@ -51,24 +51,24 @@ class GradientDescentAdapter(OptimizerAdapter):
         self.current_state: UnknownState | None = None
         self.last_gradient_norm: float | None = None
 
-    def setup(self, trainer: Any) -> None:
-        _ = trainer
+    def setup(self, control: Any) -> None:
+        _ = control
         if self.current_state is None:
             self.last_gradient_norm = None
 
-    def propose(self, trainer: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
+    def propose(self, control: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
         if self.current_state is None:
-            self.current_state = trainer.init_state(context)
+            self.current_state = control.init_state(context)
         return (self.current_state,)
 
     def update(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
     ) -> None:
-        _ = trainer
+        _ = control
         _ = context
         if not states or not feedback:
             return
@@ -97,6 +97,14 @@ class GradientDescentAdapter(OptimizerAdapter):
             "last_gradient_norm": self.last_gradient_norm,
             "learning_rate": float(self.config.learning_rate),
         }
+
+    def get_population(self) -> tuple[UnknownState, ...] | None:
+        return None if self.current_state is None else (self.current_state,)
+
+    def set_population(self, population: Sequence[UnknownState]) -> bool:
+        states = tuple(population)
+        self.current_state = states[0] if states else None
+        return True
 
     def set_state(self, state: Mapping[str, Any]) -> None:
         values = state.get("current_state")

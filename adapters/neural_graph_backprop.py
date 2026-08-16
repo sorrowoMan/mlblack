@@ -76,9 +76,9 @@ class NeuralGraphBackpropAdapter(OptimizerAdapter):
         self.actual_device = "cpu"
         self.optimizer_state_dict: Mapping[str, Any] | None = None
 
-    def setup(self, trainer: Any) -> None:
-        if hasattr(trainer, "require_compute_backend"):
-            self.backend = trainer.require_compute_backend(self.backend_requires, consumer=self.name)
+    def setup(self, control: Any) -> None:
+        if hasattr(control, "require_compute_backend"):
+            self.backend = control.require_compute_backend(self.backend_requires, consumer=self.name)
         else:
             self.backend = None
         if self.current_state is None:
@@ -87,14 +87,14 @@ class NeuralGraphBackpropAdapter(OptimizerAdapter):
             self.step_index = 0
             self.optimizer_state_dict = None
 
-    def propose(self, trainer: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
+    def propose(self, control: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
         if self.current_state is None:
-            self.current_state = trainer.init_candidate(context)
+            self.current_state = control.init_candidate(context)
         return (self.current_state,)
 
     def update(
         self,
-        trainer: Any,
+        control: Any,
         states: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
@@ -109,7 +109,7 @@ class NeuralGraphBackpropAdapter(OptimizerAdapter):
             torch.manual_seed(int(self.config.random_seed) + int(self.step_index))
 
         state = states[0]
-        model = trainer.decode_candidate(state, self._context_with_backend(context))
+        model = control.decode_candidate(state, self._context_with_backend(context))
         strict = str(context.get("backend.device_policy", "fallback_cpu")).lower() == "strict"
         device = self.backend.tensor.device(context, fallback=str(context.get("backend.device", "cpu")), strict=strict)
         self.actual_device = str(device)
@@ -119,7 +119,7 @@ class NeuralGraphBackpropAdapter(OptimizerAdapter):
             optimizer.load_state_dict(self.backend.autograd.optimizer_state_to_device(self.optimizer_state_dict, device))
         self.backend.optimizers.zero_grad(optimizer)
 
-        problem = getattr(trainer, "problem", None)
+        problem = getattr(control, "problem", None)
         if problem is None:
             raise ValueError("NeuralGraphBackpropAdapter requires trainer.problem")
         compute_backend_loss = getattr(problem, "compute_backend_loss", None)
@@ -177,6 +177,14 @@ class NeuralGraphBackpropAdapter(OptimizerAdapter):
             "weight_decay": float(self.config.weight_decay),
             "actual_device": str(self.actual_device),
         }
+
+    def get_population(self) -> tuple[UnknownState, ...] | None:
+        return None if self.current_state is None else (self.current_state,)
+
+    def set_population(self, population: Sequence[UnknownState]) -> bool:
+        states = tuple(population)
+        self.current_state = states[0] if states else None
+        return True
 
     def set_state(self, state: Mapping[str, Any]) -> None:
         values = state.get("current_state")

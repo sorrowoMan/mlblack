@@ -1,0 +1,45 @@
+"""Case-level trainer pipeline primary entry.
+
+Keep one pipeline entry per case. Slot orchestration is delegated to the
+shared pipeline kernel; mlblack maps semantic slots such as transform/codec/head.
+"""
+
+from typing import Any, Mapping
+
+from blackbase.kernel import PipelineSpec, build_pipeline_kernel
+
+
+def build_pipeline(
+    *,
+    resource_context: Mapping[str, Any] | None = None,
+    component_overrides: Mapping[str, Any] | None = None,
+):
+    """Build one case-level ml pipeline."""
+    del resource_context
+    overrides = dict(component_overrides or {})
+    registry = dict(overrides.get("pipeline_operators", {}) or {})
+    spec = PipelineSpec.from_value(
+        overrides.get(
+            "pipeline_spec",
+            {
+                "key": "trainer_default",
+                "slots": (),
+            },
+        )
+    )
+    kernel = build_pipeline_kernel(spec, operator_registry=registry)
+    return kernel.representation_pipeline
+
+
+def run_pipeline_slot(
+    slot: str,
+    value,
+    *,
+    component_overrides: Mapping[str, Any] | None = None,
+    context: Mapping[str, Any] | None = None,
+):
+    overrides = dict(component_overrides or {})
+    registry = dict(overrides.get("pipeline_operators", {}) or {})
+    spec = PipelineSpec.from_value(overrides.get("pipeline_spec", {"key": "trainer_default", "slots": ()}))
+    kernel = build_pipeline_kernel(spec, operator_registry=registry)
+    return kernel.run_slot(slot, value, dict(context or {}))
