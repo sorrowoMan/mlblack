@@ -17,6 +17,12 @@ from .artifacts import (
     XGBoostArtifact,
 )
 from .artifact_viewer import render_artifact_html, save_artifact_html
+from .artifact_provider import (
+    ArtifactProvider,
+    CaseRuntimeArtifactProvider,
+    SerializerSelector,
+    select_model_serializer,
+)
 from .backend_session import ComputeBackendSession, ComputeBackendSpec, get_compute_backend_from_context
 from .capability import Capability
 from .context_contracts import ContextContract
@@ -46,8 +52,10 @@ from .types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
 __all__ = [
     "ArtifactBuilder",
     "ArtifactBundle",
+    "ArtifactProvider",
     "BlankTrainer",
     "Capability",
+    "CaseRuntimeArtifactProvider",
     "ComponentContract",
     "ComposableTrainer",
     "ComputeBackendSession",
@@ -78,6 +86,7 @@ __all__ = [
     "RunReport",
     "SklearnMLPArtifact",
     "SnapshotRecord",
+    "SerializerSelector",
     "SymbolicIntervalArtifact",
     "SymbolicModelArtifact",
     "TorchModelArtifact",
@@ -103,6 +112,7 @@ __all__ = [
     "replay_trainer",
     "restore_trainer_state",
     "save_artifact_html",
+    "select_model_serializer",
     "stable_state_signature",
     "unknown_context_keys",
     "validate_context_keys",

@@ -1,18 +1,27 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import inspect
+import time
 from typing import Any, Mapping, MutableMapping, Sequence
 from uuid import uuid4
 
 import numpy as np
 
-from nsgablack.plugins.base import Plugin, PluginManager
+from blackbase.adapters.mlblack.plugin import CapabilityPluginAdapter
+from blackbase.context import (
+    GENERIC_SNAPSHOT_SCHEMA,
+    unwrap_snapshot_payload,
+    wrap_snapshot_payload,
+)
+from blackbase.plugin import Plugin, PluginManager
+from blackbase.resources import DataRef
 
 from .adapter import OptimizerAdapter
+from .artifact_provider import ArtifactProvider, CaseRuntimeArtifactProvider
 from .backend_session import ComputeBackendSession, ComputeBackendSpec
 from .capability import Capability
 from .problem import LearningProblem
-from .representation import ModelRepresentation
+from .representation import ModelRepresentation, unknown_state_fingerprint
 from .resources import ResourceContext, coerce_resource_context
 from .stores import InMemoryContextStore, InMemorySnapshotStore
 from .state import build_trainer_state
@@ -36,35 +45,47 @@ class BlankTrainer:
         constraint_penalty: float = 1e6,
         resource_context: Mapping[str, Any] | ResourceContext | None = None,
         compute_backend: str | Mapping[str, Any] | ComputeBackendSpec | ComputeBackendSession | None = None,
+        parallel_evaluation: bool = False,
+        artifact_provider: ArtifactProvider | None = None,
     ) -> None:
         self.problem = problem
         self.representation_pipeline = representation
         self.run_name = str(run_name)
         self.constraint_penalty = float(constraint_penalty)
+        self._resource_context_explicit = resource_context is not None
         self.resource_context = coerce_resource_context(resource_context)
+        self.case_runtime: Any | None = None
+        self.artifact_provider: ArtifactProvider = (
+            artifact_provider or CaseRuntimeArtifactProvider()
+        )
+        self._compute_backend_request = (
+            compute_backend.spec if isinstance(compute_backend, ComputeBackendSession) else compute_backend
+        )
         self.compute_backend_session = (
             compute_backend
-            if isinstance(compute_backend, ComputeBackendSession)
-            else ComputeBackendSession(
-                ComputeBackendSpec.from_value(
-                    compute_backend,
-                    resource_context=self.resource_context.as_dict(),
-                )
-            )
+            if isinstance(compute_backend, ComputeBackendSession) and not self._resource_context_explicit
+            else self._build_compute_backend_session()
         )
 
         self.plugin_manager = PluginManager()
-        self._capability_adapters: list[_CapabilityPluginAdapter] = []  # backward compat
+        self._capability_adapters: list[CapabilityPluginAdapter] = []  # backward compat
         self.biases: list[Any] = []
         self.context_store: MutableMapping[str, Any] = InMemoryContextStore()
         self.snapshot_store: MutableMapping[str, Any] = InMemorySnapshotStore()
         self.history: list[dict[str, Any]] = []
+        self.parallel_evaluation = bool(parallel_evaluation)
+        self._completion_policy: Any = None
 
         self.step_index = 0
         self.population: tuple[UnknownState, ...] = tuple()
         self.feedback: tuple[Feedback, ...] = tuple()
+        self.last_evaluated_population: tuple[UnknownState, ...] = tuple()
+        self.last_evaluated_feedback: tuple[Feedback, ...] = tuple()
+        self._evaluation_seed_population: tuple[UnknownState, ...] = tuple()
         self.best_state: UnknownState | None = None
         self.best_model: Any | None = None
+        self.best_model_ref: DataRef | None = None
+        self.result_artifact_refs: dict[str, DataRef] = {}
         self.best_feedback: Feedback | None = None
         self.best_score: float | None = None
 
@@ -105,7 +126,7 @@ class BlankTrainer:
 
     def add_capability(self, capability: Capability) -> "BlankTrainer":
         """Backward-compat: wrap a legacy Capability as a Plugin adapter."""
-        adapter = _CapabilityPluginAdapter(capability)
+        adapter = CapabilityPluginAdapter(capability)
         self._capability_adapters.append(adapter)
         return self.add_plugin(adapter)
 
@@ -122,11 +143,33 @@ class BlankTrainer:
         return self
 
     def set_resource_context(self, context: Mapping[str, Any] | ResourceContext | None) -> "BlankTrainer":
+        previous_session = self.compute_backend_session
+        self._resource_context_explicit = context is not None
         self.resource_context = coerce_resource_context(context)
+        self.compute_backend_session = self._build_compute_backend_session()
+        previous_session.close()
+        self._refresh_l0_pool_after_resource_change()
         return self
 
     def get_resource_context(self) -> ResourceContext:
         return self.resource_context
+
+    def set_case_runtime(self, runtime: Any) -> "BlankTrainer":
+        """Accept the shared Case runtime without owning orchestration."""
+
+        self.case_runtime = runtime
+        return self
+
+    def set_artifact_provider(self, provider: ArtifactProvider) -> "BlankTrainer":
+        if not callable(getattr(provider, "publish_best_model", None)):
+            raise TypeError("artifact provider must implement publish_best_model(trainer)")
+        self.artifact_provider = provider
+        return self
+
+    def checkpoint_case_runtime(self) -> None:
+        checkpoint = getattr(self.case_runtime, "checkpoint", None)
+        if callable(checkpoint):
+            checkpoint()
 
     def get_population(self) -> tuple[UnknownState, ...]:
         return tuple(self.population)
@@ -138,12 +181,67 @@ class BlankTrainer:
     def get_feedback(self) -> tuple[Feedback, ...]:
         return tuple(self.feedback)
 
+    def set_best_model_ref(self, ref: DataRef | Mapping[str, Any] | None) -> "BlankTrainer":
+        """Attach the published artifact used by the transport result codec."""
+
+        self.best_model_ref = (
+            None
+            if ref is None
+            else ref
+            if isinstance(ref, DataRef)
+            else DataRef.from_dict(ref)
+        )
+        if self.best_model_ref is None:
+            self.result_artifact_refs.pop("best_model", None)
+        else:
+            self.result_artifact_refs["best_model"] = self.best_model_ref
+        return self
+
+    def register_result_artifact(
+        self,
+        name: str,
+        ref: DataRef | Mapping[str, Any],
+    ) -> "BlankTrainer":
+        item = ref if isinstance(ref, DataRef) else DataRef.from_dict(ref)
+        self.result_artifact_refs[str(name)] = item
+        return self
+
+    def publish_best_model_artifact(self) -> DataRef | None:
+        """Publish the selected model before constructing a transport result."""
+
+        if self.best_model is None or self.best_model_ref is not None:
+            return self.best_model_ref
+        self.checkpoint_case_runtime()
+        ref = self.artifact_provider.publish_best_model(self)
+        if ref is not None:
+            self.set_best_model_ref(ref)
+        self.checkpoint_case_runtime()
+        return self.best_model_ref
+
     def set_feedback(self, feedback: Sequence[Feedback]) -> "BlankTrainer":
         self.feedback = tuple(feedback)
         return self
 
+    def set_parallel_evaluation(self, enabled: bool = True) -> "BlankTrainer":
+        """Explicitly opt into thread-parallel candidate evaluation.
+
+        The problem, representation and enabled evaluation plugins must each
+        declare ``thread_safe_evaluation = True`` (or ``thread_safe = True``).
+        A resource grant alone never implies component thread safety.
+        """
+        self.parallel_evaluation = bool(enabled)
+        self._refresh_l0_pool_after_resource_change()
+        return self
+
+    def set_completion_policy(self, policy: Any) -> "BlankTrainer":
+        """Install a cooperative policy checked between Trainer steps."""
+        if policy is not None and not callable(getattr(policy, "is_complete", None)):
+            raise TypeError("completion policy must provide is_complete(...) support")
+        self._completion_policy = policy
+        return self
+
     def build_context(self, extra: Mapping[str, Any] | None = None) -> dict[str, Any]:
-        ctx = dict(self.context_store)
+        ctx = self.context_store.snapshot()
         resource_context = self.resource_context.as_dict()
         ctx.update(
             {
@@ -163,6 +261,9 @@ class BlankTrainer:
             project = getattr(bias, "project_context", None)
             if callable(project):
                 ctx = dict(project(self, ctx))
+        plugin_context = self.plugin_manager.on_context_build(ctx)
+        if isinstance(plugin_context, dict):
+            ctx = plugin_context
         return ctx
 
     def get_context_projection(self) -> Mapping[str, Any]:
@@ -175,23 +276,54 @@ class BlankTrainer:
             "last_population_snapshot": self.context_store.get("last_population_snapshot"),
             "resource_context": self.resource_context.as_dict(),
             "compute_backend": self.compute_backend_session.as_dict(),
+            "parallel_evaluation": bool(self.parallel_evaluation),
         }
 
     def set_compute_backend(
         self,
         backend: str | Mapping[str, Any] | ComputeBackendSpec | ComputeBackendSession | None,
     ) -> "BlankTrainer":
+        previous_session = self.compute_backend_session
+        self._compute_backend_request = backend.spec if isinstance(backend, ComputeBackendSession) else backend
         self.compute_backend_session = (
             backend
-            if isinstance(backend, ComputeBackendSession)
-            else ComputeBackendSession(
-                ComputeBackendSpec.from_value(
-                    backend,
-                    resource_context=self.resource_context.as_dict(),
-                )
-            )
+            if isinstance(backend, ComputeBackendSession) and not self._resource_context_explicit
+            else self._build_compute_backend_session()
         )
+        if previous_session is not self.compute_backend_session:
+            previous_session.close()
         return self
+
+    def _build_compute_backend_session(self) -> ComputeBackendSession:
+        spec = ComputeBackendSpec.from_value(
+            self._compute_backend_request,
+            resource_context=self.resource_context.as_dict(),
+        )
+        if self._resource_context_explicit:
+            granted_backend = str(self.resource_context.compute_backend or "auto").strip().lower()
+            spec = ComputeBackendSpec(
+                name=spec.name if granted_backend in {"", "auto", "cpu", "cuda", "gpu", "tpu"} else granted_backend,
+                device=str(self.resource_context.device),
+                device_policy=spec.device_policy,
+                metadata={
+                    **dict(spec.metadata),
+                    "resource_namespace": str(self.resource_context.namespace),
+                },
+            )
+        return ComputeBackendSession(spec)
+
+    def _refresh_l0_pool_after_resource_change(self) -> None:
+        pool = self._l0_pool
+        if pool is not None:
+            closer = getattr(pool, "shutdown", None)
+            if callable(closer):
+                closer(wait=True)
+        self._l0_pool = None
+        threads = int(self.resource_context.threads or 1)
+        if self.parallel_evaluation and threads > 1:
+            from mlblack.core.resources.compute.pool import PoolScheduler
+
+            self._l0_pool = PoolScheduler(threads)
 
     def require_compute_backend(self, requirements: Sequence[str], *, consumer: str = "") -> Any:
         return self.compute_backend_session.ensure(tuple(str(item) for item in requirements), consumer=consumer)
@@ -248,6 +380,7 @@ class BlankTrainer:
         candidate: UnknownState,
         context: Mapping[str, Any] | None = None,
     ) -> Feedback:
+        self.checkpoint_case_runtime()
         if self.problem is None:
             raise ValueError("Trainer requires problem before evaluate_individual()")
         ctx = dict(context or {})
@@ -256,6 +389,7 @@ class BlankTrainer:
         model = self.decode_candidate(repaired, ctx)
         feedback = self.problem.evaluate(model, repaired, ctx)
         self.plugin_manager.on_evaluate_end(candidate, feedback, ctx)
+        self.checkpoint_case_runtime()
         return feedback
 
     def evaluate_population(
@@ -263,13 +397,45 @@ class BlankTrainer:
         population: Sequence[UnknownState],
         context: Mapping[str, Any] | None = None,
     ) -> list[Feedback]:
+        self.checkpoint_case_runtime()
         ctx = dict(context or {})
         pool = self._l0_pool
-        if pool is not None and len(population) >= 4:
+        if self.parallel_evaluation and pool is not None and len(population) >= 4:
+            unsafe = self._unsafe_parallel_evaluation_components()
+            if unsafe:
+                raise RuntimeError(
+                    "parallel evaluation requires explicit thread-safety declarations: "
+                    + ", ".join(unsafe)
+                )
             with pool.as_executor(pool.available()) as ex:
                 results = list(ex.map(self.evaluate_individual, tuple(population), [ctx] * len(population)))
+            self.checkpoint_case_runtime()
             return results
-        return [self.evaluate_individual(candidate, ctx) for candidate in tuple(population)]
+        results = [self.evaluate_individual(candidate, ctx) for candidate in tuple(population)]
+        self.checkpoint_case_runtime()
+        return results
+
+    def _unsafe_parallel_evaluation_components(self) -> tuple[str, ...]:
+        components: list[tuple[str, Any]] = [
+            ("problem", self.problem),
+            ("representation", self.representation_pipeline),
+        ]
+        components.extend(
+            (f"plugin.{plugin.name}", plugin)
+            for plugin in self.plugin_manager.plugins
+            if bool(getattr(plugin, "enabled", True))
+        )
+        unsafe: list[str] = []
+        for name, component in components:
+            if component is None:
+                continue
+            declared_safe = (
+                getattr(component, "thread_safe_evaluation", None) is True
+                or getattr(component, "thread_safe", None) is True
+            )
+            if not declared_safe:
+                unsafe.append(name)
+        return tuple(unsafe)
 
     def adjust_feedback_with_biases(
         self,
@@ -290,17 +456,57 @@ class BlankTrainer:
         population: Sequence[UnknownState],
         feedback: Sequence[Feedback],
         metadata: Mapping[str, Any] | None = None,
+        *,
+        evaluated_population: Sequence[UnknownState] | None = None,
+        evaluated_feedback: Sequence[Feedback] | None = None,
     ) -> str:
-        key = f"population:{self.run_name}:{self.step_index}:{uuid4().hex}"
-        snapshot = PopulationSnapshot(
-            states=tuple(population),
-            feedback=tuple(feedback),
-            step=int(self.step_index),
-            metadata=dict(metadata or {}),
+        population_tuple = tuple(population)
+        feedback_tuple = tuple(feedback)
+        evaluated_population_tuple = tuple(
+            population_tuple if evaluated_population is None else evaluated_population
         )
-        self.snapshot_store[key] = snapshot
-        self.context_store["last_population_snapshot"] = key
-        return key
+        evaluated_feedback_tuple = tuple(
+            feedback_tuple if evaluated_feedback is None else evaluated_feedback
+        )
+        objectives = np.array([f.objectives for f in feedback_tuple]) if feedback_tuple else None
+        constraints = np.array([f.constraints for f in feedback_tuple]) if feedback_tuple else None
+        evaluated_objectives = (
+            np.array([f.objectives for f in evaluated_feedback_tuple])
+            if evaluated_feedback_tuple
+            else None
+        )
+        evaluated_constraints = (
+            np.array([f.constraints for f in evaluated_feedback_tuple])
+            if evaluated_feedback_tuple
+            else None
+        )
+        feedback_aligned = len(population_tuple) == len(feedback_tuple)
+        snapshot_metadata = {
+            **dict(metadata or {}),
+            "feedback_aligned": bool(feedback_aligned),
+        }
+
+        snapshot_data = {
+            "candidates": population_tuple,
+            "objectives": objectives,
+            "constraints": constraints,
+            "evaluated_candidates": evaluated_population_tuple,
+            "evaluated_objectives": evaluated_objectives,
+            "evaluated_constraints": evaluated_constraints,
+            "generation": int(self.step_index),
+            "metadata": snapshot_metadata,
+        }
+
+        snapshot_key = f"population:{self.run_name}:{self.step_index}:{uuid4().hex}"
+        self.checkpoint_case_runtime()
+        handle = self.snapshot_store.write(
+            snapshot_data,
+            key=snapshot_key,
+            meta=snapshot_metadata,
+            schema="mlblack_population_snapshot_v2",
+        )
+        self.context_store.set("last_population_snapshot", handle.key)
+        return handle.key
 
     def write_snapshot(
         self,
@@ -310,33 +516,100 @@ class BlankTrainer:
         context_key: str | None = None,
     ) -> str:
         snapshot_key = str(key or f"snapshot:{self.run_name}:{self.step_index}:{uuid4().hex}")
-        self.snapshot_store[snapshot_key] = payload
+        self.checkpoint_case_runtime()
+        self.snapshot_store.write(
+            wrap_snapshot_payload(payload),
+            key=snapshot_key,
+            schema=GENERIC_SNAPSHOT_SCHEMA,
+        )
         if context_key is not None:
-            self.context_store[str(context_key)] = snapshot_key
+            self.context_store.set(str(context_key), snapshot_key)
         return snapshot_key
 
     def read_snapshot(self, snapshot_key: str) -> Any:
-        return self.snapshot_store[str(snapshot_key)]
+        record = self.snapshot_store.read(str(snapshot_key))
+        if record is None:
+            return None
+        payload = unwrap_snapshot_payload(record)
+        # Backward compatibility for snapshots written as {snapshot_key: payload}.
+        if isinstance(payload, Mapping) and set(payload) == {str(snapshot_key)}:
+            return payload[str(snapshot_key)]
+        return payload
 
     def get_state(self) -> Mapping[str, Any]:
         return {
+            "state_version": 2,
             "run_name": self.run_name,
             "step_index": int(self.step_index),
             "best_score": self.best_score,
-            "best_state": None if self.best_state is None else self.best_state.as_array().tolist(),
+            "best_state": None if self.best_state is None else self.best_state.as_dict(),
+            "best_model_ref": (
+                None if self.best_model_ref is None else self.best_model_ref.as_dict()
+            ),
+            "result_artifact_refs": {
+                name: ref.as_dict() for name, ref in self.result_artifact_refs.items()
+            },
+            "best_feedback": _feedback_to_state(self.best_feedback),
+            "population": tuple(candidate.as_dict() for candidate in self.population),
+            "feedback": tuple(_feedback_to_state(item) for item in self.feedback),
+            "last_evaluated_population": tuple(
+                candidate.as_dict() for candidate in self.last_evaluated_population
+            ),
+            "last_evaluated_feedback": tuple(
+                _feedback_to_state(item) for item in self.last_evaluated_feedback
+            ),
             "history": tuple(dict(row) for row in self.history),
             "context": dict(self.context_store),
             "resource_context": self.resource_context.as_dict(),
             "compute_backend": self.compute_backend_session.as_dict(),
+            "parallel_evaluation": bool(self.parallel_evaluation),
             "biases": [bias.describe() if hasattr(bias, "describe") else {"name": type(bias).__name__} for bias in self.biases],
         }
 
     def set_state(self, state: Mapping[str, Any]) -> "BlankTrainer":
+        self.run_name = str(state.get("run_name", self.run_name))
+        self.parallel_evaluation = bool(
+            state.get("parallel_evaluation", self.parallel_evaluation)
+        )
         self.step_index = int(state.get("step_index", self.step_index))
         best_state = state.get("best_state")
-        self.best_state = None if best_state is None else UnknownState(values=np.asarray(best_state, dtype=float))
+        self.best_state = None if best_state is None else _unknown_state_from_state(best_state)
+        self.best_feedback = _feedback_from_state(state.get("best_feedback"))
+        raw_best_model_ref = state.get("best_model_ref")
+        self.best_model_ref = (
+            DataRef.from_dict(raw_best_model_ref)
+            if isinstance(raw_best_model_ref, Mapping)
+            else None
+        )
+        self.result_artifact_refs = {
+            str(name): DataRef.from_dict(ref)
+            for name, ref in dict(state.get("result_artifact_refs", {}) or {}).items()
+            if isinstance(ref, Mapping)
+        }
+        if self.best_model_ref is not None:
+            self.result_artifact_refs.setdefault("best_model", self.best_model_ref)
         best_score = state.get("best_score")
         self.best_score = None if best_score is None else float(best_score)
+        self.population = tuple(
+            _unknown_state_from_state(item) for item in state.get("population", tuple())
+        )
+        self.feedback = tuple(
+            item
+            for item in (_feedback_from_state(raw) for raw in state.get("feedback", tuple()))
+            if item is not None
+        )
+        self.last_evaluated_population = tuple(
+            _unknown_state_from_state(item)
+            for item in state.get("last_evaluated_population", tuple())
+        )
+        self.last_evaluated_feedback = tuple(
+            item
+            for item in (
+                _feedback_from_state(raw)
+                for raw in state.get("last_evaluated_feedback", tuple())
+            )
+            if item is not None
+        )
         self.history = [dict(row) for row in state.get("history", tuple())]
         context = state.get("context")
         if isinstance(context, Mapping):
@@ -344,10 +617,10 @@ class BlankTrainer:
             self.context_store.update(dict(context))
         resource_context = state.get("resource_context")
         if isinstance(resource_context, Mapping):
-            self.resource_context = coerce_resource_context(resource_context)
+            self.set_resource_context(resource_context)
         compute_backend = state.get("compute_backend")
         if isinstance(compute_backend, Mapping):
-            self.compute_backend_session = ComputeBackendSession(ComputeBackendSpec.from_value(compute_backend))
+            self.set_compute_backend(compute_backend)
         if self.best_state is not None and self.representation_pipeline is not None:
             self.best_model = self.decode_candidate(self.best_state, self.build_context())
         return self
@@ -368,6 +641,10 @@ class BlankTrainer:
             self.best_state = candidate
             self.best_feedback = feedback
             self.best_model = self.decode_candidate(candidate, ctx)
+            # A newly selected model invalidates any artifact published for the
+            # previous best.  A plugin/provider may publish and attach a fresh
+            # ref before the result envelope is serialized.
+            self.set_best_model_ref(None)
 
     def setup(self) -> None:
         return None
@@ -377,17 +654,30 @@ class BlankTrainer:
         raise NotImplementedError(f"{type(self).__name__}.step(...) is not implemented")
 
     def teardown(self) -> None:
-        return None
+        if self._l0_pool is not None:
+            self._l0_pool.shutdown(wait=True)
+            self._l0_pool = None
 
     def fit(self, max_steps: int = 100) -> TrainerResult:
+        run_started = time.monotonic()
         try:
+            self.checkpoint_case_runtime()
             self.setup()
+            self.checkpoint_case_runtime()
             start_ctx = self.build_context()
             self.plugin_manager.on_solver_init(self)
             start_step = int(self.step_index) + 1 if self.history else int(self.step_index)
             for offset in range(int(max_steps)):
+                self.checkpoint_case_runtime()
+                if self._completion_policy is not None and self._completion_policy.is_complete(
+                    step=int(offset),
+                    elapsed=float(time.monotonic() - run_started),
+                    ctx={"trainer": self, "run_name": self.run_name},
+                ):
+                    break
                 self.step_index = int(start_step + offset)
                 self.step()
+                self.checkpoint_case_runtime()
         except BaseException as exc:
             error_ctx = self.build_context({"error": type(exc).__name__})
             self.plugin_manager.on_error(exc, error_ctx)
@@ -396,18 +686,31 @@ class BlankTrainer:
             self.teardown()
 
         report = self.build_report()
+        self.checkpoint_case_runtime()
         end_ctx = self.build_context()
         self.plugin_manager.on_solver_finish({"report": report, "context": end_ctx})
+        # Plugins/providers get the finish hook first.  If none attached a
+        # durable ref, the configured ML artifact provider publishes through
+        # the shared Project authority.  The Trainer never invents a URI.
+        self.publish_best_model_artifact()
 
         return TrainerResult(
             best_state=self.best_state,
             best_model=self.best_model,
+            best_objectives=None
+            if self.best_feedback is None
+            else np.asarray(self.best_feedback.objectives, dtype=float),
             best_feedback=self.best_feedback,
             history=tuple(self.history),
             report=report,
+            best_model_ref=self.best_model_ref,
+            artifact_refs=self.result_artifact_refs,
         )
 
-    run = fit
+    def run(self, max_steps: int = 100) -> TrainerResult:
+        """Dynamically dispatch to ``fit`` so subclass overrides are honored."""
+
+        return self.fit(max_steps=max_steps)
 
     def evaluate(
         self,
@@ -417,15 +720,26 @@ class BlankTrainer:
         max_steps: int | None = None,
         **kwargs,
     ) -> TrainerResult:
-        """nsgablack inner_runtime_evaluator interface.
+        """Evaluate a candidate as the initial state of this Trainer run.
 
-        Accepts a candidate state, optionally overrides resource context,
-        runs fit, and returns the result. Compatible with nsgablack nested
-        solver evaluation — no bridge layer needed.
+        Cross-framework callers should use the formal adapter in
+        ``mlblack.integrations.nsgablack_trainer_evaluator``; this method
+        deliberately returns a native ``TrainerResult``.
         """
         if resource_context is not None:
-            from mlblack.core.resources import coerce_resource_context
-            self.resource_context = coerce_resource_context(resource_context)
+            self.set_resource_context(resource_context)
+        state = candidate if isinstance(candidate, UnknownState) else UnknownState(values=candidate)
+        self.population = (state,)
+        self._evaluation_seed_population = self.population
+        adapter = getattr(self, "adapter", None)
+        set_population = getattr(adapter, "set_population", None)
+        if callable(set_population):
+            set_population(self.population)
+        self.write_snapshot(
+            state.to_protocol_payload(),
+            key=f"input_candidate:{self.run_name}:{uuid4().hex}",
+            context_key="input_candidate_snapshot",
+        )
         return self.fit(max_steps=int(max_steps or 1))
 
     def _history_row(
@@ -462,6 +776,10 @@ class BlankTrainer:
             "problem": None if self.problem is None else dict(self.problem.describe()),
             "resources": self.resource_context.as_dict(),
             "compute_backend": self.compute_backend_session.as_dict(),
+            "parallel_evaluation": {
+                "enabled": bool(self.parallel_evaluation),
+                "thread_safe": not bool(self._unsafe_parallel_evaluation_components()),
+            },
             "biases": [bias.describe() if hasattr(bias, "describe") else {"name": type(bias).__name__} for bias in self.biases],
             "contracts": self.build_contract_report(),
             "state_signature": self.build_trainer_state().signature,
@@ -516,6 +834,7 @@ class ComposableTrainer(BlankTrainer):
         constraint_penalty: float = 1e6,
         resource_context: Mapping[str, Any] | ResourceContext | None = None,
         compute_backend: str | Mapping[str, Any] | ComputeBackendSpec | ComputeBackendSession | None = None,
+        parallel_evaluation: bool = False,
     ) -> None:
         super().__init__(
             problem=problem,
@@ -524,6 +843,7 @@ class ComposableTrainer(BlankTrainer):
             constraint_penalty=constraint_penalty,
             resource_context=resource_context,
             compute_backend=compute_backend,
+            parallel_evaluation=parallel_evaluation,
         )
         self.adapter = adapter
 
@@ -543,10 +863,16 @@ class ComposableTrainer(BlankTrainer):
             self.require_compute_backend(requirements, consumer="trainer.setup")
         _setup_component(self.representation_pipeline, self, self.build_context())
         self.adapter.setup(self)
+        if self._evaluation_seed_population:
+            self.population = tuple(self._evaluation_seed_population)
+            self.adapter.set_population(self.population)
 
         # L0: create shared thread pool from resource grant
+        if self._l0_pool is not None:
+            self._l0_pool.shutdown(wait=True)
+            self._l0_pool = None
         threads = int(self.resource_context.threads or 1)
-        if threads > 1:
+        if self.parallel_evaluation and threads > 1:
             from mlblack.core.resources.compute.pool import PoolScheduler
             self._l0_pool = PoolScheduler(threads)
 
@@ -554,32 +880,50 @@ class ComposableTrainer(BlankTrainer):
         if self.adapter is None:
             raise ValueError("ComposableTrainer requires adapter before step()")
 
-        ctx = self.build_context(context)
+        propose_context = self.build_context(context)
         self.plugin_manager.on_generation_start(self.step_index)
 
-        proposed = self.adapter.coerce_states(self.adapter.propose(self, ctx))
-        population = self.repair_population(proposed, ctx)
-        feedback = self.adjust_feedback_with_biases(population, tuple(self.evaluate_population(population, ctx)), ctx)
+        proposed = self.adapter.coerce_states(self.adapter.propose(self, propose_context))
+        population = self.repair_population(proposed, propose_context)
+        feedback = self.adjust_feedback_with_biases(
+            population,
+            tuple(self.evaluate_population(population, propose_context)),
+            propose_context,
+        )
 
         if len(population) != len(feedback):
             raise ValueError("evaluate_population() must return one Feedback per candidate")
 
-        self.population = tuple(population)
-        self.feedback = tuple(feedback)
+        evaluated_population = tuple(population)
+        evaluated_feedback = tuple(feedback)
+        self.last_evaluated_population = evaluated_population
+        self.last_evaluated_feedback = evaluated_feedback
 
-        for candidate, fb in zip(self.population, self.feedback):
-            self.update_best(candidate, fb, ctx)
+        for candidate, fb in zip(evaluated_population, evaluated_feedback):
+            self.update_best(candidate, fb, propose_context)
 
-        self.adapter.update(self, self.population, self.feedback, ctx)
+        update_context = self.build_context(context)
+        self.adapter.update(self, evaluated_population, evaluated_feedback, update_context)
+        authoritative_population = self._resolve_adapter_population(evaluated_population)
+        aligned_feedback = _align_feedback(
+            authoritative_population,
+            evaluated_population,
+            evaluated_feedback,
+            representation=self.representation_pipeline,
+        )
+        self.population = authoritative_population
+        self.feedback = aligned_feedback
         snapshot_key = self.write_population_snapshot(
             self.population,
             self.feedback,
             metadata={"adapter": getattr(self.adapter, "name", type(self.adapter).__name__)},
+            evaluated_population=evaluated_population,
+            evaluated_feedback=evaluated_feedback,
         )
         row = self._history_row(
             step=self.step_index,
-            population=self.population,
-            feedback=self.feedback,
+            population=evaluated_population,
+            feedback=evaluated_feedback,
             snapshot_key=snapshot_key,
         )
         self.history.append(row)
@@ -589,8 +933,27 @@ class ComposableTrainer(BlankTrainer):
         return row
 
     def teardown(self) -> None:
-        if self.adapter is not None:
-            self.adapter.teardown(self)
+        try:
+            if self.adapter is not None:
+                self.adapter.teardown(self)
+        finally:
+            if self._l0_pool is not None:
+                self._l0_pool.shutdown(wait=True)
+                self._l0_pool = None
+
+    def _resolve_adapter_population(
+        self,
+        fallback: Sequence[UnknownState],
+    ) -> tuple[UnknownState, ...]:
+        if self.adapter is None:
+            return tuple(fallback)
+        getter = getattr(self.adapter, "get_population", None)
+        if not callable(getter):
+            return tuple(fallback)
+        resolved = getter()
+        if resolved is None:
+            return tuple(fallback)
+        return self.adapter.coerce_states(resolved)
 
     def build_report(self) -> dict[str, Any]:
         report = super().build_report()
@@ -617,10 +980,56 @@ class ComposableTrainer(BlankTrainer):
             raw_state = adapter_state.get("state", adapter_state)
             if isinstance(raw_state, Mapping):
                 self.adapter.set_state(raw_state)
+        if self.adapter is not None and self.population:
+            self.adapter.set_population(self.population)
         return self
 
 
 Trainer = ComposableTrainer
+
+
+def _unknown_state_from_state(value: Any) -> UnknownState:
+    if isinstance(value, UnknownState):
+        return value
+    if isinstance(value, Mapping):
+        return UnknownState.from_protocol_payload(value)
+    return UnknownState(values=np.asarray(value, dtype=float))
+
+
+def _feedback_to_state(value: Feedback | None) -> Mapping[str, Any] | None:
+    if value is None:
+        return None
+    return {
+        "objectives": value.objectives.tolist(),
+        "constraints": value.constraints.tolist(),
+        "gradients": None if value.gradients is None else value.gradients.tolist(),
+        "loss": value.loss,
+        "metrics": dict(value.metrics),
+        "residuals": None if value.residuals is None else value.residuals.tolist(),
+        "signals": dict(value.signals),
+        "info": dict(value.info),
+    }
+
+
+def _feedback_from_state(value: Any) -> Feedback | None:
+    if value is None:
+        return None
+    if isinstance(value, Feedback):
+        return value
+    if not isinstance(value, Mapping):
+        raise TypeError("feedback state must be a mapping")
+    gradients = value.get("gradients")
+    residuals = value.get("residuals")
+    return Feedback(
+        objectives=np.asarray(value.get("objectives", ()), dtype=float),
+        constraints=np.asarray(value.get("constraints", ()), dtype=float),
+        gradients=None if gradients is None else np.asarray(gradients, dtype=float),
+        loss=None if value.get("loss") is None else float(value.get("loss")),
+        metrics=dict(value.get("metrics", {}) or {}),
+        residuals=None if residuals is None else np.asarray(residuals, dtype=float),
+        signals=dict(value.get("signals", {}) or {}),
+        info=dict(value.get("info", {}) or {}),
+    )
 
 
 def _collect_backend_requirements(*components: Any) -> tuple[str, ...]:
@@ -651,45 +1060,38 @@ def _setup_component(component: Any, trainer: Any, context: Mapping[str, Any]) -
         setup(context)
 
 
-class _CapabilityPluginAdapter(Plugin):
-    """Bridges a legacy mlblack Capability into the unified nsgablack Plugin system.
-
-    Translates Plugin lifecycle hooks → Capability hook calls, preserving
-    backward compatibility for existing Capability implementations.
-    """
-
-    def __init__(self, capability: Capability, name: str | None = None):
-        super().__init__(name=name or getattr(capability, "name", "capability_adapter"))
-        self._capability = capability
-
-    # -- Plugin hooks → Capability hooks --
-
-    def on_solver_init(self, solver):
-        ctx = getattr(solver, "context_store", {}) or {}
-        self._capability.on_fit_start(solver, ctx)
-
-    def on_generation_start(self, generation: int):
-        ctx = getattr(self.solver, "context_store", {}) or {}
-        self._capability.on_step_start(self.solver, ctx)
-
-    def on_generation_end(self, generation: int):
-        ctx = getattr(self.solver, "context_store", {}) or {}
-        row = {}
-        if self.solver and hasattr(self.solver, "history") and self.solver.history:
-            row = self.solver.history[-1]
-        self._capability.on_step_end(self.solver, ctx, row)
-
-    def on_evaluate_start(self, candidate, context=None):
-        self._capability.on_evaluate_start(self.solver, candidate, context or {})
-
-    def on_evaluate_end(self, candidate, feedback, context=None):
-        self._capability.on_evaluate_end(self.solver, candidate, feedback, context or {})
-
-    def on_solver_finish(self, result):
-        ctx = getattr(self.solver, "context_store", {}) or {}
-        report = result.get("report", {}) if isinstance(result, dict) else {}
-        self._capability.on_fit_end(self.solver, ctx, report)
-
-    def on_error(self, error: BaseException, context=None):
-        self._capability.on_error(self.solver, error, context or {})
-
+def _align_feedback(
+    authoritative: Sequence[UnknownState],
+    evaluated: Sequence[UnknownState],
+    feedback: Sequence[Feedback],
+    *,
+    representation: ModelRepresentation | None = None,
+) -> tuple[Feedback, ...]:
+    """Return feedback only when every authoritative state was evaluated."""
+    evaluated_states = tuple(evaluated)
+    evaluated_feedback = tuple(feedback)
+    if len(evaluated_states) != len(evaluated_feedback):
+        return tuple()
+    aligned: list[Feedback] = []
+    used: set[int] = set()
+    for state in tuple(authoritative):
+        match = None
+        for idx, candidate in enumerate(evaluated_states):
+            if idx in used:
+                continue
+            equivalent = getattr(representation, "equivalent", None)
+            if callable(equivalent):
+                is_equivalent = bool(equivalent(state, candidate))
+            else:
+                is_equivalent = (
+                    unknown_state_fingerprint(state)
+                    == unknown_state_fingerprint(candidate)
+                )
+            if is_equivalent:
+                match = idx
+                break
+        if match is None:
+            return tuple()
+        used.add(match)
+        aligned.append(evaluated_feedback[match])
+    return tuple(aligned)

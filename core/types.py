@@ -1,62 +1,39 @@
-﻿from __future__ import annotations
+"""
+MLBlack core protocol types.
 
-from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
+The shared payload objects live in blackbase so nsgablack/mlblack Cases can
+exchange candidate state and feedback without depending on each other.
+"""
 
-import numpy as np
+from __future__ import annotations
 
-
-@dataclass(frozen=True)
-class UnknownState:
-    """Optimizable unknown state, equivalent to an nsgablack candidate."""
-
-    values: np.ndarray
-    metadata: Mapping[str, Any] = field(default_factory=dict)
-
-    def as_array(self) -> np.ndarray:
-        return np.asarray(self.values, dtype=float).reshape(-1)
-
-    def with_values(self, values: Sequence[float] | np.ndarray, **metadata: Any) -> "UnknownState":
-        merged = dict(self.metadata)
-        merged.update(metadata)
-        return UnknownState(values=np.asarray(values, dtype=float).reshape(-1), metadata=merged)
-
-
-@dataclass(frozen=True)
-class Feedback:
-    """Data-dependent optimization feedback returned by a LearningProblem."""
-
-    objectives: np.ndarray
-    constraints: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=float))
-    loss: float | None = None
-    gradients: np.ndarray | None = None
-    residuals: np.ndarray | None = None
-    metrics: Mapping[str, Any] = field(default_factory=dict)
-    signals: Mapping[str, Any] = field(default_factory=dict)
-
-    def scalar_score(self, *, constraint_penalty: float = 1e6) -> float:
-        obj = np.asarray(self.objectives, dtype=float).reshape(-1)
-        cons = np.asarray(self.constraints, dtype=float).reshape(-1)
-        violation = float(np.sum(np.maximum(cons, 0.0))) if cons.size else 0.0
-        return float(np.sum(obj)) + (float(constraint_penalty) * violation)
+from blackbase.context import (
+    CATEGORY_CACHE,
+    CATEGORY_DERIVED,
+    CATEGORY_EVENT,
+    CATEGORY_INPUT,
+    CATEGORY_OUTPUT,
+    CATEGORY_RUNTIME,
+    ContextField,
+    ContextSchema,
+)
+from blackbase.resources import DataRef, ResourceRequirement
+from blackbase.types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
 
 
-@dataclass(frozen=True)
-class PopulationSnapshot:
-    """Snapshot of unknown states and evaluation feedback."""
-
-    states: tuple[UnknownState, ...]
-    feedback: tuple[Feedback, ...]
-    step: int
-    metadata: Mapping[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class TrainerResult:
-    """Result returned by Trainer.fit()."""
-
-    best_state: UnknownState | None
-    best_model: Any | None
-    best_feedback: Feedback | None
-    history: tuple[Mapping[str, Any], ...]
-    report: Mapping[str, Any]
+__all__ = [
+    "Feedback",
+    "UnknownState",
+    "PopulationSnapshot",
+    "TrainerResult",
+    "ContextField",
+    "ContextSchema",
+    "CATEGORY_CACHE",
+    "CATEGORY_DERIVED",
+    "CATEGORY_EVENT",
+    "CATEGORY_INPUT",
+    "CATEGORY_OUTPUT",
+    "CATEGORY_RUNTIME",
+    "DataRef",
+    "ResourceRequirement",
+]
