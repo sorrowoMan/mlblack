@@ -18,7 +18,14 @@ from blackbase.context import (
     ContextSchema,
 )
 from blackbase.resources import DataRef, ResourceRequirement
-from blackbase.types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
+from blackbase.types import (
+    Feedback,
+    PopulationSnapshot,
+    SolveQuality,
+    SolverResult,
+    TrainerResult,
+    UnknownState,
+)
 
 
 __all__ = [
@@ -26,6 +33,8 @@ __all__ = [
     "UnknownState",
     "PopulationSnapshot",
     "TrainerResult",
+    "SolverResult",
+    "SolveQuality",
     "ContextField",
     "ContextSchema",
     "CATEGORY_CACHE",

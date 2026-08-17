@@ -98,6 +98,10 @@ implemented with `nsgablack`. The symbolic integration surface lives under
 - function pool, grammar, dynamic pool, graph cache, path memory
 - Stage 1 orthogonal symbolic basis outer problem
 - Stage 2 basis-conditioned symbolic task outer problem
+- complete Trainer-to-Solver Case invocation returning the full child Case envelope
+- explicit best/Pareto projection with solve-status validation; no implicit default projection
+- optional objective-to-Feedback mapping, separated from solution selection
+- per-invocation timeout or `ExecutionControl`, bounded by the parent control lineage
 - symbolic artifact schema with canonical expression, family recovery, phase-equivalence recovery
 
 ## Checks

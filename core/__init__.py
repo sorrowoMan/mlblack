@@ -48,7 +48,14 @@ from .state import TrainerState, build_trainer_state, replay_trainer, restore_tr
 from .stores import InMemoryContextStore, InMemorySnapshotStore, SnapshotRecord
 from .trainer import BlankTrainer, ComposableTrainer, Trainer
 from .trainer_stage import ArtifactRef, CompletionPolicy, SerialTrainer, StageSpec
-from .types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
+from .types import (
+    Feedback,
+    PopulationSnapshot,
+    SolveQuality,
+    SolverResult,
+    TrainerResult,
+    UnknownState,
+)
 
 __all__ = [
     "ArtifactBuilder",
@@ -100,6 +107,8 @@ __all__ = [
     "StageSpec",
     "Trainer",
     "TrainerResult",
+    "SolverResult",
+    "SolveQuality",
     "TrainerState",
     "TrainerStateArtifact",
     "TreeEnsembleArtifact",
