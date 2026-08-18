@@ -1,0 +1,43 @@
+[[entry]]
+key = "trainer.blank_trainer"
+title = "BlankTrainer"
+kind = "trainer"
+import_path = "mlblack.core.trainer:BlankTrainer"
+tags = ["trainer", "core"]
+summary = "Control-plane base class for ML-as-optimization."
+metadata = { "architecture_path" = "core.trainer", "module" = "mlblack.core.trainer", "symbol" = "BlankTrainer" }
+
+[[entry]]
+key = "trainer.composable"
+title = "ComposableTrainer"
+kind = "trainer"
+import_path = "mlblack.core.trainer:ComposableTrainer"
+tags = ["control-plane", "solver-like"]
+summary = "Trainer control plane with mounted OptimizerAdapter."
+
+[[entry]]
+key = "trainer.composable_trainer"
+title = "ComposableTrainer"
+kind = "trainer"
+import_path = "mlblack.core.trainer:ComposableTrainer"
+tags = ["trainer", "core"]
+summary = "Trainer with an optimizer adapter mounted as strategy plane."
+metadata = { "architecture_path" = "core.trainer", "module" = "mlblack.core.trainer", "symbol" = "ComposableTrainer" }
+
+[[entry]]
+key = "trainer.diagnostic_trainer"
+title = "DiagnosticTrainer"
+kind = "trainer"
+import_path = "mlblack.core.diagnostic:DiagnosticTrainer"
+tags = ["trainer", "core", "diagnostic"]
+summary = "Trainer control plane for one independently runnable diagnostic task."
+metadata = { "architecture_path" = "core.diagnostic", "module" = "mlblack.core.diagnostic", "symbol" = "DiagnosticTrainer" }
+
+[[entry]]
+key = "trainer.trainer"
+title = "Trainer"
+kind = "trainer"
+import_path = "mlblack.core.trainer:Trainer"
+tags = ["trainer", "core"]
+summary = "Trainer with an optimizer adapter mounted as strategy plane."
+metadata = { "architecture_path" = "core.trainer", "module" = "mlblack.core.trainer", "symbol" = "Trainer" }

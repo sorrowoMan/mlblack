@@ -1,0 +1,8 @@
+[[entry]]
+key = "provider.arimasarimax"
+title = "ARIMASARIMAXProvider"
+kind = "provider"
+import_path = "mlblack.models.time_series:ARIMASARIMAXProvider"
+tags = ["provider", "models", "time_series"]
+summary = "Provider that fits ARIMA/SARIMAX specs through numpy or statsmodels."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "ARIMASARIMAXProvider" }

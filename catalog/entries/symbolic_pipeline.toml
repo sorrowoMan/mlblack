@@ -1,0 +1,80 @@
+[[entry]]
+key = "symbolic_pipeline.candidate_term"
+title = "CandidateTerm"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.function_space:CandidateTerm"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "function_space"]
+summary = "Materialized symbolic candidate term produced by a function-space pipeline."
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.function_space", "module" = "mlblack.pipeline.symbolic.function_space", "symbol" = "CandidateTerm" }
+
+[[entry]]
+key = "symbolic_pipeline.dynamic_function_pool_pipeline"
+title = "DynamicFunctionPoolPipeline"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.dynamic_pool:DynamicFunctionPoolPipeline"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "dynamic_pool"]
+summary = "Residual/gradient/budget/gate aware symbolic pool updater."
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.dynamic_pool", "module" = "mlblack.pipeline.symbolic.dynamic_pool", "symbol" = "DynamicFunctionPoolPipeline" }
+
+[[entry]]
+key = "symbolic_pipeline.function_pool"
+title = "FunctionPool"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.function_space:FunctionPool"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "function_space"]
+summary = "Current active symbolic candidate pool."
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.function_space", "module" = "mlblack.pipeline.symbolic.function_space", "symbol" = "FunctionPool" }
+
+[[entry]]
+key = "symbolic_pipeline.function_pool_pipeline"
+title = "FunctionPoolPipeline"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.pool_pipeline:FunctionPoolPipeline"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "pool_pipeline"]
+summary = "Symbolic search-space pipeline."
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.pool_pipeline", "module" = "mlblack.pipeline.symbolic.pool_pipeline", "symbol" = "FunctionPoolPipeline" }
+
+[[entry]]
+key = "symbolic_pipeline.function_space"
+title = "FunctionSpace"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.function_space:FunctionSpace"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "function_space"]
+summary = "Declarative symbolic search-space plus a materialized active pool."
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.function_space", "module" = "mlblack.pipeline.symbolic.function_space", "symbol" = "FunctionSpace" }
+
+[[entry]]
+key = "symbolic_pipeline.function_space_provider"
+title = "FunctionSpaceProvider"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.function_space:FunctionSpaceProvider"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "function_space"]
+summary = "Contract marker for components that produce symbolic function pools."
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.function_space", "module" = "mlblack.pipeline.symbolic.function_space", "symbol" = "FunctionSpaceProvider" }
+
+[[entry]]
+key = "symbolic_pipeline.pair_grammar_rule"
+title = "PairGrammarRule"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.primitives:PairGrammarRule"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "primitives"]
+summary = "PairGrammarRule(key: 'str', activation_family: 'str', output_family: 'str', complexity: 'float', build_expr: 'PairExprBuilder', evaluate_values: 'PairValueBuilder', build_name: 'PairNameBuilder', initial_enabled: 'bool' = True, dynamic_enabled: 'bool' = True)"
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.primitives", "module" = "mlblack.pipeline.symbolic.primitives", "symbol" = "PairGrammarRule" }
+
+[[entry]]
+key = "symbolic_pipeline.primitive_registry"
+title = "PrimitiveRegistry"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.primitives:PrimitiveRegistry"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "primitives"]
+summary = "PrimitiveRegistry(unary_specs: 'tuple[UnaryPrimitiveSpec, ...]', pair_rules: 'tuple[PairGrammarRule, ...]')"
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.primitives", "module" = "mlblack.pipeline.symbolic.primitives", "symbol" = "PrimitiveRegistry" }
+
+[[entry]]
+key = "symbolic_pipeline.unary_primitive"
+title = "UnaryPrimitiveSpec"
+kind = "symbolic_pipeline"
+import_path = "mlblack.pipeline.symbolic.primitives:UnaryPrimitiveSpec"
+tags = ["symbolic_pipeline", "pipeline", "symbolic", "primitives"]
+summary = "UnaryPrimitiveSpec(key: 'str', activation_family: 'str', output_family: 'str', complexity: 'float', build_expr: 'UnaryExprBuilder', evaluate_values: 'UnaryValueBuilder', build_name: 'NameBuilder', initial_enabled: 'bool' = True, dynamic_enabled: 'bool' = True)"
+metadata = { "architecture_path" = "pipeline/pipeline.symbolic.primitives", "module" = "mlblack.pipeline.symbolic.primitives", "symbol" = "UnaryPrimitiveSpec" }

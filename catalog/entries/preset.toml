@@ -1,0 +1,103 @@
+[[entry]]
+key = "preset.arima_sarimax_forecast"
+title = "ARIMA/SARIMAX forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.time_series:build_arima_sarimax_forecast_trainer"
+tags = ["time-series", "arima", "sarimax", "preset"]
+summary = "ARIMA/SARIMAX 预测模型，通过 ARIMASARIMAXProvider 搭配 FixedForecastModelRepresentation。"
+
+[[entry]]
+key = "preset.baseline_forecast_search"
+title = "baseline forecast search preset"
+kind = "preset"
+import_path = "mlblack.presets.time_series:build_baseline_forecast_search_trainer"
+tags = ["time-series", "baseline", "naive", "random-search", "preset"]
+summary = "对 naive/季节性-naive/移动平均预测策略进行随机搜索。"
+
+[[entry]]
+key = "preset.linear_autoregressive_forecast"
+title = "linear autoregressive forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.time_series:build_linear_autoregressive_forecast_trainer"
+tags = ["time-series", "linear", "autoregressive", "preset"]
+summary = "预拟合线性自回归预测模型，搭配 FixedForecastModelRepresentation。"
+
+[[entry]]
+key = "preset.orthogonal_logistic_classification"
+title = "orthogonal logistic classification preset"
+kind = "preset"
+import_path = "mlblack.presets.classification:build_orthogonal_logistic_classification_trainer"
+tags = ["classification", "logistic", "orthogonal"]
+summary = "Orthogonal linear logits with binary probability head and classification metrics."
+
+[[entry]]
+key = "preset.tabular_tabnet_classification"
+title = "tabular TabNet classification preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_tabular_tabnet_classification_trainer"
+tags = ["neural", "tabular", "tabnet", "classification", "preset"]
+summary = "TabNet 表格分类 Trainer 预设，搭配 NeuralGraphBackpropAdapter 和 SupervisedClassificationProblem。"
+
+[[entry]]
+key = "preset.tabular_tabnet_regression"
+title = "tabular TabNet regression preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_tabular_tabnet_regression_trainer"
+tags = ["neural", "tabular", "tabnet", "regression", "preset"]
+summary = "TabNet 表格回归 Trainer 预设，搭配 NeuralGraphBackpropAdapter 和 SupervisedRegressionProblem。"
+
+[[entry]]
+key = "preset.temporal_deepar_forecast"
+title = "temporal DeepAR forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_deepar_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "deepar", "probabilistic", "preset"]
+summary = "DeepAR 风格概率预测 Trainer 预设，LSTM 主干输出高斯分布参数，搭配 NeuralGraphBackpropAdapter。"
+
+[[entry]]
+key = "preset.temporal_lstm_forecast"
+title = "temporal LSTM forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_lstm_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "lstm", "preset"]
+summary = "LSTM 神经序列预测 Trainer 预设，搭配 NeuralGraphBackpropAdapter。"
+
+[[entry]]
+key = "preset.temporal_nbeats_forecast"
+title = "temporal N-BEATS forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_nbeats_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "nbeats", "preset"]
+summary = "N-BEATS 风格堆叠残差块预测 Trainer 预设，搭配 NeuralGraphBackpropAdapter。"
+
+[[entry]]
+key = "preset.temporal_patchtst_forecast"
+title = "temporal PatchTST forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_patchtst_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "patchtst", "transformer", "preset"]
+summary = "PatchTST 补丁嵌入 + Transformer 编码器预测 Trainer 预设，搭配 NeuralGraphBackpropAdapter。"
+
+[[entry]]
+key = "preset.temporal_tcn_forecast"
+title = "temporal TCN forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_tcn_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "tcn", "preset"]
+summary = "TCN 神经序列预测 Trainer 预设，搭配 NeuralGraphBackpropAdapter。"
+
+[[entry]]
+key = "preset.temporal_tft_forecast"
+title = "temporal TFT forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_tft_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "tft", "attention", "preset"]
+summary = "Temporal Fusion Transformer (TFT) 预测 Trainer 预设，含门控残差网络和可解释多头自注意力。"
+
+[[entry]]
+key = "preset.temporal_transformer_forecast"
+title = "temporal Transformer forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_transformer_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "transformer", "preset"]
+summary = "Transformer 神经序列预测 Trainer 预设，搭配 NeuralGraphBackpropAdapter。"

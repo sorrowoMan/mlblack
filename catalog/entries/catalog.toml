@@ -1,0 +1,47 @@
+[[entry]]
+key = "catalog.materialize_db"
+title = "materialize catalog DB"
+kind = "catalog"
+import_path = "mlblack.catalog.store:materialize_catalog_db"
+tags = ["catalog", "sqlite", "materialize"]
+summary = "Materializes the authoritative TOML catalog into a SQLite DB snapshot."
+
+[[entry]]
+key = "catalog.query"
+title = "catalog query"
+kind = "catalog"
+import_path = "mlblack.catalog.query:query_catalog"
+tags = ["catalog", "facet", "deep-link"]
+summary = "Search catalog entries with facets and deep-link payload."
+
+[[entry]]
+key = "catalog.query_db"
+title = "DB-only catalog query"
+kind = "catalog"
+import_path = "mlblack.catalog.query:query_catalog_db"
+tags = ["catalog", "sqlite", "db-only", "facet"]
+summary = "Query a materialized catalog DB without loading the TOML source surface."
+
+[[entry]]
+key = "catalog.resolve_store"
+title = "resolve_catalog_store"
+kind = "catalog"
+import_path = "mlblack.catalog.store:resolve_catalog_store"
+tags = ["catalog", "sqlite", "postgresql", "db-only"]
+summary = "Resolves SQLite or PostgreSQL catalog stores from URL/path/env configuration."
+
+[[entry]]
+key = "catalog.store_postgresql"
+title = "PostgresCatalogStore"
+kind = "catalog"
+import_path = "mlblack.catalog.store:PostgresCatalogStore"
+tags = ["catalog", "postgresql", "db-only"]
+summary = "PostgreSQL implementation of the DB-only catalog store surface."
+
+[[entry]]
+key = "catalog.store_sqlite"
+title = "SQLiteCatalogStore"
+kind = "catalog"
+import_path = "mlblack.catalog.store:SQLiteCatalogStore"
+tags = ["catalog", "sqlite", "db-only"]
+summary = "SQLite implementation of the DB-only catalog store surface."

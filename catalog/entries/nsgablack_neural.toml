@@ -1,0 +1,17 @@
+[[entry]]
+key = "nsgablack_neural.transformer_spec_search"
+title = "TransformerSpecSearchProblem"
+kind = "nsgablack_neural"
+import_path = "mlblack.integrations.nsgablack_neural.transformer_spec_search:TransformerSpecSearchProblem"
+tags = ["nsgablack_neural", "integrations", "transformer_spec_search"]
+summary = "nsgablack-facing problem for outer TransformerSpec search."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_neural.transformer_spec_search", "module" = "mlblack.integrations.nsgablack_neural.transformer_spec_search", "symbol" = "TransformerSpecSearchProblem" }
+
+[[entry]]
+key = "nsgablack_neural.transformer_spec_search_space"
+title = "TransformerSpecSearchSpace"
+kind = "nsgablack_neural"
+import_path = "mlblack.integrations.nsgablack_neural.transformer_spec_search:TransformerSpecSearchSpace"
+tags = ["nsgablack_neural", "integrations", "transformer_spec_search"]
+summary = "Auto-discovered mlblack component `nsgablack_neural.transformer_spec_search_space`."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_neural.transformer_spec_search", "module" = "mlblack.integrations.nsgablack_neural.transformer_spec_search", "symbol" = "TransformerSpecSearchSpace" }

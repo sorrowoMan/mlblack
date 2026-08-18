@@ -1,0 +1,112 @@
+[[entry]]
+key = "representation.baseline_forecast"
+title = "BaselineForecastRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.time_series:BaselineForecastRepresentation"
+tags = ["representation", "representations", "time_series"]
+summary = "UnknownState -> Naive/seasonal-naive/moving-average forecast model."
+metadata = { "architecture_path" = "representation/representations.time_series", "module" = "mlblack.representations.time_series", "symbol" = "BaselineForecastRepresentation" }
+
+[[entry]]
+key = "representation.baseline_forecast_search"
+title = "BaselineForecastSearchConfig"
+kind = "representation"
+import_path = "mlblack.representations.time_series:BaselineForecastSearchConfig"
+tags = ["representation", "representations", "time_series"]
+summary = "Search space for simple univariate forecasting baselines."
+metadata = { "architecture_path" = "representation/representations.time_series", "module" = "mlblack.representations.time_series", "symbol" = "BaselineForecastSearchConfig" }
+
+[[entry]]
+key = "representation.estimator_spec"
+title = "EstimatorSpecRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.estimator_specs:EstimatorSpecRepresentation"
+tags = ["tree", "xgboost", "sklearn", "codec"]
+summary = "Unknown vector decoded into a typed external estimator spec."
+
+[[entry]]
+key = "representation.fixed_forecast_model"
+title = "FixedForecastModelRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.time_series:FixedForecastModelRepresentation"
+tags = ["representation", "representations", "time_series"]
+summary = "Representation wrapper for evaluating an already-built forecast model."
+metadata = { "architecture_path" = "representation/representations.time_series", "module" = "mlblack.representations.time_series", "symbol" = "FixedForecastModelRepresentation" }
+
+[[entry]]
+key = "representation.linear_point"
+title = "LinearPointRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.linear_point:LinearPointRepresentation"
+tags = ["representation", "representations", "linear_point"]
+summary = "Unknown vector -> raw linear model with pluggable output head."
+metadata = { "architecture_path" = "representation/representations.linear_point", "module" = "mlblack.representations.linear_point", "symbol" = "LinearPointRepresentation" }
+
+[[entry]]
+key = "representation.neural_graph"
+title = "NeuralGraphRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.neural_graph:NeuralGraphRepresentation"
+tags = ["representation", "representations", "neural_graph"]
+summary = "Unknown vector -> configured neural graph model."
+metadata = { "architecture_path" = "representation/representations.neural_graph", "module" = "mlblack.representations.neural_graph", "symbol" = "NeuralGraphRepresentation" }
+
+[[entry]]
+key = "representation.numpy_mlp"
+title = "NumpyMLPPointRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.neural_mlp:NumpyMLPPointRepresentation"
+tags = ["neural", "torch", "head", "codec"]
+summary = "Flat parameter vector decoded into a numpy MLP model."
+
+[[entry]]
+key = "representation.numpy_mlp_point"
+title = "NumpyMLPPointRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.neural_mlp:NumpyMLPPointRepresentation"
+tags = ["representation", "representations", "neural_mlp"]
+summary = "Unknown vector -> numpy MLP model with pluggable output head."
+metadata = { "architecture_path" = "representation/representations.neural_mlp", "module" = "mlblack.representations.neural_mlp", "symbol" = "NumpyMLPPointRepresentation" }
+
+[[entry]]
+key = "representation.orthogonal_linear"
+title = "OrthogonalPointLinearRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.orthogonal_point:OrthogonalPointLinearRepresentation"
+tags = ["linear", "orthogonal", "head"]
+summary = "Unknown vector decoded through orthogonal feature map and output head."
+
+[[entry]]
+key = "representation.orthogonal_point_linear"
+title = "OrthogonalPointLinearRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.orthogonal_point:OrthogonalPointLinearRepresentation"
+tags = ["representation", "representations", "orthogonal_point"]
+summary = "Unknown vector -> orthogonal linear model with pluggable output head."
+metadata = { "architecture_path" = "representation/representations.orthogonal_point", "module" = "mlblack.representations.orthogonal_point", "symbol" = "OrthogonalPointLinearRepresentation" }
+
+[[entry]]
+key = "representation.piecewise"
+title = "PiecewiseRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.conditional:PiecewiseRepresentation"
+tags = ["conditional", "piecewise", "router"]
+summary = "Concatenates branch states and decodes a routed piecewise model."
+
+[[entry]]
+key = "representation.symbolic_basis_set"
+title = "SymbolicBasisSetRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.symbolic:SymbolicBasisSetRepresentation"
+tags = ["representation", "representations", "symbolic"]
+summary = "Fixed multi-expression symbolic candidate -> basis-set output."
+metadata = { "architecture_path" = "representation/representations.symbolic", "module" = "mlblack.representations.symbolic", "symbol" = "SymbolicBasisSetRepresentation" }
+
+[[entry]]
+key = "representation.symbolic_expression"
+title = "SymbolicExpressionRepresentation"
+kind = "representation"
+import_path = "mlblack.representations.symbolic:SymbolicExpressionRepresentation"
+tags = ["representation", "representations", "symbolic"]
+summary = "Fixed symbolic expression -> point/interval/probability head."
+metadata = { "architecture_path" = "representation/representations.symbolic", "module" = "mlblack.representations.symbolic", "symbol" = "SymbolicExpressionRepresentation" }

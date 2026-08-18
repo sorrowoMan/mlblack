@@ -1,0 +1,135 @@
+[[entry]]
+key = "codec.estimator_spec"
+title = "EstimatorSpecCodec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.estimators:EstimatorSpecCodec"
+tags = ["codec", "representations", "codecs", "estimators"]
+summary = "External estimator-spec codec with typed mechanism metadata."
+metadata = { "architecture_path" = "representation/representations.codecs.estimators", "module" = "mlblack.representations.codecs.estimators", "symbol" = "EstimatorSpecCodec" }
+
+[[entry]]
+key = "codec.linear_point"
+title = "LinearPointCodec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.linear:LinearPointCodec"
+tags = ["codec", "representations", "codecs", "linear"]
+summary = "Raw linear parameter codec used by headed representations."
+metadata = { "architecture_path" = "representation/representations.codecs.linear", "module" = "mlblack.representations.codecs.linear", "symbol" = "LinearPointCodec" }
+
+[[entry]]
+key = "codec.neural_graph"
+title = "NeuralGraphCodec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.base:NeuralGraphCodec"
+tags = ["codec", "representations", "codecs", "neural", "base"]
+summary = "Decode a flat parameter state into a neural model from NeuralGraphSpec."
+metadata = { "architecture_path" = "representation/representations.codecs.neural.base", "module" = "mlblack.representations.codecs.neural.base", "symbol" = "NeuralGraphCodec" }
+
+[[entry]]
+key = "codec.neural_tabular_tabnet_spec"
+title = "NeuralGraphSpec.tabular_tabnet"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.tabular_tabnet"
+tags = ["neural", "tabular", "tabnet", "attention", "backend-route"]
+summary = "构建 TabNet 风格表格深度学习的 NeuralGraphSpec 路由，含特征 Transformer、注意力掩码和 GLU 激活。"
+
+[[entry]]
+key = "codec.neural_temporal_deepar_spec"
+title = "NeuralGraphSpec.temporal_deepar"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.temporal_deepar"
+tags = ["neural", "time-series", "temporal", "deepar", "probabilistic", "backend-route"]
+summary = "构建 DeepAR 风格概率预测的 NeuralGraphSpec 路由，LSTM 主干输出 mu 和 log_sigma 分布参数。"
+
+[[entry]]
+key = "codec.neural_temporal_lstm_spec"
+title = "NeuralGraphSpec.temporal_lstm"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.temporal_lstm"
+tags = ["neural", "time-series", "temporal", "lstm", "backend-route"]
+summary = "构建 LSTM 风格序列预测的 NeuralGraphSpec 路由，通过后端神经网络降层执行。"
+
+[[entry]]
+key = "codec.neural_temporal_nbeats_spec"
+title = "NeuralGraphSpec.temporal_nbeats"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.temporal_nbeats"
+tags = ["neural", "time-series", "temporal", "nbeats", "backend-route"]
+summary = "构建 N-BEATS 风格堆叠残差块预测的 NeuralGraphSpec 路由，通过后端神经网络降层执行。"
+
+[[entry]]
+key = "codec.neural_temporal_patchtst_spec"
+title = "NeuralGraphSpec.temporal_patchtst"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.temporal_patchtst"
+tags = ["neural", "time-series", "temporal", "patchtst", "transformer", "backend-route"]
+summary = "构建 PatchTST 风格补丁嵌入 + Transformer 编码器预测的 NeuralGraphSpec 路由。"
+
+[[entry]]
+key = "codec.neural_temporal_tcn_spec"
+title = "NeuralGraphSpec.temporal_tcn"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.temporal_tcn"
+tags = ["neural", "time-series", "temporal", "tcn", "backend-route"]
+summary = "构建 TCN 风格序列预测的 NeuralGraphSpec 路由，通过后端神经网络降层执行。"
+
+[[entry]]
+key = "codec.neural_temporal_tft_spec"
+title = "NeuralGraphSpec.temporal_tft"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.temporal_tft"
+tags = ["neural", "time-series", "temporal", "tft", "attention", "backend-route"]
+summary = "构建 Temporal Fusion Transformer (TFT) 风格的 NeuralGraphSpec 路由，含门控残差网络和可解释多头自注意力。"
+
+[[entry]]
+key = "codec.neural_temporal_transformer_spec"
+title = "NeuralGraphSpec.temporal_transformer"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.specs:NeuralGraphSpec.temporal_transformer"
+tags = ["neural", "time-series", "temporal", "transformer", "backend-route"]
+summary = "构建时序 Transformer 预测的 NeuralGraphSpec 路由，通过后端神经网络降层执行。"
+
+[[entry]]
+key = "codec.numpy_mlp"
+title = "NumpyMLPCodec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.neural.mlp:NumpyMLPCodec"
+tags = ["codec", "representations", "codecs", "neural", "mlp"]
+summary = "Numpy MLP parameter codec with explicit mechanism specs."
+metadata = { "architecture_path" = "representation/representations.codecs.neural.mlp", "module" = "mlblack.representations.codecs.neural.mlp", "symbol" = "NumpyMLPCodec" }
+
+[[entry]]
+key = "codec.orthogonal_linear_point"
+title = "OrthogonalLinearPointCodec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.linear:OrthogonalLinearPointCodec"
+tags = ["codec", "representations", "codecs", "linear"]
+summary = "Orthogonal-feature linear parameter codec."
+metadata = { "architecture_path" = "representation/representations.codecs.linear", "module" = "mlblack.representations.codecs.linear", "symbol" = "OrthogonalLinearPointCodec" }
+
+[[entry]]
+key = "codec.symbolic_expression"
+title = "SymbolicExpressionCodec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.symbolic:SymbolicExpressionCodec"
+tags = ["codec", "representations", "codecs", "symbolic"]
+summary = "Fixed symbolic expression codec."
+metadata = { "architecture_path" = "representation/representations.codecs.symbolic", "module" = "mlblack.representations.codecs.symbolic", "symbol" = "SymbolicExpressionCodec" }
+
+[[entry]]
+key = "codec.symbolic_multi_expression"
+title = "SymbolicMultiExpressionCodec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.symbolic:SymbolicMultiExpressionCodec"
+tags = ["codec", "representations", "codecs", "symbolic"]
+summary = "Fixed multi-expression codec used by basis-set heads."
+metadata = { "architecture_path" = "representation/representations.codecs.symbolic", "module" = "mlblack.representations.codecs.symbolic", "symbol" = "SymbolicMultiExpressionCodec" }
+
+[[entry]]
+key = "codec.tunable_parameter"
+title = "TunableParameterSpec"
+kind = "codec"
+import_path = "mlblack.representations.codecs.estimators:TunableParameterSpec"
+tags = ["codec", "representations", "codecs", "estimators"]
+summary = "TunableParameterSpec(name: 'str', low: 'float' = 0.0, high: 'float' = 1.0, integer: 'bool' = False)"
+metadata = { "architecture_path" = "representation/representations.codecs.estimators", "module" = "mlblack.representations.codecs.estimators", "symbol" = "TunableParameterSpec" }

@@ -1,0 +1,48 @@
+[[entry]]
+key = "adapter.estimator_spec_search"
+title = "EstimatorSpecSearchAdapter"
+kind = "adapter"
+import_path = "mlblack.adapters.estimator_search:EstimatorSpecSearchAdapter"
+tags = ["tree", "xgboost", "sklearn", "resume"]
+summary = "Searches decoded external estimator specs."
+
+[[entry]]
+key = "adapter.functional_backprop"
+title = "FunctionalBackpropAdapter"
+kind = "adapter"
+import_path = "mlblack.adapters.functional_backprop:FunctionalBackpropAdapter"
+tags = ["gradient", "neural", "functional-backend", "resume"]
+summary = "Uses problem-owned functional gradients plus backend optimizer.sgd_step."
+
+[[entry]]
+key = "adapter.gradient_descent"
+title = "GradientDescentAdapter"
+kind = "adapter"
+import_path = "mlblack.adapters.gradient_descent:GradientDescentAdapter"
+tags = ["gradient", "linear", "resume"]
+summary = "Consumes feedback.gradients and updates UnknownState."
+
+[[entry]]
+key = "adapter.neural_graph_backprop"
+title = "NeuralGraphBackpropAdapter"
+kind = "adapter"
+import_path = "mlblack.adapters.neural_graph_backprop:NeuralGraphBackpropAdapter"
+tags = ["adapter", "adapters", "neural_graph_backprop"]
+summary = "Backend-dispatched neural graph backprop adapter."
+metadata = { "architecture_path" = "adapters.neural_graph_backprop", "module" = "mlblack.adapters.neural_graph_backprop", "symbol" = "NeuralGraphBackpropAdapter" }
+
+[[entry]]
+key = "adapter.random_search"
+title = "RandomSearchAdapter"
+kind = "adapter"
+import_path = "mlblack.adapters.random_search:RandomSearchAdapter"
+tags = ["black-box", "interval", "resume"]
+summary = "Black-box candidate search for non-gradient heads."
+
+[[entry]]
+key = "adapter.torch_backprop"
+title = "TorchBackpropAdapter"
+kind = "adapter"
+import_path = "mlblack.adapters.torch_backprop:TorchBackpropAdapter"
+tags = ["neural", "torch", "resource-context", "resume"]
+summary = "Torch gradient engine for parameter-vector MLP representations."

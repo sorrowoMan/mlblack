@@ -1,0 +1,23 @@
+[[entry]]
+key = "capability.checkpoint"
+title = "CheckpointCapability"
+kind = "capability"
+import_path = "mlblack.capabilities.checkpoint:CheckpointCapability"
+tags = ["state", "resume", "snapshot"]
+summary = "Writes trainer state snapshots during fit."
+
+[[entry]]
+key = "capability.experiment_tracker"
+title = "ExperimentTrackerCapability"
+kind = "capability"
+import_path = "mlblack.capabilities.tracking:ExperimentTrackerCapability"
+tags = ["experiment", "sqlite", "run-record"]
+summary = "Records fit/step/evaluation events to an experiment store."
+
+[[entry]]
+key = "capability.resource_audit"
+title = "ResourceAuditCapability"
+kind = "capability"
+import_path = "mlblack.capabilities.resource_audit:ResourceAuditCapability"
+tags = ["l0", "resource", "audit"]
+summary = "Audits effective ResourceContext during fit."

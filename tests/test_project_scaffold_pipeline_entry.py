@@ -14,8 +14,12 @@ def test_generated_solver_and_trainer_cases_have_canonical_pipeline_entry(tmp_pa
         pipeline_main = case_root / "pipeline" / "main.py"
         assert pipeline_main.is_file()
         assert "def build_pipeline" in pipeline_main.read_text(encoding="utf-8")
-        assert "from .pipeline import build_pipeline" in (case_root / "build_solver.py").read_text(encoding="utf-8")
-        assert "load_resource_context_from_env" in (case_root / "run_solver.py").read_text(encoding="utf-8")
+        assert "from .pipeline import build_pipeline" in (
+            case_root / "build_solver.py"
+        ).read_text(encoding="utf-8")
+        runner_source = (case_root / "run_solver.py").read_text(encoding="utf-8")
+        assert "run_standard_case_cli" in runner_source
+        assert 'framework="mlblack"' in runner_source
 
     report = run_common_project_doctor(project_root, strict=True)
     assert not any(item.code == "case-pipeline-entry-recommended" for item in report.diagnostics)

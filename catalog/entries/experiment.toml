@@ -1,0 +1,7 @@
+[[entry]]
+key = "experiment.query"
+title = "experiment query"
+kind = "experiment"
+import_path = "mlblack.catalog.experiment.query:query_experiments"
+tags = ["experiment", "sqlite", "facet"]
+summary = "Query SQLite experiment records with simple filters and facets."

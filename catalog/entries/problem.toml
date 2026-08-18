@@ -1,0 +1,167 @@
+[[entry]]
+key = "problem.fixed_symbolic_regression"
+title = "FixedSymbolicRegressionProblem"
+kind = "problem"
+import_path = "mlblack.problems.symbolic:FixedSymbolicRegressionProblem"
+tags = ["problem", "problems", "symbolic"]
+summary = "Regression evaluator for fixed symbolic expression decoders."
+metadata = { "architecture_path" = "problems.symbolic", "module" = "mlblack.problems.symbolic", "symbol" = "FixedSymbolicRegressionProblem" }
+
+[[entry]]
+key = "problem.orthogonal_basis_evaluation"
+title = "OrthogonalBasisEvaluationProblem"
+kind = "problem"
+import_path = "mlblack.problems.symbolic:OrthogonalBasisEvaluationProblem"
+tags = ["problem", "problems", "symbolic"]
+summary = "Evaluate a fitted symbolic basis set for orthogonality objectives."
+metadata = { "architecture_path" = "problems.symbolic", "module" = "mlblack.problems.symbolic", "symbol" = "OrthogonalBasisEvaluationProblem" }
+
+[[entry]]
+key = "problem.piecewise_regression"
+title = "PiecewiseRegressionProblem"
+kind = "problem"
+import_path = "mlblack.problems.conditional:PiecewiseRegressionProblem"
+tags = ["problem", "problems", "conditional"]
+summary = "Regression evaluator with branch distribution metrics for piecewise models."
+metadata = { "architecture_path" = "problems.conditional", "module" = "mlblack.problems.conditional", "symbol" = "PiecewiseRegressionProblem" }
+
+[[entry]]
+key = "problem.rolling_origin_forecasting"
+title = "RollingOriginForecastingProblem"
+kind = "problem"
+import_path = "mlblack.problems.time_series:RollingOriginForecastingProblem"
+tags = ["problem", "problems", "time_series"]
+summary = "Rolling-origin evaluator for horizon-specific forecast quality."
+metadata = { "architecture_path" = "problems.time_series", "module" = "mlblack.problems.time_series", "symbol" = "RollingOriginForecastingProblem" }
+
+[[entry]]
+key = "problem.supervised_classification"
+title = "SupervisedClassificationProblem"
+kind = "problem"
+import_path = "mlblack.problems.classification:SupervisedClassificationProblem"
+tags = ["classification", "probability", "log-loss"]
+summary = "Evaluator for classification accuracy and log-loss objectives."
+
+[[entry]]
+key = "problem.supervised_estimator_fit"
+title = "SupervisedEstimatorFitRegressionProblem"
+kind = "problem"
+import_path = "mlblack.problems.supervised:SupervisedEstimatorFitRegressionProblem"
+tags = ["tree", "xgboost", "artifact"]
+summary = "Fits decoded estimator specs and scores the fitted estimator."
+
+[[entry]]
+key = "problem.supervised_estimator_fit_regression"
+title = "SupervisedEstimatorFitRegressionProblem"
+kind = "problem"
+import_path = "mlblack.problems.supervised:SupervisedEstimatorFitRegressionProblem"
+tags = ["problem", "problems", "supervised"]
+summary = "Evaluator that fits decoded external estimator specs before scoring."
+metadata = { "architecture_path" = "problems.supervised", "module" = "mlblack.problems.supervised", "symbol" = "SupervisedEstimatorFitRegressionProblem" }
+
+[[entry]]
+key = "problem.supervised_interval_regression"
+title = "SupervisedIntervalRegressionProblem"
+kind = "problem"
+import_path = "mlblack.problems.supervised:SupervisedIntervalRegressionProblem"
+tags = ["problem", "problems", "supervised"]
+summary = "Evaluator for decoded interval-output models."
+metadata = { "architecture_path" = "problems.supervised", "module" = "mlblack.problems.supervised", "symbol" = "SupervisedIntervalRegressionProblem" }
+
+[[entry]]
+key = "problem.supervised_regression"
+title = "SupervisedRegressionProblem"
+kind = "problem"
+import_path = "mlblack.problems.supervised:SupervisedRegressionProblem"
+tags = ["regression", "gradient", "residuals"]
+summary = "Data-dependent evaluator for point regression."
+
+[[entry]]
+key = "problem.temporal_neural_forecasting"
+title = "TemporalNeuralForecastingProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TemporalNeuralForecastingProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Evaluate temporal neural graph models (LSTM/TCN/Transformer) for sequence forecasting."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TemporalNeuralForecastingProblem" }
+
+[[entry]]
+key = "problem.temporal_neural_probabilistic_forecasting"
+title = "TemporalNeuralProbabilisticForecastingProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TemporalNeuralProbabilisticForecastingProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Evaluate temporal neural graph models with negative log-likelihood loss for probabilistic forecasting."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TemporalNeuralProbabilisticForecastingProblem" }
+
+[[entry]]
+key = "problem.temporal_neural_rolling_origin"
+title = "TemporalNeuralRollingOriginProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TemporalNeuralRollingOriginProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Rolling-origin evaluation for temporal neural graph forecasters."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TemporalNeuralRollingOriginProblem" }
+
+[[entry]]
+key = "problem.time_series_forecasting"
+title = "TimeSeriesForecastingProblem"
+kind = "problem"
+import_path = "mlblack.problems.time_series:TimeSeriesForecastingProblem"
+tags = ["problem", "problems", "time_series"]
+summary = "Evaluator for univariate time-series forecasting models."
+metadata = { "architecture_path" = "problems.time_series", "module" = "mlblack.problems.time_series", "symbol" = "TimeSeriesForecastingProblem" }
+
+[[entry]]
+key = "problem.tiny_cnn_image_classification"
+title = "TinyCNNImageClassificationProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TinyCNNImageClassificationProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Evaluate tiny CNN image classification heads."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TinyCNNImageClassificationProblem" }
+
+[[entry]]
+key = "problem.tiny_cnn_image_contrastive"
+title = "TinyCNNImageContrastiveProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TinyCNNImageContrastiveProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Triplet contrastive/retrieval loss over tiny CNN embedding heads."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TinyCNNImageContrastiveProblem" }
+
+[[entry]]
+key = "problem.tiny_gnn_graph_classification"
+title = "TinyGNNGraphClassificationProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TinyGNNGraphClassificationProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Evaluate tiny GNN graph classification heads."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TinyGNNGraphClassificationProblem" }
+
+[[entry]]
+key = "problem.tiny_transformer_classification"
+title = "TinyTransformerClassificationProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TinyTransformerClassificationProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Evaluate tiny Transformer classification heads with torch autograd."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TinyTransformerClassificationProblem" }
+
+[[entry]]
+key = "problem.tiny_transformer_dpo_preference"
+title = "TinyTransformerDPOPreferenceProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TinyTransformerDPOPreferenceProblem"
+tags = ["problem", "problems", "neural"]
+summary = "DPO-style preference loss over chosen/rejected token sequences."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TinyTransformerDPOPreferenceProblem" }
+
+[[entry]]
+key = "problem.tiny_transformer_language_model"
+title = "TinyTransformerLanguageModelProblem"
+kind = "problem"
+import_path = "mlblack.problems.neural:TinyTransformerLanguageModelProblem"
+tags = ["problem", "problems", "neural"]
+summary = "Evaluate tiny Transformer LM heads on next-token prediction."
+metadata = { "architecture_path" = "problems.neural", "module" = "mlblack.problems.neural", "symbol" = "TinyTransformerLanguageModelProblem" }

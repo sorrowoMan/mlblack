@@ -1,44 +1,20 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import importlib
 import inspect
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from blackbase.project.doctor import run_common_project_doctor as _run_common_project_doctor
+from blackbase.project.doctor import (
+    DoctorDiagnostic,
+    DoctorReport,
+    run_common_project_doctor as _run_common_project_doctor,
+)
 
-from mlblack.core.context_contracts import ContextContract
-from mlblack.core.context_keys import METRIC_FALLBACKS, METRIC_KEYS, unknown_context_keys
-from mlblack.core.contracts import ComponentContract
-
-
-@dataclass(frozen=True)
-class DoctorDiagnostic:
-    level: str
-    code: str
-    message: str
-    path: str = ""
-
-    def as_dict(self) -> dict[str, str]:
-        return {
-            "level": self.level,
-            "code": self.code,
-            "message": self.message,
-            "path": self.path,
-        }
-
-
-@dataclass(frozen=True)
-class DoctorReport:
-    project_root: Path
-    diagnostics: tuple[DoctorDiagnostic, ...]
-
-    @property
-    def ok(self) -> bool:
-        return not any(item.level == "error" for item in self.diagnostics)
-
+from blackbase.context import ContextContract
+from blackbase.context import METRIC_FALLBACKS, METRIC_KEYS, unknown_context_keys
+from blackbase.contracts import ComponentContract
 
 def run_project_doctor(path: str | Path | None = None, *, strict: bool = False) -> DoctorReport:
     root = Path(path or Path.cwd()).resolve()
@@ -75,12 +51,8 @@ def run_project_doctor(path: str | Path | None = None, *, strict: bool = False) 
             "core/adapter.py",
             "core/representation.py",
             "core/problem.py",
-            "core/resources/__init__.py",
             "core/state.py",
             "core/artifacts.py",
-            "core/context_keys.py",
-            "core/context_contracts.py",
-            "core/contracts.py",
             "assembly/spec.py",
             "assembly/builders.py",
             "problems/training/task.py",
@@ -118,12 +90,12 @@ def run_project_doctor(path: str | Path | None = None, *, strict: bool = False) 
             "pipeline/conditional",
             "representations/heads",
             "catalog",
+            "catalog/entries",
             "catalog/experiment",
             "bias",
         ),
     )
     _check_text_contract(package_root / "core" / "trainer.py", diags, required=("set_adapter", "evaluate_individual", "evaluate_population", "write_population_snapshot", "set_resource_context"))
-    _check_text_contract(package_root / "core" / "resources" / "__init__.py", diags, required=("ResourceContext", "ResourceAudit", "coerce_resource_context"))
     _check_text_contract(package_root / "assembly" / "builders.py", diags, required=("build_trainer", "build_pipeline"))
     _check_text_contract(package_root / "problems" / "proxy.py", diags, required=("MLBlackTrainingProxy", "evaluate_population", "TrainingResultRecord"))
     _check_text_contract(package_root / "pipeline" / "numericizer" / "plan.py", diags, required=("NumericizationPlan", "NumericFeatureColumn"))

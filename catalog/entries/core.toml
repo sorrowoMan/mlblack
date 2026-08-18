@@ -1,0 +1,206 @@
+[[entry]]
+key = "core.algorithm"
+title = "AlgorithmAdapter"
+kind = "core"
+import_path = "mlblack.core.adapter:AlgorithmAdapter"
+tags = ["core", "adapter"]
+summary = "Optimization strategy, equivalent to nsgablack's Adapter."
+metadata = { "architecture_path" = "core.adapter", "module" = "mlblack.core.adapter", "symbol" = "AlgorithmAdapter" }
+
+[[entry]]
+key = "core.artifact_bundle"
+title = "ArtifactBundle"
+kind = "core"
+import_path = "mlblack.core.artifacts:ArtifactBundle"
+tags = ["core", "artifacts"]
+summary = "Final output bundle with explicit product boundaries."
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "ArtifactBundle" }
+
+[[entry]]
+key = "core.capability"
+title = "Capability"
+kind = "core"
+import_path = "mlblack.core.capability:Capability"
+tags = ["core", "capability"]
+summary = "ML semantic Plugin with Trainer-oriented hook names."
+metadata = { "architecture_path" = "core.capability", "module" = "mlblack.core.capability", "symbol" = "Capability" }
+
+[[entry]]
+key = "core.diagnostic"
+title = "DiagnosticProblem"
+kind = "core"
+import_path = "mlblack.core.diagnostic:DiagnosticProblem"
+tags = ["core", "diagnostic"]
+summary = "Problem surface for a single non-search ML diagnostic evaluation."
+metadata = { "architecture_path" = "core.diagnostic", "module" = "mlblack.core.diagnostic", "symbol" = "DiagnosticProblem" }
+
+[[entry]]
+key = "core.estimator_state_artifact"
+title = "EstimatorStateArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:EstimatorStateArtifact"
+tags = ["core", "artifacts"]
+summary = "EstimatorStateArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'estimator_state', estimator_state: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "EstimatorStateArtifact" }
+
+[[entry]]
+key = "core.head_block"
+title = "HeadBlock"
+kind = "core"
+import_path = "mlblack.core.head:HeadBlock"
+tags = ["core", "head"]
+summary = "Contiguous parameter block consumed by an output head."
+metadata = { "architecture_path" = "core.head", "module" = "mlblack.core.head", "symbol" = "HeadBlock" }
+
+[[entry]]
+key = "core.integrated_model_artifact"
+title = "IntegratedModelArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:IntegratedModelArtifact"
+tags = ["core", "artifacts"]
+summary = "IntegratedModelArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'integrated_model')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "IntegratedModelArtifact" }
+
+[[entry]]
+key = "core.learning"
+title = "LearningProblem"
+kind = "core"
+import_path = "mlblack.core.problem:LearningProblem"
+tags = ["core", "problem"]
+summary = "Data-dependent evaluator, equivalent to nsgablack Problem."
+metadata = { "architecture_path" = "core.problem", "module" = "mlblack.core.problem", "symbol" = "LearningProblem" }
+
+[[entry]]
+key = "core.model"
+title = "ModelRepresentation"
+kind = "core"
+import_path = "mlblack.core.representation:ModelRepresentation"
+tags = ["core", "representation"]
+summary = "Unknown-state encoder/decoder, equivalent to nsgablack Representation."
+metadata = { "architecture_path" = "core.representation", "module" = "mlblack.core.representation", "symbol" = "ModelRepresentation" }
+
+[[entry]]
+key = "core.model_artifact"
+title = "ModelArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:ModelArtifact"
+tags = ["core", "artifacts"]
+summary = "Serializable boundary around the trained model payload."
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "ModelArtifact" }
+
+[[entry]]
+key = "core.neural_graph_artifact"
+title = "NeuralGraphArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:NeuralGraphArtifact"
+tags = ["core", "artifacts"]
+summary = "NeuralGraphArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'neural_graph', graph_spec: 'Mapping[str, Any]' = <factory>, parameter_layout: 'Mapping[str, Any]' = <factory>, head_artifact: 'Mapping[str, Any]' = <factory>, audit_artifact: 'Mapping[str, Any]' = <factory>, graph_spec_digest: 'str' = '', parameter_layout_digest: 'str' = '')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "NeuralGraphArtifact" }
+
+[[entry]]
+key = "core.optimizer"
+title = "OptimizerAdapter"
+kind = "core"
+import_path = "mlblack.core.adapter:OptimizerAdapter"
+tags = ["core", "adapter"]
+summary = "Optimization strategy, equivalent to nsgablack's Adapter."
+metadata = { "architecture_path" = "core.adapter", "module" = "mlblack.core.adapter", "symbol" = "OptimizerAdapter" }
+
+[[entry]]
+key = "core.output"
+title = "OutputHead"
+kind = "core"
+import_path = "mlblack.core.head:OutputHead"
+tags = ["core", "head"]
+summary = "Decoder-side output semantics."
+metadata = { "architecture_path" = "core.head", "module" = "mlblack.core.head", "symbol" = "OutputHead" }
+
+[[entry]]
+key = "core.representation_pipeline"
+title = "RepresentationPipeline"
+kind = "core"
+import_path = "mlblack.core.representation:RepresentationPipeline"
+tags = ["core", "representation"]
+summary = "Unknown-state encoder/decoder, equivalent to nsgablack Representation."
+metadata = { "architecture_path" = "core.representation", "module" = "mlblack.core.representation", "symbol" = "RepresentationPipeline" }
+
+[[entry]]
+key = "core.run_report"
+title = "RunReport"
+kind = "core"
+import_path = "mlblack.core.artifacts:RunReport"
+tags = ["core", "artifacts"]
+summary = "Auditable run summary distinct from artifact and trainer state."
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "RunReport" }
+
+[[entry]]
+key = "core.sklearn_mlp_artifact"
+title = "SklearnMLPArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:SklearnMLPArtifact"
+tags = ["core", "artifacts"]
+summary = "SklearnMLPArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'sklearn_mlp')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "SklearnMLPArtifact" }
+
+[[entry]]
+key = "core.symbolic_interval_artifact"
+title = "SymbolicIntervalArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:SymbolicIntervalArtifact"
+tags = ["core", "artifacts"]
+summary = "SymbolicIntervalArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'symbolic_interval')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "SymbolicIntervalArtifact" }
+
+[[entry]]
+key = "core.symbolic_model_artifact"
+title = "SymbolicModelArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:SymbolicModelArtifact"
+tags = ["core", "artifacts"]
+summary = "SymbolicModelArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'symbolic_model')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "SymbolicModelArtifact" }
+
+[[entry]]
+key = "core.torch_model_artifact"
+title = "TorchModelArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:TorchModelArtifact"
+tags = ["core", "artifacts"]
+summary = "TorchModelArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'torch_model')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "TorchModelArtifact" }
+
+[[entry]]
+key = "core.trainer_state_artifact"
+title = "TrainerStateArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:TrainerStateArtifact"
+tags = ["core", "artifacts"]
+summary = "Checkpoint-style trainer state payload."
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "TrainerStateArtifact" }
+
+[[entry]]
+key = "core.tree_ensemble_artifact"
+title = "TreeEnsembleArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:TreeEnsembleArtifact"
+tags = ["core", "artifacts"]
+summary = "TreeEnsembleArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'tree_ensemble')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "TreeEnsembleArtifact" }
+
+[[entry]]
+key = "core.typed_model_artifact"
+title = "TypedModelArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:TypedModelArtifact"
+tags = ["core", "artifacts"]
+summary = "TypedModelArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'model')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "TypedModelArtifact" }
+
+[[entry]]
+key = "core.xg_boost_artifact"
+title = "XGBoostArtifact"
+kind = "core"
+import_path = "mlblack.core.artifacts:XGBoostArtifact"
+tags = ["core", "artifacts"]
+summary = "XGBoostArtifact(name: 'str', model: 'Any', family: 'str' = '', head: 'str' = 'point', representation: 'Mapping[str, Any]' = <factory>, metadata: 'Mapping[str, Any]' = <factory>, artifact_type: 'str' = 'xgboost')"
+metadata = { "architecture_path" = "core.artifacts", "module" = "mlblack.core.artifacts", "symbol" = "XGBoostArtifact" }

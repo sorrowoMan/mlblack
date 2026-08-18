@@ -1,0 +1,44 @@
+[[entry]]
+key = "integration.nsgablack_trainer_case_evaluator"
+title = "NsgablackTrainerCaseEvaluator"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_trainer_evaluator:NsgablackTrainerCaseEvaluator"
+tags = ["integration", "integrations", "nsgablack_trainer_evaluator"]
+summary = "Invoke a complete standard Trainer Case through the shared substrate."
+metadata = { "architecture_path" = "integrations.nsgablack_trainer_evaluator", "module" = "mlblack.integrations.nsgablack_trainer_evaluator", "symbol" = "NsgablackTrainerCaseEvaluator" }
+
+[[entry]]
+key = "integration.nsgablack_trainer_evaluator"
+title = "NsgablackTrainerEvaluator"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_trainer_evaluator:NsgablackTrainerEvaluator"
+tags = ["integration", "integrations", "nsgablack_trainer_evaluator"]
+summary = "Adapt a fresh mlblack Trainer run to nsgablack's inner evaluator protocol."
+metadata = { "architecture_path" = "integrations.nsgablack_trainer_evaluator", "module" = "mlblack.integrations.nsgablack_trainer_evaluator", "symbol" = "NsgablackTrainerEvaluator" }
+
+[[entry]]
+key = "integration.pretrained_checkpoint_mapper"
+title = "PretrainedCheckpointMapper"
+kind = "integration"
+import_path = "mlblack.integrations.transformers_bridge:PretrainedCheckpointMapper"
+tags = ["integration", "integrations", "transformers_bridge"]
+summary = "Map an external checkpoint state_dict into an mlblack neural graph."
+metadata = { "architecture_path" = "integrations.transformers_bridge", "module" = "mlblack.integrations.transformers_bridge", "symbol" = "PretrainedCheckpointMapper" }
+
+[[entry]]
+key = "integration.pretrained_model_bridge"
+title = "PretrainedModelBridge"
+kind = "integration"
+import_path = "mlblack.integrations.transformers_bridge:PretrainedModelBridge"
+tags = ["integration", "integrations", "transformers_bridge"]
+summary = "Lazy pretrained-model loader for external-model/component use cases."
+metadata = { "architecture_path" = "integrations.transformers_bridge", "module" = "mlblack.integrations.transformers_bridge", "symbol" = "PretrainedModelBridge" }
+
+[[entry]]
+key = "integration.pretrained_tokenizer_bridge"
+title = "PretrainedTokenizerBridge"
+kind = "integration"
+import_path = "mlblack.integrations.transformers_bridge:PretrainedTokenizerBridge"
+tags = ["integration", "integrations", "transformers_bridge"]
+summary = "Lazy bridge to HuggingFace tokenizers."
+metadata = { "architecture_path" = "integrations.transformers_bridge", "module" = "mlblack.integrations.transformers_bridge", "symbol" = "PretrainedTokenizerBridge" }
