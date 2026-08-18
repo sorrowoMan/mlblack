@@ -83,7 +83,7 @@ class EtfObservabilityPlugin(Capability):
             md_path.write_text(self._render_markdown(manifest), encoding="utf-8")
 
         if hasattr(trainer, "context") and isinstance(getattr(trainer, "context"), dict):
-            trainer.context["plugin.etf_observability_path"] = str(output_dir)
+            trainer.context_store["plugin.etf_observability_path"] = str(output_dir)
 
     def _render_markdown(self, manifest: Mapping[str, Any]) -> str:
         dataset = dict(manifest.get("dataset", {}) or {})

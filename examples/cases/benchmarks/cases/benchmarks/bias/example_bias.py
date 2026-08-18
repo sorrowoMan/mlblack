@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 
-from mlblack.core.bias import OptimizationBias
+from mlblack.bias.base import OptimizationBias
 
 
 class ExampleL2Bias(OptimizationBias):
@@ -20,17 +22,18 @@ class ExampleL2Bias(OptimizationBias):
     metrics_fallback = "none"
 
     def __init__(self, weight=0.01, *, name="l2_bias"):
-        super().__init__(name=name)
-        self.weight = float(weight)
+        super().__init__(name=name, weight=float(weight))
 
     def compute(self, unknown_state):
         if unknown_state is None:
             return 0.0
         return self.weight * float(np.sum(np.asarray(unknown_state) ** 2))
 
-    def adjust_feedback(self, feedback, unknown_state, context):
-        if feedback is None or not hasattr(feedback, "objectives"):
-            return feedback
-        l2 = self.compute(unknown_state)
-        feedback.objectives = np.asarray(feedback.objectives) + l2
-        return feedback
+    def adjust_feedback(self, control, states, feedback, context):
+        del control, context
+        adjusted = []
+        for state, item in zip(states, feedback, strict=True):
+            objectives = np.asarray(item.objectives, dtype=float).copy()
+            objectives += self.compute(state.as_array())
+            adjusted.append(replace(item, objectives=objectives))
+        return tuple(adjusted)

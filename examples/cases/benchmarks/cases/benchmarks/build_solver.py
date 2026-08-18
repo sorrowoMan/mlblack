@@ -18,7 +18,7 @@ from mlblack.project.scaffold import print_case_check
 _HERE = Path(__file__).resolve().parent
 
 
-@dataclass(frozen=True)
+@dataclass
 class MigratedExampleRunner:
     name: str
     original_path: Path
