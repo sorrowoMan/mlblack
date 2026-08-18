@@ -21,12 +21,6 @@ from .nsgablack_neural import (
     TransformerSpecSearchProblem,
     TransformerSpecSearchSpace,
 )
-from .nsgablack_pipeline_kernel import (
-    MLPipelineKernelBuild,
-    PipelineSlotSpec,
-    PipelineSpec,
-    build_pipeline_kernel,
-)
 from .nsgablack_trainer_evaluator import (
     ComponentOverrideBuilder,
     NsgablackTrainerCaseEvaluator,
@@ -50,6 +44,10 @@ from .nsgablack_solver_case import (
     SolverComponentOverrideBuilder,
     SolverFeedbackMapper,
 )
+from .nsgablack_symbolic_backend import (
+    MlblackSymbolicConsensusBackend,
+    MlblackSymbolicConsensusBackendConfig,
+)
 
 __all__ = [
     "PretrainedCheckpointMapper",
@@ -63,10 +61,6 @@ __all__ = [
     "TransformerSpecSearchConfig",
     "TransformerSpecSearchProblem",
     "TransformerSpecSearchSpace",
-    "MLPipelineKernelBuild",
-    "PipelineSlotSpec",
-    "PipelineSpec",
-    "build_pipeline_kernel",
     "ComponentOverrideBuilder",
     "NsgablackTrainerCaseEvaluator",
     "NsgablackTrainerEvaluator",
@@ -86,4 +80,6 @@ __all__ = [
     "SolverCaseResultProjector",
     "SolverComponentOverrideBuilder",
     "SolverFeedbackMapper",
+    "MlblackSymbolicConsensusBackend",
+    "MlblackSymbolicConsensusBackendConfig",
 ]

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
-from mlblack.core.contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from mlblack.pipeline.data_views import NumericDataView
 
 

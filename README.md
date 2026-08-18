@@ -7,6 +7,12 @@ is responsible for optimization/search semantics; `mlblack` is responsible for
 ML semantics: representations, codecs, heads, problems, inner fitting, artifacts,
 reports, and the symbolic engine.
 
+Shared substrate baseline: `blackbase>=0.3.0,<0.4.0`.
+MLBlack imports Case orchestration, L0 grants, call binding, Context/Snapshot,
+Catalog primitives and runtime projection envelopes directly from BlackBase;
+the former `mlblack.core.resources`, Context and store forwarding modules no
+longer exist.
+
 ```text
 UnknownState
   -> ModelRepresentation / Codec / Head

@@ -6,8 +6,8 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from mlblack.core.adapter import OptimizerAdapter
-from mlblack.core.contracts import ComponentContract
-from mlblack.core.resources import ResourceContext
+from blackbase.contracts import ComponentContract
+from blackbase.resources import ResourceContext
 from mlblack.core.types import Feedback, UnknownState
 
 

@@ -6,7 +6,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from mlblack.models.symbolic_normalization import expression_equivalence_key
 
 

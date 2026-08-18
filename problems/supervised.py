@@ -3,9 +3,13 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 import numpy as np
+from blackbase.call_binding import (
+    CallCandidate,
+    invoke_bound_once_with_outcome,
+)
 
 from mlblack.core.backend_session import get_compute_backend_from_context
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
 from mlblack.pipeline.data_views import NumericDataView
@@ -376,15 +380,26 @@ def _fit_estimator_with_lifecycle(
     continuation = _extract_continuation(mechanisms)
     if resume_payload is not None and continuation.get("mode") == "xgb_model" and _safe_accepts_fit_kwarg(estimator, "xgb_model"):
         fit_kwargs["xgb_model"] = resume_payload
-    try:
-        estimator.fit(data.X_train, data.y_train, **fit_kwargs)
-        fit_status = "ok"
-    except TypeError:
-        if early_stopping.get("strict"):
-            raise
+    call_forms = [
+        CallCandidate(
+            args=(data.X_train, data.y_train),
+            kwargs=fit_kwargs,
+            label="fit_kwargs",
+        )
+    ]
+    if not early_stopping.get("strict"):
+        call_forms.append(
+            CallCandidate(
+                args=(data.X_train, data.y_train),
+                label="without_fit_kwargs",
+            )
+        )
+    outcome = invoke_bound_once_with_outcome(estimator.fit, call_forms)
+    if outcome.candidate_label == "without_fit_kwargs":
         fit_kwargs = {}
-        estimator.fit(data.X_train, data.y_train)
         fit_status = "fallback_no_fit_kwargs"
+    else:
+        fit_status = "ok"
     return {
         "status": fit_status,
         "fit_kwargs": tuple(sorted(fit_kwargs.keys())),

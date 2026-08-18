@@ -299,7 +299,7 @@ class EstimatorSpecCodec:
         }
 
 
-def tunables_from_legacy(
+def build_tunable_parameter_specs(
     names: tuple[str, ...],
     bounds: Mapping[str, tuple[float, float]],
     integer_params: tuple[str, ...],

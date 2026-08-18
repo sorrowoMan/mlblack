@@ -29,11 +29,11 @@ from mlblack.pipeline import (
     SelectColumnsComponent,
     ZScoreNormalizeComponent,
 )
-from mlblack.assembly.spec import BiasSpec, CapabilitySpec, ComponentSpec, PipelineSpec, TrainerAssemblySpec
+from mlblack.assembly.spec import BiasSpec, CapabilitySpec, ComponentSpec, DataPipelineSpec, TrainerAssemblySpec
 
 
-def build_pipeline(spec: PipelineSpec | Mapping[str, Any] | None = None) -> DataPipeline:
-    pipeline_spec = PipelineSpec.from_value(spec)
+def build_pipeline(spec: DataPipelineSpec | Mapping[str, Any] | None = None) -> DataPipeline:
+    pipeline_spec = DataPipelineSpec.from_value(spec)
     components = []
     for component_spec in pipeline_spec.component_specs():
         if not component_spec.enabled:

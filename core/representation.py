@@ -16,7 +16,7 @@ import numpy as np
 
 from blackbase.abc import RepresentationBase
 
-from .contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from .types import UnknownState
 
 

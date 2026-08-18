@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 
-from .contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from .problem import LearningProblem
 from .trainer import BlankTrainer
 from .types import Feedback, TrainerResult, UnknownState

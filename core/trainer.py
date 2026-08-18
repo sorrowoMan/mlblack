@@ -7,14 +7,15 @@ from uuid import uuid4
 
 import numpy as np
 
-from blackbase.adapters.mlblack.plugin import CapabilityPluginAdapter
 from blackbase.context import (
     GENERIC_SNAPSHOT_SCHEMA,
+    InMemoryContextStore,
+    InMemorySnapshotStore,
     unwrap_snapshot_payload,
     wrap_snapshot_payload,
 )
-from blackbase.plugin import Plugin, PluginManager
-from blackbase.resources import DataRef
+from blackbase.plugin import PluginBase, PluginManager
+from blackbase.resources import DataRef, ResourceContext, coerce_resource_context
 
 from .adapter import OptimizerAdapter
 from .artifact_provider import ArtifactProvider, CaseRuntimeArtifactProvider
@@ -22,8 +23,6 @@ from .backend_session import ComputeBackendSession, ComputeBackendSpec
 from .capability import Capability
 from .problem import LearningProblem
 from .representation import ModelRepresentation, unknown_state_fingerprint
-from .resources import ResourceContext, coerce_resource_context
-from .stores import InMemoryContextStore, InMemorySnapshotStore
 from .state import build_trainer_state
 from .types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
 
@@ -68,7 +67,6 @@ class BlankTrainer:
         )
 
         self.plugin_manager = PluginManager()
-        self._capability_adapters: list[CapabilityPluginAdapter] = []  # backward compat
         self.biases: list[Any] = []
         self.context_store: MutableMapping[str, Any] = InMemoryContextStore()
         self.snapshot_store: MutableMapping[str, Any] = InMemorySnapshotStore()
@@ -91,22 +89,6 @@ class BlankTrainer:
 
         self._l0_pool: Any = None  # PoolScheduler, created when threads > 1
 
-    @property
-    def representation(self) -> ModelRepresentation | None:
-        """Compatibility alias for representation_pipeline."""
-
-        return self.representation_pipeline
-
-    @representation.setter
-    def representation(self, value: ModelRepresentation | None) -> None:
-        self.representation_pipeline = value
-
-    @property
-    def context(self) -> MutableMapping[str, Any]:
-        """Compatibility alias for the lightweight context store."""
-
-        return self.context_store
-
     def set_problem(self, problem: LearningProblem) -> "BlankTrainer":
         self.problem = problem
         return self
@@ -115,20 +97,17 @@ class BlankTrainer:
         self.representation_pipeline = representation
         return self
 
-    def set_representation(self, representation: ModelRepresentation) -> "BlankTrainer":
-        return self.set_representation_pipeline(representation)
-
-    def add_plugin(self, plugin: Plugin) -> "BlankTrainer":
-        """Register a nsgablack Plugin (unified capability layer)."""
+    def add_plugin(self, plugin: PluginBase) -> "BlankTrainer":
+        """Register one shared-lifecycle plugin."""
         self.plugin_manager.register(plugin)
         plugin.attach(self)
         return self
 
     def add_capability(self, capability: Capability) -> "BlankTrainer":
-        """Backward-compat: wrap a legacy Capability as a Plugin adapter."""
-        adapter = CapabilityPluginAdapter(capability)
-        self._capability_adapters.append(adapter)
-        return self.add_plugin(adapter)
+        """Register one ML semantic capability on the shared plugin lifecycle."""
+        if not isinstance(capability, Capability):
+            raise TypeError("capability must be an mlblack Capability")
+        return self.add_plugin(capability)
 
     def add_bias(self, bias: Any) -> "BlankTrainer":
         self.biases.append(bias)
@@ -321,7 +300,7 @@ class BlankTrainer:
         self._l0_pool = None
         threads = int(self.resource_context.threads or 1)
         if self.parallel_evaluation and threads > 1:
-            from mlblack.core.resources.compute.pool import PoolScheduler
+            from blackbase.resources import PoolScheduler
 
             self._l0_pool = PoolScheduler(threads)
 
@@ -530,11 +509,7 @@ class BlankTrainer:
         record = self.snapshot_store.read(str(snapshot_key))
         if record is None:
             return None
-        payload = unwrap_snapshot_payload(record)
-        # Backward compatibility for snapshots written as {snapshot_key: payload}.
-        if isinstance(payload, Mapping) and set(payload) == {str(snapshot_key)}:
-            return payload[str(snapshot_key)]
-        return payload
+        return unwrap_snapshot_payload(record)
 
     def get_state(self) -> Mapping[str, Any]:
         return {
@@ -797,13 +772,6 @@ class BlankTrainer:
                 plugin_contracts.append(plugin.get_context_contract())
         if plugin_contracts:
             contracts["plugins"] = plugin_contracts
-        # Backward compat: legacy capabilities wrapped as plugins
-        if self._capability_adapters:
-            contracts["capabilities"] = [
-                adapter._capability.get_contract().describe()
-                for adapter in self._capability_adapters
-                if hasattr(adapter._capability, "get_contract")
-            ]
         if self.biases:
             contracts["biases"] = [
                 bias.get_contract().describe()
@@ -811,15 +779,6 @@ class BlankTrainer:
                 if hasattr(bias, "get_contract")
             ]
         return contracts
-
-    # Compatibility aliases for the first prototype and common ML terminology.
-    init_state = init_candidate
-    repair_state = repair_candidate
-    decode_state = decode_candidate
-    encode_state = encode_candidate
-    evaluate_state = evaluate_individual
-    evaluate_states = evaluate_population
-
 
 class ComposableTrainer(BlankTrainer):
     """Trainer with an optimizer adapter mounted as strategy plane."""
@@ -873,7 +832,7 @@ class ComposableTrainer(BlankTrainer):
             self._l0_pool = None
         threads = int(self.resource_context.threads or 1)
         if self.parallel_evaluation and threads > 1:
-            from mlblack.core.resources.compute.pool import PoolScheduler
+            from blackbase.resources import PoolScheduler
             self._l0_pool = PoolScheduler(threads)
 
     def step(self, context: Mapping[str, Any] | None = None) -> Mapping[str, Any]:

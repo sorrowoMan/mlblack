@@ -6,7 +6,7 @@ from typing import Any, Callable, Mapping
 
 import numpy as np
 
-from .contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 
 BaseDecoder = Callable[[np.ndarray, Mapping[str, Any]], Any]
 

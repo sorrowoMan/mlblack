@@ -15,7 +15,7 @@ from typing import Any, Mapping, Sequence
 
 from blackbase.abc import BiasBase
 
-from mlblack.core.contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from mlblack.core.types import Feedback, UnknownState
 
 
@@ -26,8 +26,8 @@ class OptimizationBias(BiasBase, ContractMixin):
     (mlblack metadata protocol).
 
     In mlblack, bias primarily uses project_context to inject preference
-    signals. The adjust() method is available for multi-loss preference
-    expression, but does NOT change the evaluation itself.
+    signals. ``adjust_feedback()`` is the canonical batch projection used for
+    multi-loss preference expression; it does not change Problem evaluation.
     """
 
     name = "optimization_bias"
@@ -50,25 +50,18 @@ class OptimizationBias(BiasBase, ContractMixin):
 
     # --- Override: project_context injects preference signals ---
 
-    def project_context(self, context: Mapping[str, Any]) -> Mapping[str, Any]:
+    def project_context(
+        self,
+        control: Any,
+        context: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
         """Inject preference signals into context.
 
         Default: pass through without modification.
         Subclasses override to express preferences.
         """
+        del control
         return dict(context)
-
-    # --- Override: adjust for multi-loss preference ---
-
-    def adjust(self, feedback: Any, context: Mapping[str, Any]) -> Any:
-        """Apply preference adjustment in multi-loss scenarios.
-
-        Does NOT change the evaluation itself — only expresses relative
-        preference between objectives. Default: pass through.
-        """
-        return feedback
-
-    # --- Backward compatibility: adjust_feedback delegates to adjust ---
 
     def adjust_feedback(
         self,
@@ -77,13 +70,9 @@ class OptimizationBias(BiasBase, ContractMixin):
         feedback: Sequence[Feedback],
         context: Mapping[str, Any],
     ) -> tuple[Feedback, ...]:
-        """Legacy method: delegates to adjust() for each feedback item.
-
-        Deprecated: prefer using adjust() directly.
-        """
-        _ = control
-        _ = states
-        return tuple(self.adjust(fb, context) for fb in feedback)
+        """Apply preference adjustment to a batch of evaluated candidates."""
+        del control, states, context
+        return tuple(feedback)
 
     # --- Override: describe uses ContractMixin ---
 

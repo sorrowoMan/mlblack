@@ -33,7 +33,7 @@ def test_complete_solver_case_bridge_projects_into_outer_trainer(tmp_path) -> No
     (child_root / "build_solver.py").write_text(
         """
 import numpy as np
-from nsgablack.core import BlackBoxProblem, SolverBase
+from nsgablack.core import BlackBoxProblem, IncumbentState, SolverBase
 
 
 class Problem(BlackBoxProblem):
@@ -53,9 +53,12 @@ class InnerSolver(SolverBase):
         self.population = np.asarray([[1.0, 2.0], [2.0, 1.0]])
         self.objectives = np.asarray([[0.2, 0.8], [0.5, 0.4]])
         self.constraint_violations = np.asarray([0.0, 0.1])
-        self.best_x = self.population[0]
-        self.best_objectives = self.objectives[0]
-        self.best_constraint_violation = 0.0
+        self.set_incumbent(IncumbentState(
+            candidate=self.population[0],
+            objectives=self.objectives[0],
+            constraint_violation=0.0,
+            score=float(np.sum(self.objectives[0])),
+        ))
         self.pareto_solutions = {
             "individuals": self.population,
             "objectives": self.objectives,
@@ -387,7 +390,7 @@ def test_oversized_pareto_front_uses_resolvable_project_artifact(tmp_path) -> No
     (child_root / "build_solver.py").write_text(
         """
 import numpy as np
-from nsgablack.core import BlackBoxProblem, SolverBase
+from nsgablack.core import BlackBoxProblem, IncumbentState, SolverBase
 
 
 class Problem(BlackBoxProblem):
@@ -409,9 +412,12 @@ class InnerSolver(SolverBase):
         self.population = np.asarray([[1.0, 2.0], [2.0, 1.0]])
         self.objectives = np.asarray([[0.2, 0.8], [0.5, 0.4]])
         self.constraint_violations = np.asarray([0.0, 0.0])
-        self.best_x = np.arange(128, dtype=float)
-        self.best_objectives = np.asarray([0.1, 0.2])
-        self.best_constraint_violation = 0.0
+        self.set_incumbent(IncumbentState(
+            candidate=np.arange(128, dtype=float),
+            objectives=np.asarray([0.1, 0.2]),
+            constraint_violation=0.0,
+            score=0.3,
+        ))
         self.pareto_solutions = {
             "individuals": self.population,
             "objectives": self.objectives,

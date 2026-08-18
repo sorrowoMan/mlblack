@@ -1,8 +1,4 @@
-"""
-Forwarding module for state.
-
-This module re-exports from blackbase for seamless migration.
-"""
+"""MLBlack trainer state capture, signatures, restoration, and replay."""
 
 import hashlib
 import json
@@ -11,14 +7,6 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 import numpy as np
-
-from blackbase.context import (
-    SnapshotHandle,
-    SnapshotRecord,
-    build_minimal_context,
-    validate_minimal_context,
-)
-
 
 @dataclass(frozen=True)
 class TrainerState:
@@ -159,10 +147,6 @@ def replay_trainer(
 
 
 __all__ = [
-    "SnapshotHandle",
-    "SnapshotRecord",
-    "build_minimal_context",
-    "validate_minimal_context",
     "TrainerState",
     "build_trainer_state",
     "replay_trainer",

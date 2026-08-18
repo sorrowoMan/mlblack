@@ -6,7 +6,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from mlblack.core.adapter import OptimizerAdapter
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.types import Feedback, UnknownState
 
 
@@ -58,7 +58,7 @@ class GradientDescentAdapter(OptimizerAdapter):
 
     def propose(self, control: Any, context: Mapping[str, Any]) -> Sequence[UnknownState]:
         if self.current_state is None:
-            self.current_state = control.init_state(context)
+            self.current_state = control.init_candidate(context)
         return (self.current_state,)
 
     def update(

@@ -10,7 +10,7 @@
     TreeSamplingMechanismSpec,
     TreeSplitMechanismSpec,
     TunableParameterSpec,
-    tunables_from_legacy,
+    build_tunable_parameter_specs,
 )
 from .linear import LinearCodecConfig, LinearPointCodec, OrthogonalLinearCodecConfig, OrthogonalLinearPointCodec
 from .neural import (
@@ -66,6 +66,6 @@ __all__ = [
     "TreeSamplingMechanismSpec",
     "TreeSplitMechanismSpec",
     "TunableParameterSpec",
-    "tunables_from_legacy",
+    "build_tunable_parameter_specs",
 ]
 

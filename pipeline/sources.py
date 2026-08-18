@@ -12,7 +12,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.pipeline.base import DataPipelineComponent
 from mlblack.pipeline.data_views import NumericDataView
 

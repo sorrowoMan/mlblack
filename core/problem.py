@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from blackbase.abc import ProblemBase
 
-from .contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from .types import Feedback, UnknownState
 
 

@@ -1,4 +1,6 @@
 ﻿from .assembly import BiasSpec, InnerTrainingAssemblySpec, TrainerAssemblySpec, build_pipeline, build_trainer
+__version__ = "0.2.0"
+
 from .bias import (
     BranchPolicyBias,
     DynamicPoolBias,
@@ -24,11 +26,11 @@ from .core.artifacts import (
     load_artifact_bundle,
     save_artifact_bundle,
 )
-from .core.contracts import ComponentContract, ContractMixin
+from blackbase.context import InMemoryContextStore, InMemorySnapshotStore
+from blackbase.contracts import ComponentContract, ContractMixin
+from blackbase.resources import PoolScheduler, ResourceContext
 from .core.head import HeadBlock, OutputHead
-from .core.resources import PoolScheduler, ResourceContext
 from .core.state import TrainerState, build_trainer_state, replay_trainer, restore_trainer_state
-from .core.stores import InMemoryContextStore, InMemorySnapshotStore
 from .core.trainer import BlankTrainer, ComposableTrainer, Trainer
 from .core.types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
 from .assembly.schema import DatasetSchema, FeatureSpec, ScaffoldConfig, TargetSpec
@@ -79,6 +81,7 @@ __all__ = [
     "TypedModelArtifact",
     "UnknownState",
     "XGBoostArtifact",
+    "__version__",
     "build_pipeline",
     "build_trainer",
     "build_trainer_state",

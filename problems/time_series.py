@@ -4,7 +4,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
 from mlblack.pipeline.data_views import TimeSeriesDataView

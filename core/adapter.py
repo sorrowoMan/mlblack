@@ -11,7 +11,7 @@ from typing import Any, Mapping, Sequence
 
 from blackbase.abc import AdapterBase
 
-from .contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from .types import Feedback, UnknownState
 
 
@@ -92,9 +92,9 @@ class OptimizerAdapter(AdapterBase, ContractMixin):
             return (states,)
         return tuple(states)
 
-    # --- mlblack-specific: context projection ---
+    # --- Shared runtime context projection ---
 
-    def get_context_projection(self, control: Any) -> Mapping[str, Any]:
+    def get_runtime_context_projection(self, control: Any) -> Mapping[str, Any]:
         _ = control
         return {}
 

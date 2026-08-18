@@ -8,7 +8,7 @@ from typing import Any, Mapping
 from uuid import uuid4
 
 from mlblack.core.capability import Capability
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 
 
 @dataclass(frozen=True)

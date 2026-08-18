@@ -7,7 +7,7 @@ import numpy as np
 
 from mlblack.adapters import GradientDescentAdapter, RandomSearchAdapter
 from mlblack.core import ComposableTrainer
-from mlblack.core.contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from mlblack.models.symbolic import binary_expr, expression_complexity, param_expr, parameterize_expression
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline.symbolic import FunctionPool, FunctionPoolPipeline, FunctionPoolPipelineConfig

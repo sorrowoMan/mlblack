@@ -1,4 +1,4 @@
-﻿from .builders import build_pipeline, build_trainer
+from .builders import build_pipeline, build_trainer
 from .config import default_inner_training_config, default_scaffold_config, merge_config
 from .project_config import (
     AdapterRegistry,
@@ -33,7 +33,7 @@ from .schema import (
     load_scaffold_config,
     save_scaffold_config,
 )
-from .spec import BiasSpec, CapabilitySpec, ComponentSpec, InnerTrainingAssemblySpec, PipelineSpec, TrainerAssemblySpec
+from .spec import BiasSpec, CapabilitySpec, ComponentSpec, InnerTrainingAssemblySpec, DataPipelineSpec, TrainerAssemblySpec
 
 __all__ = [
     "AdapterRegistry",
@@ -46,7 +46,7 @@ __all__ = [
     "FeatureSpec",
     "InnerTrainingAssemblySpec",
     "PipelineRegistry",
-    "PipelineSpec",
+    "DataPipelineSpec",
     "PresetRegistry",
     "ProblemRegistry",
     "RepresentationRegistry",

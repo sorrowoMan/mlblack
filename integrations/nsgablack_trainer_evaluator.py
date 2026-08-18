@@ -8,7 +8,7 @@ import numpy as np
 
 from blackbase.project import CaseRunRequest
 
-from mlblack.core.resources import ResourceContext, coerce_resource_context
+from blackbase.resources import ResourceContext, coerce_resource_context
 from mlblack.core.types import TrainerResult, UnknownState
 
 
