@@ -38,14 +38,14 @@
 
 **验证**：✅ 编译通过，导入无冲突
 
-### 3. `mlblack/project/scaffold_legacy.py`
+### 3. `mlblack/project/scaffold/__init__.py`
 
 **改动**：
 - 新增 3 个模板函数：
   - `_config_py_template()` - 项目级 config.py
   - `_representation_config_template()` - representation/config.py
   - `_preset_registry_template()` - assembly/preset_registry.py
-- 在 `init_project()` 中添加 3 处 _write_file 调用
+- 在 `create_project()` 使用的正式模板中加入对应文件
 
 **变更行数**：~80 行（新增）
 
@@ -94,7 +94,7 @@ from mlblack.assembly import (
 
 ### 脚手架生成
 ```bash
-init_project(tmpdir)
+create_project(tmpdir)
 ✅ 生成 10 个 config.py + 1 preset_registry.py
 ```
 

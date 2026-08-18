@@ -121,7 +121,7 @@ def get_preset_registry() -> PresetRegistry: ...
 ```
 
 **脚手架生成修改**：
-在 `init_project()` 中添加 3 处调用，生成：
+在 `create_project()` 使用的正式模板中生成：
 - `config.py` - 项目级配置聚集
 - `representation/config.py` - representation 层 registry
 - `assembly/preset_registry.py` - preset 层 registry
