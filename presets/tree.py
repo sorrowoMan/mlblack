@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from mlblack.adapters import EstimatorSpecSearchAdapter, EstimatorSpecSearchConfig
-from mlblack.core import Trainer
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.problems import SupervisedEstimatorFitRegressionProblem
 from mlblack.representations import (
@@ -28,7 +26,7 @@ def build_tree_estimator_search_trainer(
     mutation_scale: float = 0.25,
     mechanism: TreeMechanismSpec | None = None,
     run_name: str = "tree_estimator_search",
-) -> Trainer:
+) -> Any:
     mech = mechanism or TreeMechanismSpec(n_estimators=int((params or {}).get("n_estimators", 50)))
     representation = build_tree_estimator_representation(
         route=route,
@@ -40,10 +38,14 @@ def build_tree_estimator_search_trainer(
         mechanism=mech,
     )
     problem = SupervisedEstimatorFitRegressionProblem(data)
-    adapter = EstimatorSpecSearchAdapter(
-        EstimatorSpecSearchConfig(population_size=population_size, mutation_scale=mutation_scale),
+    adapter = _build_optimization_adapter(
+        "search.random_gaussian",
+        population_size=population_size,
+        mutation_scale=mutation_scale,
+        initialization="center",
+        include_center_candidate=True,
     )
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
 
 
 def build_tree_boosting_estimator_search_trainer(
@@ -58,7 +60,7 @@ def build_tree_boosting_estimator_search_trainer(
     mutation_scale: float = 0.2,
     mechanism: BoostingMechanismSpec | None = None,
     run_name: str = "tree_boosting_estimator_search",
-) -> Trainer:
+) -> Any:
     mech = mechanism or BoostingMechanismSpec(n_estimators=int((params or {}).get("n_estimators", 80)))
     representation = build_tree_boosting_estimator_representation(
         route=route,
@@ -70,10 +72,26 @@ def build_tree_boosting_estimator_search_trainer(
         mechanism=mech,
     )
     problem = SupervisedEstimatorFitRegressionProblem(data)
-    adapter = EstimatorSpecSearchAdapter(
-        EstimatorSpecSearchConfig(population_size=population_size, mutation_scale=mutation_scale),
+    adapter = _build_optimization_adapter(
+        "search.random_gaussian",
+        population_size=population_size,
+        mutation_scale=mutation_scale,
+        initialization="center",
+        include_center_candidate=True,
     )
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+
+
+def _build_optimization_adapter(method: str, **kwargs):
+    from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
+
+    return build_optimization_adapter(method, **kwargs)
+
+
+def _build_learning_solver(**kwargs):
+    from mlblack.integrations.nsgablack_control import build_learning_solver
+
+    return build_learning_solver(**kwargs)
 
 
 

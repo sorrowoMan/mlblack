@@ -4,8 +4,6 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from mlblack.adapters import RandomSearchAdapter, RandomSearchConfig
-from mlblack.core import Trainer
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.representations.heads import BinaryLogisticHead, SoftmaxHead
 from mlblack.problems import SupervisedClassificationProblem
@@ -24,7 +22,7 @@ def build_orthogonal_logistic_classification_trainer(
     temperature: float = 1.0,
     threshold: float = 0.5,
     run_name: str = "orthogonal_logistic_classification",
-) -> Trainer:
+) -> Any:
     rep_cfg = OrthogonalPointConfig(max_components=max_components, energy_threshold=energy_threshold)
     representation = OrthogonalPointLinearRepresentation.from_data(
         data.X_train,
@@ -33,8 +31,12 @@ def build_orthogonal_logistic_classification_trainer(
         head=BinaryLogisticHead(temperature=temperature, threshold=threshold, classes=tuple(classes)),
     )
     problem = SupervisedClassificationProblem(data, objective_metrics=objective_metrics, positive_label=tuple(classes)[-1] if classes else None)
-    adapter = RandomSearchAdapter(RandomSearchConfig(population_size=population_size, mutation_scale=mutation_scale))
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    adapter = _build_optimization_adapter(
+        "search.random_gaussian",
+        population_size=population_size,
+        mutation_scale=mutation_scale,
+    )
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
 
 
 def build_orthogonal_softmax_classification_trainer(
@@ -48,7 +50,7 @@ def build_orthogonal_softmax_classification_trainer(
     mutation_scale: float = 0.2,
     temperature: float = 1.0,
     run_name: str = "orthogonal_softmax_classification",
-) -> Trainer:
+) -> Any:
     labels = tuple(classes) if classes is not None else tuple(np.unique(data.y_train).tolist())
     rep_cfg = OrthogonalPointConfig(max_components=max_components, energy_threshold=energy_threshold)
     representation = OrthogonalPointLinearRepresentation.from_data(
@@ -58,7 +60,23 @@ def build_orthogonal_softmax_classification_trainer(
         head=SoftmaxHead(n_classes=max(2, len(labels)), temperature=temperature, classes=labels),
     )
     problem = SupervisedClassificationProblem(data, objective_metrics=objective_metrics)
-    adapter = RandomSearchAdapter(RandomSearchConfig(population_size=population_size, mutation_scale=mutation_scale))
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    adapter = _build_optimization_adapter(
+        "search.random_gaussian",
+        population_size=population_size,
+        mutation_scale=mutation_scale,
+    )
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+
+
+def _build_optimization_adapter(method: str, **kwargs):
+    from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
+
+    return build_optimization_adapter(method, **kwargs)
+
+
+def _build_learning_solver(**kwargs):
+    from mlblack.integrations.nsgablack_control import build_learning_solver
+
+    return build_learning_solver(**kwargs)
 
 

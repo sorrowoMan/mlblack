@@ -5,7 +5,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.head import BaseDecoder, HeadBlock, OutputHead
 from mlblack.models.symbolic import SymbolicBasisSetModel, SymbolicExpressionModel
 

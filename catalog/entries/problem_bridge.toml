@@ -1,0 +1,16 @@
+[[entry]]
+key = "problem.training_proxy"
+title = "MLBlackTrainingProxy"
+kind = "problem_bridge"
+import_path = "mlblack.problems.proxy:MLBlackTrainingProxy"
+tags = ["cross-framework", "proxy", "training-contract"]
+summary = "Framework-neutral proxy for outer optimizers invoking mlblack inner training."
+
+[[entry]]
+key = "problem_bridge.ml_black_training"
+title = "MLBlackTrainingProxy"
+kind = "problem_bridge"
+import_path = "mlblack.problems.proxy:MLBlackTrainingProxy"
+tags = ["problem_bridge", "problems", "proxy"]
+summary = "Framework-neutral proxy for outer optimizers."
+metadata = { "architecture_path" = "problems.proxy", "module" = "mlblack.problems.proxy", "symbol" = "MLBlackTrainingProxy" }

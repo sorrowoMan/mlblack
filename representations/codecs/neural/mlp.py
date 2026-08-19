@@ -1,11 +1,7 @@
 ﻿from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
-
-import numpy as np
-
-from mlblack.models import NumpyMLPPointModel, mlp_parameter_shapes, split_mlp_parameters
+from typing import Any, Mapping
 
 
 @dataclass(frozen=True)
@@ -84,77 +80,4 @@ class NeuralEngineSpec:
             "trainer_state_enabled": bool(self.trainer_state_enabled),
             "metadata": dict(self.metadata),
         }
-
-
-@dataclass(frozen=True)
-class NumpyMLPCodecConfig:
-    input_dim: int
-    output_dim: int = 1
-    backbone: NeuralBackboneSpec = field(default_factory=NeuralBackboneSpec)
-    optimization: NeuralOptimizationSpec = field(default_factory=NeuralOptimizationSpec)
-    batching: NeuralBatchingSpec = field(default_factory=NeuralBatchingSpec)
-    engine: NeuralEngineSpec = field(default_factory=NeuralEngineSpec)
-    init_scale: float = 0.02
-    random_seed: int = 42
-    representation_name: str = "numpy_mlp_point"
-
-
-class NumpyMLPCodec:
-    """Numpy MLP parameter codec with explicit mechanism specs."""
-
-    def __init__(self, config: NumpyMLPCodecConfig) -> None:
-        self.config = config
-        self.shapes = mlp_parameter_shapes(config.input_dim, config.backbone.hidden_layers, config.output_dim)
-        self.base_dimension = int(sum(np.prod(shape) for shape in self.shapes))
-        self._rng = np.random.default_rng(int(config.random_seed))
-
-    @classmethod
-    def from_data(
-        cls,
-        X: np.ndarray,
-        *,
-        hidden_layers: Sequence[int] = (64, 32),
-        activation: str = "relu",
-        config: NumpyMLPCodecConfig | None = None,
-    ) -> "NumpyMLPCodec":
-        X_arr = np.asarray(X, dtype=float)
-        if X_arr.ndim != 2:
-            raise ValueError("X must be 2D")
-        cfg = config or NumpyMLPCodecConfig(
-            input_dim=int(X_arr.shape[1]),
-            backbone=NeuralBackboneSpec(hidden_layers=tuple(int(v) for v in hidden_layers), activation=activation),
-        )
-        return cls(cfg)
-
-    def init_values(self) -> np.ndarray:
-        return self._rng.normal(loc=0.0, scale=float(self.config.init_scale), size=self.base_dimension)
-
-    def decode(self, values: np.ndarray, context: Mapping[str, Any] | None = None) -> NumpyMLPPointModel:
-        ctx = dict(context or {})
-        weights, biases = split_mlp_parameters(
-            np.asarray(values, dtype=float),
-            input_dim=int(self.config.input_dim),
-            hidden_layers=tuple(self.config.backbone.hidden_layers),
-            output_dim=int(self.config.output_dim),
-        )
-        return NumpyMLPPointModel(
-            weights=weights,
-            biases=biases,
-            activation=str(self.config.backbone.activation),
-            metadata={"representation": self.config.representation_name, "head_block": ctx.get("head.block")},
-        )
-
-    def describe(self) -> dict[str, Any]:
-        return {
-            "codec": "numpy_mlp",
-            "base_dimension": int(self.base_dimension),
-            "input_dim": int(self.config.input_dim),
-            "output_dim": int(self.config.output_dim),
-            "parameter_shapes": tuple(self.shapes),
-            "backbone": self.config.backbone.as_dict(),
-            "optimization": self.config.optimization.as_dict(),
-            "batching": self.config.batching.as_dict(),
-            "engine": self.config.engine.as_dict(),
-        }
-
 

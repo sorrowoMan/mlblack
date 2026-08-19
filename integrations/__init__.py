@@ -21,19 +21,11 @@ from .nsgablack_neural import (
     TransformerSpecSearchProblem,
     TransformerSpecSearchSpace,
 )
-from .nsgablack_pipeline_kernel import (
-    MLPipelineKernelBuild,
-    PipelineSlotSpec,
-    PipelineSpec,
-    build_pipeline_kernel,
-)
-from .nsgablack_trainer_evaluator import (
+from .nsgablack_learning_case import (
     ComponentOverrideBuilder,
-    NsgablackTrainerCaseEvaluator,
-    NsgablackTrainerEvaluator,
+    NsgablackLearningCaseEvaluator,
     ResultProjector,
-    TrainerFactory,
-    project_trainer_result,
+    project_learning_result,
 )
 from .nsgablack_solver_case import (
     BestSolutionProjector,
@@ -50,6 +42,18 @@ from .nsgablack_solver_case import (
     SolverComponentOverrideBuilder,
     SolverFeedbackMapper,
 )
+from .nsgablack_symbolic_backend import (
+    MlblackSymbolicConsensusBackend,
+    MlblackSymbolicConsensusBackendConfig,
+)
+from .nsgablack_gradient import build_gradient_trainer
+from .nsgablack_control import (
+    LearningSolver,
+    MLLearningProblemBridge,
+    MLRepresentationBridge,
+    build_learning_solver,
+)
+from .nsgablack_optimization import build_optimization_adapter
 
 __all__ = [
     "PretrainedCheckpointMapper",
@@ -63,16 +67,10 @@ __all__ = [
     "TransformerSpecSearchConfig",
     "TransformerSpecSearchProblem",
     "TransformerSpecSearchSpace",
-    "MLPipelineKernelBuild",
-    "PipelineSlotSpec",
-    "PipelineSpec",
-    "build_pipeline_kernel",
     "ComponentOverrideBuilder",
-    "NsgablackTrainerCaseEvaluator",
-    "NsgablackTrainerEvaluator",
+    "NsgablackLearningCaseEvaluator",
     "ResultProjector",
-    "TrainerFactory",
-    "project_trainer_result",
+    "project_learning_result",
     "BestSolutionProjector",
     "DEFAULT_PROJECTABLE_SOLVE_STATUSES",
     "NsgablackSolverCaseInvoker",
@@ -86,4 +84,12 @@ __all__ = [
     "SolverCaseResultProjector",
     "SolverComponentOverrideBuilder",
     "SolverFeedbackMapper",
+    "MlblackSymbolicConsensusBackend",
+    "MlblackSymbolicConsensusBackendConfig",
+    "build_gradient_trainer",
+    "LearningSolver",
+    "MLLearningProblemBridge",
+    "MLRepresentationBridge",
+    "build_learning_solver",
+    "build_optimization_adapter",
 ]

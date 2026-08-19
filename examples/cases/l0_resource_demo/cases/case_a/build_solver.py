@@ -10,8 +10,10 @@ from __future__ import annotations
 import numpy as np
 from typing import Any, Mapping
 
-from mlblack.core import Trainer, ResourceContext, LearningProblem, OptimizerAdapter
+from mlblack.core import ResourceContext, LearningProblem
+from nsgablack.adapters import AlgorithmAdapter
 from mlblack.core.types import Feedback
+from mlblack.integrations.nsgablack_control import build_learning_solver
 
 try:
     from .pipeline.main import build_pipeline
@@ -53,7 +55,7 @@ class L0ResourceDemoProblem(LearningProblem):
         )
 
 
-class L0ResourceDemoAdapter(OptimizerAdapter):
+class L0ResourceDemoAdapter(AlgorithmAdapter):
     """
     Simple adapter for L0 resource demonstration.
     
@@ -62,6 +64,9 @@ class L0ResourceDemoAdapter(OptimizerAdapter):
     """
     
     name = "l0_random_search"
+
+    def __init__(self) -> None:
+        super().__init__(name=self.name)
 
     def propose(self, solver, context=None):
         """Propose new candidates."""
@@ -101,7 +106,7 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
         threads=1,
         namespace="l0_resource_demo.case_a",
     )
-    return Trainer(
+    return build_learning_solver(
         problem=problem,
         representation=representation,
         adapter=adapter,

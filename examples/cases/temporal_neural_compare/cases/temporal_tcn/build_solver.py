@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from mlblack.core.resources import coerce_resource_context
+from blackbase.resources import coerce_resource_context
 from mlblack.presets.neural import build_temporal_tcn_forecast_trainer
 
 try:

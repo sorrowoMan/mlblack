@@ -5,9 +5,9 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.adapters import GradientDescentAdapter, RandomSearchAdapter
-from mlblack.core import ComposableTrainer
-from mlblack.core.contracts import ComponentContract, ContractMixin
+from mlblack.integrations.nsgablack_control import build_learning_solver
+from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
+from blackbase.contracts import ComponentContract, ContractMixin
 from mlblack.models.symbolic import binary_expr, expression_complexity, param_expr, parameterize_expression
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline.symbolic import FunctionPool, FunctionPoolPipeline, FunctionPoolPipelineConfig
@@ -269,7 +269,7 @@ class BasisConditionedSymbolicTaskProblem(_BlackBoxProblem, ContractMixin):
         )
         problem = _build_problem(self.data, self.config)
         adapter = _build_adapter(self.config)
-        trainer = ComposableTrainer(
+        trainer = build_learning_solver(
             problem=problem,
             representation=representation,
             adapter=adapter,
@@ -559,9 +559,14 @@ def _build_adapter(config: BasisConditionedSymbolicTaskConfig) -> Any:
     adapter = str(config.inner_adapter or "auto").strip().lower()
     task = _task_kind(config)
     if adapter == "gd" or adapter == "gradient_descent" or (adapter == "auto" and task == "regression" and _head_kind(config) == "point"):
-        return GradientDescentAdapter(learning_rate=float(config.learning_rate), require_gradient=True)
+        return build_optimization_adapter(
+            "gradient.sgd",
+            learning_rate=float(config.learning_rate),
+            max_gradient_norm=1e3,
+        )
     if adapter in {"random", "random_search", "auto"}:
-        return RandomSearchAdapter(
+        return build_optimization_adapter(
+            "search.random_gaussian",
             population_size=int(config.inner_population_size),
             mutation_scale=float(config.inner_mutation_scale),
             random_seed=int(config.random_seed),

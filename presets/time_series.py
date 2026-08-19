@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
-from mlblack.adapters import RandomSearchAdapter, RandomSearchConfig
-from mlblack.core import Trainer
-from mlblack.models import ARIMASARIMAXProvider, ARIMASARIMAXSpec, LinearAutoregressiveForecastModel
+from mlblack.models import ARIMASARIMAXSpec, LinearAutoregressiveFitSpec
 from mlblack.pipeline.data_views import TimeSeriesDataView
 from mlblack.pipeline.time_series import TimeSeriesWindowConfig
 from mlblack.problems import RollingOriginForecastingProblem, TimeSeriesForecastingProblem
 from mlblack.representations import (
     BaselineForecastRepresentation,
     BaselineForecastSearchConfig,
-    FixedForecastModelRepresentation,
+    ForecastModelSpecRepresentation,
 )
 
 
@@ -31,7 +29,7 @@ def build_baseline_forecast_search_trainer(
     rolling_min_train_size: int | float = 0.6,
     run_name: str = "baseline_forecast_search",
     **problem_kwargs: Any,
-) -> Trainer:
+) -> Any:
     config = BaselineForecastSearchConfig(
         strategies=tuple(str(s) for s in strategies),
         window_bounds=tuple(int(v) for v in window_bounds),
@@ -57,10 +55,12 @@ def build_baseline_forecast_search_trainer(
             seasonal_period=seasonal_period,
             **problem_kwargs,
         )
-    adapter = RandomSearchAdapter(
-        RandomSearchConfig(population_size=int(population_size), mutation_scale=float(mutation_scale))
+    adapter = _build_optimization_adapter(
+        "search.random_gaussian",
+        population_size=int(population_size),
+        mutation_scale=float(mutation_scale),
     )
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
 
 
 def build_linear_autoregressive_forecast_trainer(
@@ -78,14 +78,21 @@ def build_linear_autoregressive_forecast_trainer(
     rolling_min_train_size: int | float = 0.6,
     run_name: str = "linear_autoregressive_forecast",
     **problem_kwargs: Any,
-) -> Trainer:
+) -> Any:
     window_cfg = TimeSeriesWindowConfig(
         lags=tuple(int(lag) for lag in lags),
         horizon=int(horizon),
         include_exogenous=bool(include_exogenous),
     )
-    model = LinearAutoregressiveForecastModel.fit(data, window_cfg, ridge=float(ridge))
-    representation = FixedForecastModelRepresentation(model, metadata={"source": "linear_autoregressive_fit"})
+    spec = LinearAutoregressiveFitSpec(
+        window_config=window_cfg,
+        ridge=float(ridge),
+        metadata={"source": "linear_autoregressive_preset"},
+    )
+    representation = ForecastModelSpecRepresentation(
+        spec,
+        metadata={"materialization_owner": "TimeSeriesForecastingProblem"},
+    )
     if rolling_origin:
         metrics = tuple(objective_metrics) if objective_metrics else ("rolling.rmse", "rolling.mae")
         problem = RollingOriginForecastingProblem(
@@ -105,8 +112,8 @@ def build_linear_autoregressive_forecast_trainer(
             seasonal_period=seasonal_period,
             **problem_kwargs,
         )
-    adapter = RandomSearchAdapter(RandomSearchConfig(population_size=1))
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    adapter = _build_optimization_adapter("evaluation.fixed")
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
 
 
 def build_arima_sarimax_forecast_trainer(
@@ -124,16 +131,17 @@ def build_arima_sarimax_forecast_trainer(
     rolling_min_train_size: int | float = 0.6,
     run_name: str = "arima_sarimax_forecast",
     **problem_kwargs: Any,
-) -> Trainer:
+) -> Any:
     spec = ARIMASARIMAXSpec(
         order=tuple(int(v) for v in order),
         seasonal_order=tuple(int(v) for v in seasonal_order),
         trend=str(trend),
         backend=str(backend),
     )
-    provider = ARIMASARIMAXProvider(spec)
-    model = provider.fit(data)
-    representation = FixedForecastModelRepresentation(model, metadata={"source": "arima_sarimax_fit"})
+    representation = ForecastModelSpecRepresentation(
+        spec,
+        metadata={"materialization_owner": "TimeSeriesForecastingProblem"},
+    )
     if rolling_origin:
         metrics = tuple(objective_metrics) if objective_metrics else ("rolling.rmse", "rolling.mae")
         problem = RollingOriginForecastingProblem(
@@ -153,8 +161,8 @@ def build_arima_sarimax_forecast_trainer(
             seasonal_period=seasonal_period,
             **problem_kwargs,
         )
-    adapter = RandomSearchAdapter(RandomSearchConfig(population_size=1))
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    adapter = _build_optimization_adapter("evaluation.fixed")
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
 
 
 __all__ = [
@@ -162,3 +170,15 @@ __all__ = [
     "build_baseline_forecast_search_trainer",
     "build_linear_autoregressive_forecast_trainer",
 ]
+
+
+def _build_optimization_adapter(method: str, **kwargs):
+    from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
+
+    return build_optimization_adapter(method, **kwargs)
+
+
+def _build_learning_solver(**kwargs):
+    from mlblack.integrations.nsgablack_control import build_learning_solver
+
+    return build_learning_solver(**kwargs)

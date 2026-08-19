@@ -1,0 +1,112 @@
+[[entry]]
+key = "preset.mlp_regression"
+title = "MLP regression preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_mlp_regression_trainer"
+tags = ["neural", "mlp", "gradient", "torch-provider", "nsgablack", "preset"]
+summary = "ML 词汇入口：optimizer=sgd/adam/adamw 内部解析为 nsgablack 通用梯度 Adapter 与 mlblack Torch Evaluation Provider。"
+metadata = { "methods" = ["gradient.sgd", "gradient.adam", "gradient.adamw"], "resource_authority" = "blackbase.project_l0" }
+
+[[entry]]
+key = "preset.arima_sarimax_forecast"
+title = "ARIMA/SARIMAX forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.time_series:build_arima_sarimax_forecast_trainer"
+tags = ["time-series", "arima", "sarimax", "preset"]
+summary = "ARIMA/SARIMAX 规格由 Codec 解码，并在 LearningSolver 生命周期内由 TimeSeries Problem/Provider 拟合。"
+
+[[entry]]
+key = "preset.baseline_forecast_search"
+title = "baseline forecast search preset"
+kind = "preset"
+import_path = "mlblack.presets.time_series:build_baseline_forecast_search_trainer"
+tags = ["time-series", "baseline", "naive", "random-search", "preset"]
+summary = "对 naive/季节性-naive/移动平均预测策略进行随机搜索。"
+
+[[entry]]
+key = "preset.linear_autoregressive_forecast"
+title = "linear autoregressive forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.time_series:build_linear_autoregressive_forecast_trainer"
+tags = ["time-series", "linear", "autoregressive", "preset"]
+summary = "线性自回归拟合规格由 Codec 解码，闭式拟合在 LearningSolver 的 TimeSeries Problem 边界执行。"
+
+[[entry]]
+key = "preset.orthogonal_logistic_classification"
+title = "orthogonal logistic classification preset"
+kind = "preset"
+import_path = "mlblack.presets.classification:build_orthogonal_logistic_classification_trainer"
+tags = ["classification", "logistic", "orthogonal"]
+summary = "Orthogonal linear logits with binary probability head and classification metrics."
+
+[[entry]]
+key = "preset.tabular_tabnet_classification"
+title = "tabular TabNet classification preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_tabular_tabnet_classification_trainer"
+tags = ["neural", "tabular", "tabnet", "classification", "preset"]
+summary = "TabNet 表格分类预设：TabularNeuralClassificationProblem 定义交叉熵/指标，TorchEvaluationProvider 执行 autograd，nsgablack GradientOptimizerAdapter 执行稳定优化方法。"
+
+[[entry]]
+key = "preset.tabular_tabnet_regression"
+title = "tabular TabNet regression preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_tabular_tabnet_regression_trainer"
+tags = ["neural", "tabular", "tabnet", "regression", "preset"]
+summary = "TabNet 表格回归预设：TabularNeuralRegressionProblem 定义 MSE/指标，TorchEvaluationProvider 执行 autograd，nsgablack GradientOptimizerAdapter 执行稳定优化方法。"
+
+[[entry]]
+key = "preset.temporal_deepar_forecast"
+title = "temporal DeepAR forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_deepar_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "deepar", "probabilistic", "preset"]
+summary = "DeepAR 风格概率预测预设：LSTM 主干输出高斯分布参数，经 ML Problem + TorchEvaluationProvider + nsgablack GradientOptimizerAdapter 训练。"
+
+[[entry]]
+key = "preset.temporal_lstm_forecast"
+title = "temporal LSTM forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_lstm_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "lstm", "preset"]
+summary = "LSTM 神经序列预测预设，经 Temporal Problem + TorchEvaluationProvider + nsgablack GradientOptimizerAdapter 训练。"
+
+[[entry]]
+key = "preset.temporal_nbeats_forecast"
+title = "temporal N-BEATS forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_nbeats_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "nbeats", "preset"]
+summary = "N-BEATS 风格堆叠残差块预测预设，经 ML Problem + TorchEvaluationProvider + nsgablack GradientOptimizerAdapter 训练。"
+
+[[entry]]
+key = "preset.temporal_patchtst_forecast"
+title = "temporal PatchTST forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_patchtst_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "patchtst", "transformer", "preset"]
+summary = "PatchTST 补丁嵌入 + Transformer 编码器预测预设，经 ML Problem + TorchEvaluationProvider + nsgablack GradientOptimizerAdapter 训练。"
+
+[[entry]]
+key = "preset.temporal_tcn_forecast"
+title = "temporal TCN forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_tcn_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "tcn", "preset"]
+summary = "TCN 神经序列预测预设，经 Temporal Problem + TorchEvaluationProvider + nsgablack GradientOptimizerAdapter 训练。"
+
+[[entry]]
+key = "preset.temporal_tft_forecast"
+title = "temporal TFT forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_tft_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "tft", "attention", "preset"]
+summary = "Temporal Fusion Transformer 预测预设，含门控残差网络和可解释多头自注意力，经统一 Problem/Provider/GradientOptimizer 路径训练。"
+
+[[entry]]
+key = "preset.temporal_transformer_forecast"
+title = "temporal Transformer forecast preset"
+kind = "preset"
+import_path = "mlblack.presets.neural:build_temporal_transformer_forecast_trainer"
+tags = ["neural", "time-series", "temporal", "transformer", "preset"]
+summary = "Transformer 神经序列预测预设，经 Temporal Problem + TorchEvaluationProvider + nsgablack GradientOptimizerAdapter 训练。"

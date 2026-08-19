@@ -1,25 +1,26 @@
-"""Canonical solver case assembly entry (mlblack).
+"""Canonical ML semantic Case assembly entry.
 
-Framework-neutral: assemble an nsgablack search solver or mlblack trainer here.
+Assemble MLBlack Problem/Representation semantics over an NSGABlack Adapter here.
 Cross-Case order and resource grants stay in the shared Project substrate.
 """
 
 from mlblack.core.problem import LearningProblem
-from mlblack.core.adapter import OptimizerAdapter
 from mlblack.core.representation import ModelRepresentation
 from mlblack.bias.base import OptimizationBias
+from mlblack.integrations import LearningSolver, build_learning_solver
+from nsgablack.adapters import AlgorithmAdapter
 from blackbase.plugin import PluginBase
 
 from .pipeline import build_pipeline
 
 
 def build_solver(config=None, *, resource_context=None, component_overrides=None):
-    """Build and return the configured Solver/Trainer instance.
+    """Build and return the configured LearningSolver instance.
 
-    Components inherit from blackbase ABC base classes via mlblack:
+    MLBlack supplies ML semantics while NSGABlack supplies optimization control:
       - Problem: LearningProblem(ProblemBase, ContractMixin) → implement evaluate(candidate, context)
-      - Adapter: OptimizerAdapter(AdapterBase, ContractMixin) → implement propose/update
       - Representation: ModelRepresentation(RepresentationBase, ContractMixin) → implement init/decode
+      - Adapter: AlgorithmAdapter(AdapterBase, ContractMixin) → implement propose/update
       - Bias: OptimizationBias(BiasBase, ContractMixin) → implement project_context
       - Capability: PluginBase → override lifecycle hooks
 
@@ -32,6 +33,7 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
         component_overrides=component_overrides,
     )
     del config, pipeline
-    # Wire problem, pipeline, adapter, bias, plugins, runtime here.
+    # Return build_learning_solver(problem=..., representation=..., adapter=...).
+    # LearningSolver is the ML semantic projection of the NSGABlack lifecycle.
     # Keep cross-case orchestration in project_config.py / run_project.py.
     raise NotImplementedError("TODO: implement build_solver")

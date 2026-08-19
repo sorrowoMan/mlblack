@@ -11,8 +11,8 @@ cases/
   <case_name>/
     build_solver.py        # canonical assembly entry
     run_solver.py          # canonical CLI entry
-    build_trainer.py       # compatibility alias
-    run_trainer.py         # compatibility alias
+    build_trainer.py       # required thin alias to build_solver.py
+    run_trainer.py         # required thin alias to run_solver.py
     config.py
     problem/
     pipeline/

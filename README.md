@@ -7,27 +7,36 @@ is responsible for optimization/search semantics; `mlblack` is responsible for
 ML semantics: representations, codecs, heads, problems, inner fitting, artifacts,
 reports, and the symbolic engine.
 
+Shared substrate baseline: `blackbase>=0.3.3,<0.4.0`; optimization methods are
+resolved from `nsgablack>=0.3.4,<0.4.0`, while ML semantics and compute Providers
+remain in mlblack.
+MLBlack imports Case orchestration, L0 grants, call binding, Context/Snapshot,
+Catalog primitives and runtime projection envelopes directly from BlackBase;
+the former `mlblack.core.resources`, Context and store forwarding modules no
+longer exist.
+
 ```text
 UnknownState
   -> ModelRepresentation / Codec / Head
   -> decoded model, function, estimator spec, or symbolic expression
   -> LearningProblem.evaluate(...)
   -> Feedback(objectives, constraints, gradients, residuals)
-  -> OptimizerAdapter.update(...)
+  -> nsgablack AlgorithmAdapter.update(...)
 ```
 
 ## Core Boundaries
 
 | Layer | Responsibility | Not responsible for |
 | --- | --- | --- |
-| `Trainer` | single inner-training control plane | cross-trainer orchestration |
-| `OptimizerAdapter` | propose/update strategy | reading business data directly |
+| `LearningSolver` / Trainer facade | ML-friendly `fit` / artifact / report projection | owning another optimization lifecycle |
+| `nsgablack.ComposableSolver` | the single Adapter lifecycle, incumbent, budget, cancellation and snapshot control plane | ML data/model/backend semantics |
+| `nsgablack AlgorithmAdapter` | propose/update strategy | reading business data directly |
 | `Representation + Codec + Head` | decode unknown state into model/output semantics | computing objectives |
 | `LearningProblem` | consume data and return feedback | scheduling resources |
 | `Capability` | checkpoint/tracking/audit/report side effects | changing optimization semantics |
 | `ResourceContext` | project-level L0 grant consumed by a case | resource allocation or global leases |
 
-## Quick Start: Single Inner Trainer
+## Quick Start: One ML View, One Optimization Control Plane
 
 ```python
 import numpy as np
@@ -50,6 +59,13 @@ trainer = build_trainer(
 result = trainer.fit(max_steps=50)
 print(result.report["best_score"])
 ```
+
+Gradient and neural presets now return an ML-friendly `LearningSolver`. Its
+`fit()` method returns `TrainerResult`, but propose/evaluate/update, incumbent,
+lifecycle, cancellation, budget and snapshot execution happens once inside
+`nsgablack.ComposableSolver`. Closed-form and third-party `estimator.fit()`
+routes are ML Problem/Provider implementations inside that same lifecycle;
+MLBlack contains no private Trainer loop or optimization Adapter hierarchy.
 
 ## Complex Orchestration
 
@@ -89,7 +105,11 @@ implemented with `nsgablack`. The symbolic integration surface lives under
 - point / interval / probability / piecewise heads
 - supervised regression, interval regression, classification metrics
 - tree / xgboost estimator specs and estimator search
-- numpy MLP and torch backprop adapter
+- 统一梯度路径：MLP、Transformer、CNN、GNN、时序 NeuralGraph 与 TabNet 共用 nsgablack SGD/Adam/AdamW Adapter + 唯一 ComposableSolver 控制面 + mlblack Torch Evaluation Provider
+- 标准 MLP 路径：`NeuralGraphSpec.mlp` 唯一定义结构，`NeuralGraphCodec` 唯一定义参数布局，各 backend 只负责 lowering。
+- 解析梯度路径：线性/符号 Problem 直接产出梯度，但仍通过同一个 nsgablack `gradient.*` Adapter；无需伪造 Backend Provider
+- 统一黑盒路径：区间、分类、时序和 estimator spec 预设共用 nsgablack `search.random_gaussian`，模型解码与拟合仍归 mlblack
+- BlackBase `StateRef` 版本栅栏更新与显式 materialization；设备参数/梯度/optimizer slot 不冒充 Artifact 或 checkpoint 状态
 - numericizer, feature-space, conditional primitives/composer
 - nsgablack-style context contracts and doctor validation
 - Project L0 `ResourceContext` consumption and audit; no private L0 allocator

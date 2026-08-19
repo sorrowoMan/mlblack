@@ -10,7 +10,7 @@ This case demonstrates Granger causality testing as sparse VAR(1) coefficient op
 |---|---|---|
 | Problem | GrangerCausalityProblem | Custom (VAR MSE + L1 sparsity + analytic gradient) |
 | Representation | GrangerRepresentation | Custom (flat vector ↔ A matrix) |
-| Adapter | GradientDescentAdapter | Framework `adapter.gradient_descent` |
+| Adapter | GradientOptimizerAdapter | Stable method `gradient.sgd` |
 
 ## Quick Start
 

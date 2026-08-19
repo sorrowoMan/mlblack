@@ -1,6 +1,8 @@
-# 10. 自定义 Adapter（mlblack 详细实战）
+# 10. 自定义优化 Adapter（统一栈实战）
 
-虽然 mlblack 语义是训练/模型，但 Adapter 仍然是“更新策略层”，不是私有编排层。
+MLBlack 不定义私有优化 Adapter。自定义策略实现 `nsgablack.AlgorithmAdapter`
+协议，可以放在具体 Case 或独立策略包中；MLBlack 只提供数据、模型、Problem 与
+Provider 语义。
 
 ## 1. Adapter 边界
 
@@ -29,12 +31,15 @@ python -m nsgablack project add-component --case my_trainer --kind adapter --nam
 ## 3. 最小骨架（可运行思路）
 
 ```python
-class MyTrainerAdapter:
-    def propose(self, trainer, context):
+from nsgablack.adapters import AlgorithmAdapter
+
+
+class MyOptimizationAdapter(AlgorithmAdapter):
+    def propose(self, solver, context):
         # 返回当前需要评估/更新的状态候选
         ...
 
-    def update(self, trainer, candidates, objectives, violations, context):
+    def update(self, solver, candidates, feedback, context):
         # 使用反馈更新内部状态
         ...
 ```
@@ -47,7 +52,7 @@ class MyTrainerAdapter:
 
 ```python
 trainer = ...
-trainer.set_adapter(MyTrainerAdapter(...))
+trainer.set_adapter(MyOptimizationAdapter(...))
 ```
 
 ---

@@ -1,4 +1,7 @@
-﻿from .assembly import BiasSpec, InnerTrainingAssemblySpec, TrainerAssemblySpec, build_pipeline, build_trainer
+from .assembly import BiasSpec, InnerTrainingAssemblySpec, TrainerAssemblySpec, build_pipeline, build_trainer
+
+__version__ = "0.4.1"
+
 from .bias import (
     BranchPolicyBias,
     DynamicPoolBias,
@@ -24,13 +27,13 @@ from .core.artifacts import (
     load_artifact_bundle,
     save_artifact_bundle,
 )
-from .core.contracts import ComponentContract, ContractMixin
+from blackbase.context import InMemoryContextStore, InMemorySnapshotStore
+from blackbase.contracts import ComponentContract, ContractMixin
+from blackbase.resources import PoolScheduler, ResourceContext
 from .core.head import HeadBlock, OutputHead
-from .core.resources import PoolScheduler, ResourceContext
 from .core.state import TrainerState, build_trainer_state, replay_trainer, restore_trainer_state
-from .core.stores import InMemoryContextStore, InMemorySnapshotStore
-from .core.trainer import BlankTrainer, ComposableTrainer, Trainer
 from .core.types import Feedback, PopulationSnapshot, TrainerResult, UnknownState
+from .integrations.nsgablack_control import LearningSolver, build_learning_solver
 from .assembly.schema import DatasetSchema, FeatureSpec, ScaffoldConfig, TargetSpec
 from .problems.training import TrainingContract, TrainingResultRecord, TrainingTask
 
@@ -38,21 +41,20 @@ __all__ = [
     "ArtifactBuilder",
     "ArtifactBundle",
     "BiasSpec",
-    "BlankTrainer",
     "BranchPolicyBias",
     "ComponentContract",
-    "ComposableTrainer",
     "ContractMixin",
     "DatasetSchema",
     "DynamicPoolBias",
     "EstimatorStateArtifact",
     "FeatureSpec",
     "Feedback",
-    "InnerTrainingAssemblySpec",
     "HeadBlock",
     "InMemoryContextStore",
     "InMemorySnapshotStore",
+    "InnerTrainingAssemblySpec",
     "L2ScaleBias",
+    "LearningSolver",
     "ModelArtifact",
     "NoopBias",
     "ObjectivePolicyBias",
@@ -67,7 +69,6 @@ __all__ = [
     "StateL2Bias",
     "TargetSpec",
     "TorchModelArtifact",
-    "Trainer",
     "TrainerAssemblySpec",
     "TrainerResult",
     "TrainerState",
@@ -79,6 +80,8 @@ __all__ = [
     "TypedModelArtifact",
     "UnknownState",
     "XGBoostArtifact",
+    "__version__",
+    "build_learning_solver",
     "build_pipeline",
     "build_trainer",
     "build_trainer_state",
@@ -87,4 +90,3 @@ __all__ = [
     "restore_trainer_state",
     "save_artifact_bundle",
 ]
-

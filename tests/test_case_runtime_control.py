@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 from blackbase.resources import CancellationRef, CancellationToken, CaseDeadlineExceeded
-from mlblack.core import BlankTrainer, Feedback, LearningProblem, ModelRepresentation, UnknownState
+from mlblack.core import Feedback, LearningProblem, ModelRepresentation, UnknownState
+from mlblack.integrations import build_learning_solver
+from nsgablack.adapters import FixedCandidateAdapter
 
 
 class _PointRepresentation(ModelRepresentation):
@@ -19,23 +21,16 @@ class _PointRepresentation(ModelRepresentation):
         return state.as_array().copy()
 
 
-class _PointProblem(LearningProblem):
-    def evaluate(self, model, state, context=None):
-        del model, context
-        value = float(state.as_array()[0])
-        return Feedback(objectives=[value * value])
-
-
-class _SlowTrainer(BlankTrainer):
+class _SlowProblem(LearningProblem):
     def __init__(self) -> None:
-        super().__init__(run_name="slow")
         self.executed = 0
 
-    def step(self, context=None):
-        del context
+    def evaluate(self, model, state, context=None):
+        del model, context
         self.executed += 1
         time.sleep(0.01)
-        return {"step": self.executed}
+        value = float(state.as_array()[0])
+        return Feedback(objectives=[value * value])
 
 
 class _TokenRuntime:
@@ -54,31 +49,33 @@ class _CountingRuntime:
         self.count += 1
 
 
-def test_trainer_deadline_interrupts_a_running_step_loop() -> None:
-    trainer = _SlowTrainer()
-    ref = CancellationRef(backend="memory", deadline_at=time.time() + 0.04)
-    trainer.set_case_runtime(_TokenRuntime(CancellationToken(ref)))
-
-    with pytest.raises(CaseDeadlineExceeded):
-        trainer.fit(max_steps=100)
-
-    assert 0 < trainer.executed < 100
-
-
-def test_trainer_checks_control_around_evaluation_and_snapshot_commit() -> None:
-    trainer = BlankTrainer(
-        problem=_PointProblem(),
+def _solver(problem: LearningProblem):
+    return build_learning_solver(
+        problem=problem,
         representation=_PointRepresentation(),
+        adapter=FixedCandidateAdapter(),
         run_name="control",
     )
+
+
+def test_learning_solver_deadline_interrupts_running_nsg_loop() -> None:
+    problem = _SlowProblem()
+    solver = _solver(problem)
+    ref = CancellationRef(backend="memory", deadline_at=time.time() + 0.04)
+    solver.set_case_runtime(_TokenRuntime(CancellationToken(ref)))
+
+    with pytest.raises(CaseDeadlineExceeded):
+        solver.fit(max_steps=100)
+
+    assert 0 < problem.executed < 100
+
+
+def test_learning_solver_checks_shared_control_around_evaluation() -> None:
+    solver = _solver(_SlowProblem())
     runtime = _CountingRuntime()
-    trainer.set_case_runtime(runtime)
-    state = UnknownState(np.asarray([0.5]))
+    solver.set_case_runtime(runtime)
 
-    feedback = trainer.evaluate_individual(state)
-    evaluation_checkpoints = runtime.count
+    feedback = solver.evaluate_individual(UnknownState(np.asarray([0.5])))
+
     assert feedback.ok
-    assert evaluation_checkpoints >= 2
-
-    trainer.write_population_snapshot((state,), (feedback,))
-    assert runtime.count > evaluation_checkpoints
+    assert runtime.count >= 2

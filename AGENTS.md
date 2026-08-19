@@ -16,6 +16,11 @@ Current first principle:
 - Orchestration and resource grants belong to the shared substrate.
 - `nsgablack` is the optimization/search semantic layer.
 - `mlblack` is the machine-learning semantic layer.
+- Adapter-driven ML uses `nsgablack.ComposableSolver` as the only optimization
+  control plane. `LearningSolver.fit()` is an ML result facade, not another loop.
+- `mlblack` has no private Trainer control class or optimization Adapter hierarchy.
+  Closed-form and third-party `estimator.fit()` routes belong in ML Problem/Provider
+  components and execute through `LearningSolver` + `nsgablack.ComposableSolver`.
 - A `mlblack` Case can be outer or inner. It must not create a private project runner, scheduler, or resource allocator.
 
 ## 1. Project Positioning
@@ -26,7 +31,8 @@ Current first principle:
 DataView / Spec
   -> Representation / Codec / Head
   -> LearningProblem
-  -> Trainer / Provider
+  -> Provider / LearningSolver facade
+  -> nsgablack ComposableSolver control
   -> Artifact / Report
 ```
 
@@ -41,7 +47,8 @@ It does not own cross-Case scheduling. When a task needs multiple Cases, fanout,
 | Representation / Codec | encode/decode model state | objective aggregation |
 | Head | point, interval, probability, symbolic output semantics | training order |
 | LearningProblem | consume data and return feedback | resource allocation |
-| Trainer / Provider | fit/evaluate one ML task | multi-Case fanout |
+| LearningSolver facade / Provider | ML fit vocabulary and evaluation execution | owning a second optimization lifecycle |
+| nsgablack ComposableSolver | one Adapter lifecycle/incumbent/budget/snapshot control | ML model/data/backend semantics |
 | Plugin | checkpoint, tracking, audit, report | changing optimization semantics |
 | Artifact | reproducible model/report payload | temporary runtime context |
 | ResourceContext | consume and audit Project L0 grant | owning leases or global pools |
@@ -95,7 +102,7 @@ Forbidden:
 - creating a private lease store
 - hard-coding machine-local devices in examples or components
 - silently expanding resources beyond the grant
-- hiding backend selection inside Trainer internals
+- hiding backend selection inside Trainer/facade internals
 
 ## 5. Context / Snapshot / Artifact
 
@@ -126,6 +133,7 @@ Before adding a new capability, classify it:
 - output semantics -> head
 - objective and metric semantics -> problem
 - optimization step -> adapter
+- optimization lifecycle / incumbent / budget / cancellation -> `nsgablack.ComposableSolver`
 - lifecycle side effect -> plugin
 - reproducible output -> artifact
 - backend execution capability -> provider/backend surface
@@ -136,6 +144,8 @@ Before adding a new capability, classify it:
 
 - `mlblack.core`, `mlblack.pipeline`, `mlblack.problems`, and `mlblack.representations` should remain independent of `nsgablack`.
 - Explicit `nsgablack` integration belongs under `integrations/nsgablack_*`.
+- All training presets assemble through `LearningSolver`; a private Trainer loop
+  is not a valid integration target.
 - Cross-framework examples must compose standard Case surfaces.
 - Data and model artifacts pass through Artifact/Snapshot refs.
 - Nested calls pass structured request/result payloads and `ResourceContext`.
@@ -162,7 +172,7 @@ python -c "from mlblack.project.doctor import run_project_doctor, format_doctor_
 
 ## 10. Minimum Checklist
 
-- [ ] Boundaries are clear: Trainer / Adapter / Representation / Problem / Plugin / Artifact.
+- [ ] Boundaries are clear: LearningSolver facade / ComposableSolver / Adapter / Representation / Problem / Plugin / Artifact.
 - [ ] No adapter reads training data directly.
 - [ ] No large object is written to context.
 - [ ] `build_solver.py` remains canonical for Cases.

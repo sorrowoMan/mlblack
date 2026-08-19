@@ -20,7 +20,7 @@ Demonstrates pure framework preset composition. All 7 temporal neural architectu
 
 | 目标 | 方向 | 含义 |
 |---|---|---|
-| MSE (via NeuralGraphBackprop) | minimize | Forecast error on sin(0.1*t) + noise |
+| MSE (Problem-owned loss) | minimize | Forecast error on sin(0.1*t) + noise |
 
 ## 组件组合
 
@@ -28,7 +28,8 @@ Demonstrates pure framework preset composition. All 7 temporal neural architectu
 |---|---|---|
 | Problem | TemporalNeuralForecastingProblem | framework problem.temporal_neural_forecasting |
 | Representation | NeuralGraphRepresentation (7 variants) | framework preset (via NeuralGraphSpec) |
-| Adapter | NeuralGraphBackpropAdapter | framework adapter.neural_graph_backprop |
+| Adapter | GradientOptimizerAdapter (`gradient.adamw`) | nsgablack adapter.gradient_optimizer |
+| Evaluation Provider | TorchEvaluationProvider | mlblack provider.torch_evaluation |
 | Bias | (none) | -- |
 
 ## 效果对比

@@ -2,20 +2,13 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from mlblack.adapters import (
-    EstimatorSpecSearchAdapter,
-    EstimatorSpecSearchConfig,
-    NeuralGraphBackpropAdapter,
-    NeuralGraphBackpropConfig,
-    TorchBackpropAdapter,
-    TorchBackpropConfig,
-)
-from mlblack.core import ComputeBackendSpec, Trainer
+from mlblack.core import ComputeBackendSpec
 from mlblack.pipeline.data_views import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView
+from mlblack.pipeline.datasets import DatasetStreamConfig, NumericBatchSchedule
 from mlblack.problems import (
-    SupervisedClassificationProblem,
     SupervisedEstimatorFitRegressionProblem,
-    SupervisedRegressionProblem,
+    TabularNeuralClassificationProblem,
+    TabularNeuralRegressionProblem,
     TemporalNeuralForecastingProblem,
     TemporalNeuralProbabilisticForecastingProblem,
     TinyCNNImageClassificationProblem,
@@ -33,14 +26,12 @@ from mlblack.representations import (
     NeuralGraphSpec,
     NeuralOptimizationSpec,
     NeuralEngineSpec,
-    NumpyMLPPointConfig,
-    NumpyMLPPointRepresentation,
     build_neural_estimator_representation,
     make_sklearn_mlp_factory,
 )
 
 
-def build_numpy_mlp_torch_backprop_trainer(
+def build_mlp_regression_trainer(
     data: NumericDataView,
     *,
     hidden_layers: Sequence[int] = (64, 32),
@@ -55,43 +46,54 @@ def build_numpy_mlp_torch_backprop_trainer(
     device_policy: str = "fallback_cpu",
     checkpoint_enabled: bool = True,
     resume_enabled: bool = True,
-    run_name: str = "numpy_mlp_torch_backprop",
-) -> Trainer:
-    cfg = NumpyMLPPointConfig(
+    run_name: str = "mlp_regression",
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
+    # Model structure is declared once. Optimizer, batching, backend, and
+    # checkpoint policy remain separate assembly concerns.
+    representation = NeuralGraphRepresentation.mlp(
         input_dim=int(data.X_train.shape[1]),
         hidden_layers=tuple(int(v) for v in hidden_layers),
+        output_dim=1,
         activation=activation,
         dropout=float(dropout),
-        optimizer=optimizer,
-        learning_rate=float(learning_rate),
-        weight_decay=float(weight_decay),
-        batch_size=batch_size,
-        device=device,
-        checkpoint_enabled=checkpoint_enabled,
-        resume_enabled=resume_enabled,
+        random_seed=42,
+        representation_name="mlp_regression",
     )
-    representation = NumpyMLPPointRepresentation.from_data(
-        data.X_train,
-        config=cfg,
-    )
-    problem = SupervisedRegressionProblem(data)
-    adapter = TorchBackpropAdapter(
-        TorchBackpropConfig(
-            learning_rate=learning_rate,
-            weight_decay=weight_decay,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            optimizer=optimizer,
-            device=device,
-            device_policy=device_policy,
+    problem = TabularNeuralRegressionProblem(data)
+    if (
+        str(device or "cpu").strip().lower() not in {"", "cpu", "auto"}
+        and resource_context is None
+        and str(device_policy or "fallback_cpu").strip().lower() == "strict"
+    ):
+        raise ValueError(
+            "strict accelerator use requires an injected Project L0 resource_context"
         )
+    schedule = NumericBatchSchedule(
+        data,
+        DatasetStreamConfig(
+            batch_size=(
+                int(data.X_train.shape[0])
+                if batch_size is None
+                else int(batch_size)
+            ),
+            shuffle=bool(shuffle),
+            drop_last=False,
+            seed=42,
+        ),
     )
-    return Trainer(
+    from mlblack.integrations.nsgablack_gradient import build_gradient_trainer
+
+    return build_gradient_trainer(
         problem=problem,
         representation=representation,
-        adapter=adapter,
+        method=optimizer,
+        compute_backend="torch",
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        data_schedule=schedule,
+        resource_context=resource_context,
         run_name=run_name,
-        compute_backend=ComputeBackendSpec(name="torch", device=device, device_policy=device_policy),
     )
 
 
@@ -107,7 +109,7 @@ def build_sklearn_mlp_estimator_search_trainer(
     population_size: int = 6,
     mutation_scale: float = 0.1,
     run_name: str = "sklearn_mlp_estimator_search",
-) -> Trainer:
+) -> Any:
     mechanisms = {
         "backbone": NeuralBackboneSpec(hidden_layers=tuple(int(v) for v in hidden_layers), activation=activation).as_dict(),
         "optimization": NeuralOptimizationSpec(optimizer="adam", learning_rate=1e-3).as_dict(),
@@ -131,10 +133,14 @@ def build_sklearn_mlp_estimator_search_trainer(
         mechanisms=mechanisms,
     )
     problem = SupervisedEstimatorFitRegressionProblem(data)
-    adapter = EstimatorSpecSearchAdapter(
-        EstimatorSpecSearchConfig(population_size=population_size, mutation_scale=mutation_scale),
+    adapter = _build_optimization_adapter(
+        "search.random_gaussian",
+        population_size=population_size,
+        mutation_scale=mutation_scale,
+        initialization="center",
+        include_center_candidate=True,
     )
-    return Trainer(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
+    return _build_learning_solver(problem=problem, representation=representation, adapter=adapter, run_name=run_name)
 
 
 def build_tiny_transformer_classification_trainer(
@@ -164,12 +170,13 @@ def build_tiny_transformer_classification_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tiny_transformer_classification",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     """Build a tiny Transformer classifier smoke trainer.
 
-    This preset uses the backend-dispatched neural graph backprop adapter.
-    Problem.evaluate remains a no-backward evaluation path; the adapter owns
-    backend loss backward, optimizer step, and parameter-state export.
+    Torch uses the unified ML Provider -> nsgablack gradient Adapter path.
+    Functional backends use the same nsgablack Adapter and expose gradients at
+    the ML Problem/Provider boundary; no private ML optimization Adapter exists.
     """
 
     seq_len = int(max_length or data.X_train.shape[1])
@@ -193,19 +200,19 @@ def build_tiny_transformer_classification_trainer(
         representation_name="tiny_transformer_classification",
     )
     problem = TinyTransformerClassificationProblem(data, head_name="classification")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
@@ -235,7 +242,8 @@ def build_tiny_transformer_lm_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tiny_transformer_lm",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     """Build a tiny Transformer language-modeling smoke trainer."""
 
     seq_len = int(max_length or data.X_train.shape[1])
@@ -259,19 +267,19 @@ def build_tiny_transformer_lm_trainer(
         representation_name="tiny_transformer_lm",
     )
     problem = TinyTransformerLanguageModelProblem(data, head_name="lm")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
@@ -302,7 +310,8 @@ def build_tiny_transformer_dpo_preference_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tiny_transformer_dpo_preference",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     """Build a tiny Transformer DPO/preference trainer."""
 
     seq_len = int(max_length or data.sequence_length)
@@ -326,19 +335,19 @@ def build_tiny_transformer_dpo_preference_trainer(
         representation_name="tiny_transformer_dpo_preference",
     )
     problem = TinyTransformerDPOPreferenceProblem(data, head_name="lm", beta=float(beta))
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
@@ -359,7 +368,8 @@ def build_tiny_cnn_image_classification_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tiny_cnn_image_classification",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     representation = NeuralGraphRepresentation.tiny_cnn(
         channels=int(data.channels),
         height=int(data.height),
@@ -373,19 +383,19 @@ def build_tiny_cnn_image_classification_trainer(
         representation_name="tiny_cnn_image_classification",
     )
     problem = TinyCNNImageClassificationProblem(data, head_name="classification")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
@@ -407,7 +417,8 @@ def build_tiny_gnn_graph_classification_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tiny_gnn_graph_classification",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     representation = NeuralGraphRepresentation.tiny_gnn(
         node_feature_dim=int(data.node_feature_dim),
         num_nodes=int(data.num_nodes),
@@ -421,19 +432,19 @@ def build_tiny_gnn_graph_classification_trainer(
         representation_name="tiny_gnn_graph_classification",
     )
     problem = TinyGNNGraphClassificationProblem(data, head_name="classification")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
@@ -455,7 +466,8 @@ def build_tiny_cnn_image_contrastive_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tiny_cnn_image_contrastive",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     representation = NeuralGraphRepresentation.tiny_cnn(
         channels=int(data.channels),
         height=int(data.height),
@@ -469,19 +481,19 @@ def build_tiny_cnn_image_contrastive_trainer(
         representation_name="tiny_cnn_image_contrastive",
     )
     problem = TinyCNNImageContrastiveProblem(data, head_name="retrieval", margin=float(margin))
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
@@ -505,7 +517,7 @@ def build_temporal_lstm_forecast_trainer(
     random_seed: int = 42,
     run_name: str = "temporal_lstm_forecast",
     resource_context: Mapping[str, Any] | None = None,
-) -> Trainer:
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.temporal_lstm(
@@ -522,20 +534,19 @@ def build_temporal_lstm_forecast_trainer(
         )
     )
     problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
         resource_context=resource_context,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
 
@@ -560,7 +571,7 @@ def build_temporal_tcn_forecast_trainer(
     random_seed: int = 42,
     run_name: str = "temporal_tcn_forecast",
     resource_context: Mapping[str, Any] | None = None,
-) -> Trainer:
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.temporal_tcn(
@@ -578,20 +589,19 @@ def build_temporal_tcn_forecast_trainer(
         )
     )
     problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
         resource_context=resource_context,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
 
@@ -617,7 +627,7 @@ def build_temporal_transformer_forecast_trainer(
     random_seed: int = 42,
     run_name: str = "temporal_transformer_forecast",
     resource_context: Mapping[str, Any] | None = None,
-) -> Trainer:
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.temporal_transformer(
@@ -636,20 +646,19 @@ def build_temporal_transformer_forecast_trainer(
         )
     )
     problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
         resource_context=resource_context,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
 
@@ -675,7 +684,7 @@ def build_temporal_nbeats_forecast_trainer(
     random_seed: int = 42,
     run_name: str = "temporal_nbeats_forecast",
     resource_context: Mapping[str, Any] | None = None,
-) -> Trainer:
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.temporal_nbeats(
@@ -694,20 +703,19 @@ def build_temporal_nbeats_forecast_trainer(
         )
     )
     problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
         resource_context=resource_context,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
 
@@ -732,7 +740,7 @@ def build_temporal_deepar_forecast_trainer(
     random_seed: int = 42,
     run_name: str = "temporal_deepar_forecast",
     resource_context: Mapping[str, Any] | None = None,
-) -> Trainer:
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.temporal_deepar(
@@ -749,20 +757,19 @@ def build_temporal_deepar_forecast_trainer(
         )
     )
     problem = TemporalNeuralProbabilisticForecastingProblem(data, head_name="deepar", alpha=float(alpha))
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
         resource_context=resource_context,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
 
@@ -789,7 +796,7 @@ def build_temporal_patchtst_forecast_trainer(
     random_seed: int = 42,
     run_name: str = "temporal_patchtst_forecast",
     resource_context: Mapping[str, Any] | None = None,
-) -> Trainer:
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.temporal_patchtst(
@@ -809,20 +816,19 @@ def build_temporal_patchtst_forecast_trainer(
         )
     )
     problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
         resource_context=resource_context,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
 
@@ -846,7 +852,7 @@ def build_temporal_tft_forecast_trainer(
     random_seed: int = 42,
     run_name: str = "temporal_tft_forecast",
     resource_context: Mapping[str, Any] | None = None,
-) -> Trainer:
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.temporal_tft(
@@ -863,20 +869,19 @@ def build_temporal_tft_forecast_trainer(
         )
     )
     problem = TemporalNeuralForecastingProblem(data, head_name="forecast")
-    adapter = _build_neural_graph_adapter(
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
         resource_context=resource_context,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
     )
 
 
@@ -899,7 +904,8 @@ def build_tabular_tabnet_classification_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tabular_tabnet_classification",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.tabular_tabnet(
@@ -915,20 +921,20 @@ def build_tabular_tabnet_classification_trainer(
             representation_name="tabular_tabnet_classification",
         )
     )
-    problem = SupervisedClassificationProblem(data)
-    adapter = _build_neural_graph_adapter(
+    problem = TabularNeuralClassificationProblem(data)
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
@@ -951,7 +957,8 @@ def build_tabular_tabnet_regression_trainer(
     device_policy: str = "fallback_cpu",
     random_seed: int = 42,
     run_name: str = "tabular_tabnet_regression",
-) -> Trainer:
+    resource_context: Mapping[str, Any] | None = None,
+) -> Any:
     representation = NeuralGraphRepresentation(
         NeuralGraphRepresentationConfig(
             graph_spec=NeuralGraphSpec.tabular_tabnet(
@@ -967,39 +974,90 @@ def build_tabular_tabnet_regression_trainer(
             representation_name="tabular_tabnet_regression",
         )
     )
-    problem = SupervisedRegressionProblem(data)
-    adapter = _build_neural_graph_adapter(
+    problem = TabularNeuralRegressionProblem(data)
+    return _build_neural_graph_trainer(
+        problem=problem,
+        representation=representation,
+        compute_backend=compute_backend,
         optimizer=optimizer,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
+        device=device,
+        device_policy=device_policy,
         random_seed=random_seed,
-    )
-    return Trainer(
-        problem=problem,
-        representation=representation,
-        adapter=adapter,
         run_name=run_name,
-        compute_backend=_compute_backend_spec(compute_backend, device, device_policy),
+        resource_context=resource_context,
     )
 
 
-def _build_neural_graph_adapter(
+def _build_optimization_adapter(method: str, **kwargs: Any) -> Any:
+    from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
+
+    return build_optimization_adapter(method, **kwargs)
+
+
+def _build_learning_solver(**kwargs: Any) -> Any:
+    from mlblack.integrations.nsgablack_control import build_learning_solver
+
+    return build_learning_solver(**kwargs)
+
+
+def _build_neural_graph_trainer(
     *,
+    problem: Any,
+    representation: NeuralGraphRepresentation,
+    compute_backend: str,
     optimizer: str,
     learning_rate: float,
     weight_decay: float,
     max_grad_norm: float | None,
+    device: str,
+    device_policy: str,
     random_seed: int,
+    run_name: str,
+    resource_context: Mapping[str, Any] | None = None,
 ) -> Any:
-    return NeuralGraphBackpropAdapter(
-        NeuralGraphBackpropConfig(
-            optimizer=str(optimizer),
-            learning_rate=float(learning_rate),
-            weight_decay=float(weight_decay),
-            max_grad_norm=max_grad_norm,
-            random_seed=int(random_seed),
+    backend_name = str(compute_backend or "torch").strip().lower()
+    if backend_name == "torch":
+        if (
+            str(device or "cpu").strip().lower() not in {"", "cpu", "auto"}
+            and resource_context is None
+            and str(device_policy or "fallback_cpu").strip().lower() == "strict"
+        ):
+            raise ValueError(
+                "strict accelerator use requires an injected Project L0 resource_context"
+            )
+        from mlblack.backends.torch_neural import TorchEvaluationProviderConfig
+        from mlblack.integrations.nsgablack_gradient import build_gradient_trainer
+
+        return build_gradient_trainer(
+            problem=problem,
+            representation=representation,
+            method=optimizer,
+            compute_backend="torch",
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            max_gradient_norm=max_grad_norm,
+            resource_context=resource_context,
+            provider_config=TorchEvaluationProviderConfig(
+                random_seed=int(random_seed),
+                publish_state_refs=True,
+            ),
+            run_name=run_name,
         )
+    from mlblack.integrations.nsgablack_gradient import build_gradient_trainer
+
+    return build_gradient_trainer(
+        problem=problem,
+        representation=representation,
+        method=optimizer,
+        compute_backend=backend_name,
+        learning_rate=learning_rate,
+        weight_decay=weight_decay,
+        max_gradient_norm=max_grad_norm,
+        run_name=run_name,
+        resource_context=resource_context,
     )
 
 
@@ -1010,5 +1068,3 @@ def _compute_backend_spec(compute_backend: Any, device: str, device_policy: str)
         payload.setdefault("device_policy", device_policy)
         return ComputeBackendSpec.from_value(payload)
     return ComputeBackendSpec(name=str(compute_backend), device=str(device), device_policy=str(device_policy))
-
-

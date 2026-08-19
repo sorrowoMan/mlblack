@@ -6,11 +6,22 @@ import pytest
 from mlblack.catalog.registry import get_catalog
 from mlblack.catalog.relations import usage_profile
 from mlblack.core.types import UnknownState
-from mlblack.models import ARIMASARIMAXProvider, ARIMASARIMAXSpec, LinearAutoregressiveForecastModel, NaiveForecastModel
+from mlblack.models import (
+    ARIMASARIMAXForecastModel,
+    ARIMASARIMAXProvider,
+    ARIMASARIMAXSpec,
+    LinearAutoregressiveFitSpec,
+    LinearAutoregressiveForecastModel,
+    NaiveForecastModel,
+)
 from mlblack.pipeline.data_views import TimeSeriesDataView
 from mlblack.pipeline.time_series import SeasonalDecompositionConfig, STLSeasonalDecompositionComponent, TimeSeriesWindowConfig, TimeSeriesWindowingComponent, seasonal_decompose
 from mlblack.problems import RollingOriginForecastingProblem, TimeSeriesForecastingProblem
 from mlblack.representations import BaselineForecastRepresentation, BaselineForecastSearchConfig
+from mlblack.presets.time_series import (
+    build_arima_sarimax_forecast_trainer,
+    build_linear_autoregressive_forecast_trainer,
+)
 
 
 def test_time_series_windowing_builds_lagged_numeric_view() -> None:
@@ -131,3 +142,42 @@ def test_time_series_components_are_catalog_visible() -> None:
     usage = usage_profile(catalog.show("problem.time_series_forecasting"))
     assert "TimeSeriesDataView" in "\n".join(usage["minimal_wiring"])
     assert "forecast" in "\n".join(usage["use_when"]).lower()
+
+
+def test_forecast_presets_defer_fitting_to_problem_lifecycle(monkeypatch) -> None:
+    data = TimeSeriesDataView.from_values(np.arange(20, dtype=float))
+
+    def fail_linear_fit(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("builder must not fit a linear forecast model")
+
+    def fail_arima_fit(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("builder must not call the ARIMA provider")
+
+    monkeypatch.setattr(LinearAutoregressiveForecastModel, "fit", fail_linear_fit)
+    monkeypatch.setattr(ARIMASARIMAXProvider, "fit", fail_arima_fit)
+
+    linear = build_linear_autoregressive_forecast_trainer(data)
+    arima = build_arima_sarimax_forecast_trainer(data)
+
+    assert isinstance(
+        linear.model_representation.decode(linear.model_representation.init({}), {}),
+        LinearAutoregressiveFitSpec,
+    )
+    assert isinstance(
+        arima.model_representation.decode(arima.model_representation.init({}), {}),
+        ARIMASARIMAXSpec,
+    )
+
+
+def test_forecast_fit_specs_materialize_inside_learning_solver() -> None:
+    data = TimeSeriesDataView.from_values(np.arange(20, dtype=float))
+
+    linear_result = build_linear_autoregressive_forecast_trainer(data).fit(max_steps=1)
+    arima_result = build_arima_sarimax_forecast_trainer(data, order=(1, 1, 0)).fit(max_steps=1)
+
+    assert isinstance(linear_result.best_model, LinearAutoregressiveForecastModel)
+    assert isinstance(arima_result.best_model, ARIMASARIMAXForecastModel)
+    assert linear_result.best_feedback is not None
+    assert arima_result.best_feedback is not None

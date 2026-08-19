@@ -12,7 +12,7 @@
 - `temporal_patchtst`
 - `temporal_tft`
 
-每个 Case 独立装配一个 `ComposableTrainer`，共享同一套确定性正弦序列数据协议。模型顺序、资源授权和运行编排由本 Project 的 `project_config.py` 管理，不再由单个 Case 返回 Trainer 字典。
+每个 Case 独立装配一个 `LearningSolver`，共享同一套确定性正弦序列数据协议。模型顺序、资源授权和运行编排由本 Project 的 `project_config.py` 管理，不再由单个 Case 返回 Trainer 字典。
 
 历史目录 `cases/temporal_neural_compare` 仅保留为单 LSTM Trainer 的兼容入口，不参与正式比较阶段。
 

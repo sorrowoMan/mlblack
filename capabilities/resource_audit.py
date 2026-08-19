@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from mlblack.core.capability import Capability
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 
 
 class ResourceAuditCapability(Capability):

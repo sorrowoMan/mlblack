@@ -50,12 +50,6 @@ def build_solver(
     return trainer
 
 
-def build_project_trainer():
-    """Backward-compatible name for older docs; prefer build_solver()."""
-
-    return build_solver()
-
-
 def _build_parser():
     parser = argparse.ArgumentParser(
         description="Build and run the orthogonal point demo scaffold.",
@@ -78,7 +72,7 @@ def _build_parser():
 def main(argv=None):
     parser = _build_parser()
     args = parser.parse_args(argv)
-    trainer = build_project_trainer()
+    trainer = build_solver()
     if bool(args.check):
         problem = getattr(trainer, "problem", None)
         rep = getattr(trainer, "representation", None)

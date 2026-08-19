@@ -1,5 +1,9 @@
 # 03. Backend Matrix
 
+> 下面保留旧 Adapter 矩阵用于兼容性判断。Torch 神经预设的规范入口已经是
+> `gradient.* -> GradientOptimizerAdapter -> TorchEvaluationProvider`；JAX/TensorFlow
+> functional 路线尚未迁入同一 EvaluationProvider 状态协议。
+
 ## 总览
 
 | backend | tensor | lowering | loss | gradient | optimizer | artifact | 当前定位 |
@@ -122,7 +126,7 @@ neural.lowering.gnn
 ```text
 函数式参数实验
 JAX MLP gradient smoke
-和 FunctionalBackpropAdapter 组合
+和 FunctionalGradientLearningProblem + GradientOptimizerAdapter 组合
 后续扩展 jit / vmap / optax
 ```
 
@@ -134,14 +138,15 @@ NeuralGraphSpec.mlp
   -> JaxMLPPointModel
   -> Problem.compute_functional_gradient(...)
   -> backend.autograd.mse_parameter_gradient(...)
-  -> FunctionalBackpropAdapter updates flat state
+  -> FunctionalGradientLearningProblem emits Feedback.gradients
+  -> GradientOptimizerAdapter updates flat state
 ```
 
 关键说明：
 
 ```text
 JAX backend 不伪装 torch-style backward。
-如果用 NeuralGraphBackpropAdapter + jax，会因为缺 autograd.backward / optimizer.step 报错。
+如果 Problem/Provider 请求 torch-style backward，JAX 会因缺 autograd.backward / optimizer.step 报错。
 ```
 
 ## tensorflow backend
@@ -198,7 +203,7 @@ neural.lowering.gnn
 ```text
 GradientTape 风格验证
 TensorFlow MLP functional gradient smoke
-和 FunctionalBackpropAdapter 组合
+和 FunctionalGradientLearningProblem + GradientOptimizerAdapter 组合
 ```
 
 ## torch backend
@@ -267,7 +272,7 @@ artifact.torch_model.describe
 Tiny Transformer classification / LM / DPO
 Tiny CNN image classification / retrieval
 Tiny GNN graph classification
-NeuralGraphBackpropAdapter
+GradientOptimizerAdapter + TorchEvaluationProvider
 attention/FFN audit artifact
 ```
 
@@ -282,15 +287,13 @@ attention/FFN audit artifact
 | LoRA tiny transformer | no | no | no | yes |
 | QLoRA surface | no | no | no | yes tiny surface |
 
-## 当前 adapter 匹配
+## 当前统一策略匹配
 
 | adapter | numpy | jax | tensorflow | torch |
 | --- | --- | --- | --- | --- |
-| `GradientDescentAdapter` | 仅当 problem 返回 gradients | 仅当 problem 返回 flat gradients | 仅当 problem 返回 flat gradients | 仅当 model/problem 返回 flat gradients |
-| `FunctionalBackpropAdapter` | no | yes | yes（需安装 TensorFlow） | no |
-| `NeuralGraphBackpropAdapter` | no | no | no | yes |
-| `RandomSearchAdapter` | yes | yes | yes | yes |
-| `EstimatorSpecSearchAdapter` | 与 compute backend 无直接关系 | 与 compute backend 无直接关系 | 与 compute backend 无直接关系 | 与 compute backend 无直接关系 |
+| `nsgablack GradientOptimizerAdapter` + ML Problem/Provider | 解析梯度 | functional gradient | functional gradient（需安装 TensorFlow） | TorchEvaluationProvider |
+| `nsgablack GaussianSearchAdapter` | yes | yes | yes | yes |
+| `nsgablack FixedCandidateAdapter` | yes | yes | yes | yes |
 
 ## 快速检查命令
 

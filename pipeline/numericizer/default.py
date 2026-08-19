@@ -5,7 +5,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from mlblack.pipeline.data_views import NumericDataView
 from .plan import NumericFeatureColumn, NumericizationPlan
 

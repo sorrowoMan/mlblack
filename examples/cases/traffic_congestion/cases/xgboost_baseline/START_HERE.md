@@ -2,7 +2,7 @@
 
 This is the XGBoost baseline case for predicting traffic Congestion Index (CI).
 It uses the framework `xgboost` preset (`tree_boosting_estimator_search`)
-which tunes `max_depth` and `learning_rate` via `EstimatorSpecSearchAdapter`.
+which tunes `max_depth` and `learning_rate` via NSGABlack `GaussianSearchAdapter`.
 
 ## Quickstart
 

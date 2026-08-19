@@ -31,7 +31,13 @@ class LinearPointCodec:
         return np.asarray(values, dtype=float)
 
     def encode(self, model: LinearPointModel) -> np.ndarray:
-        return np.concatenate([[float(model.intercept)], np.asarray(model.weights, dtype=float).reshape(-1)])
+        weights = np.asarray(model.weights, dtype=float).reshape(-1)
+        if weights.shape[0] != int(self.config.n_features):
+            raise ValueError(
+                "model weight count does not match the linear candidate layout: "
+                f"weights={weights.shape[0]}, expected={self.config.n_features}"
+            )
+        return np.concatenate([[float(model.intercept)], weights]).astype(float, copy=False)
 
     def decode(self, values: np.ndarray, context: Mapping[str, Any] | None = None) -> LinearPointModel:
         ctx = dict(context or {})
@@ -40,10 +46,33 @@ class LinearPointCodec:
             raise ValueError(f"base state dimension {arr.shape[0]} does not match {self.base_dimension}")
         return LinearPointModel(
             intercept=float(arr[0]),
-            weights=np.asarray(arr[1:], dtype=float),
+            weights=np.array(arr[1:], dtype=float, copy=True),
             feature_names=tuple(self.config.feature_names),
             metadata={"representation": self.config.representation_name, "head_block": ctx.get("head.block")},
         )
+
+    def parameter_layout(self) -> dict[str, Any]:
+        """Describe the exact candidate coordinates used by the codec."""
+
+        return {
+            "schema": "mlblack.linear_parameter_layout.v1",
+            "total_size": int(self.base_dimension),
+            "slots": (
+                {
+                    "name": "intercept",
+                    "offset": 0,
+                    "size": 1,
+                    "shape": (),
+                },
+                {
+                    "name": "weights",
+                    "offset": 1,
+                    "size": int(self.config.n_features),
+                    "shape": (int(self.config.n_features),),
+                    "coordinate_names": tuple(self.config.feature_names),
+                },
+            ),
+        }
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -51,6 +80,7 @@ class LinearPointCodec:
             "base_dimension": int(self.base_dimension),
             "n_features": int(self.config.n_features),
             "feature_names": tuple(self.config.feature_names),
+            "parameter_layout": self.parameter_layout(),
         }
 
 

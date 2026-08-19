@@ -1,0 +1,217 @@
+[[entry]]
+key = "pipeline.conditional_primitive_feature"
+title = "ConditionalPrimitiveFeatureComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.feature_space:ConditionalPrimitiveFeatureComponent"
+tags = ["pipeline", "feature_space"]
+summary = "Append deterministic conditional primitive features to NumericDataView."
+metadata = { "architecture_path" = "pipeline/pipeline.feature_space", "module" = "mlblack.pipeline.feature_space", "symbol" = "ConditionalPrimitiveFeatureComponent" }
+
+[[entry]]
+key = "pipeline.data_pipeline"
+title = "DataPipelineComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.base:DataPipelineComponent"
+tags = ["pipeline", "base"]
+summary = "Data pipeline component."
+metadata = { "architecture_path" = "pipeline/pipeline.base", "module" = "mlblack.pipeline.base", "symbol" = "DataPipelineComponent" }
+
+[[entry]]
+key = "pipeline.numeric_batch_schedule"
+title = "NumericBatchSchedule"
+kind = "pipeline"
+import_path = "mlblack.pipeline.datasets:NumericBatchSchedule"
+tags = ["pipeline", "batch", "epoch", "shuffle", "checkpoint"]
+summary = "可恢复的数值 batch/epoch 调度器；拥有 shuffle、cursor 和 epoch 状态，不拥有优化算法。"
+metadata = { "architecture_path" = "pipeline.datasets", "state_owner" = "mlblack.pipeline" }
+
+[[entry]]
+key = "pipeline.data_pipeline_chain"
+title = "DataPipeline"
+kind = "pipeline"
+import_path = "mlblack.pipeline.base:DataPipeline"
+tags = ["pipeline", "data", "chain", "fit-transform"]
+summary = "Ordered data preparation chain for a trainer assembly."
+
+[[entry]]
+key = "pipeline.feature_space"
+title = "FeatureSpaceComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.feature_space:FeatureSpaceComponent"
+tags = ["pipeline", "feature-space", "metadata"]
+summary = "Records feature-space metadata in the data pipeline."
+
+[[entry]]
+key = "pipeline.hive_query_source"
+title = "HiveQuerySource"
+kind = "pipeline"
+import_path = "mlblack.pipeline.sources:HiveQuerySource"
+tags = ["pipeline", "sources"]
+summary = "Run a SQL query against HiveServer2 and materialise the result set."
+metadata = { "architecture_path" = "pipeline/pipeline.sources", "module" = "mlblack.pipeline.sources", "symbol" = "HiveQuerySource" }
+
+[[entry]]
+key = "pipeline.identity"
+title = "IdentityComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.components:IdentityComponent"
+tags = ["pipeline", "components"]
+summary = "Data pipeline component."
+metadata = { "architecture_path" = "pipeline/pipeline.components", "module" = "mlblack.pipeline.components", "symbol" = "IdentityComponent" }
+
+[[entry]]
+key = "pipeline.jdbc_query_source"
+title = "JDBCQuerySource"
+kind = "pipeline"
+import_path = "mlblack.pipeline.sources:JDBCQuerySource"
+tags = ["pipeline", "sources"]
+summary = "Run a SQL query against any JDBC data source and materialise the result."
+metadata = { "architecture_path" = "pipeline/pipeline.sources", "module" = "mlblack.pipeline.sources", "symbol" = "JDBCQuerySource" }
+
+[[entry]]
+key = "pipeline.model_conditioned_target"
+title = "ModelConditionedTargetComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.model_conditioning:ModelConditionedTargetComponent"
+tags = ["pipeline", "residual", "model-conditioned", "stage-surface"]
+summary = "Builds next-stage targets by calling an existing model, e.g. y - model.predict(X)."
+
+[[entry]]
+key = "pipeline.model_conditioned_target_builder"
+title = "ModelConditionedTargetBuilder"
+kind = "pipeline"
+import_path = "mlblack.pipeline.model_conditioning:ModelConditionedTargetBuilder"
+tags = ["pipeline", "model_conditioning"]
+summary = "Transforms data by calling an already-trained reference model."
+metadata = { "architecture_path" = "pipeline/pipeline.model_conditioning", "module" = "mlblack.pipeline.model_conditioning", "symbol" = "ModelConditionedTargetBuilder" }
+
+[[entry]]
+key = "pipeline.model_conditioned_target_config"
+title = "ModelConditionedTargetConfig"
+kind = "pipeline"
+import_path = "mlblack.pipeline.model_conditioning:ModelConditionedTargetConfig"
+tags = ["pipeline", "residual", "model-conditioned", "config"]
+summary = "Configuration for building a next-stage target from a reference model."
+
+[[entry]]
+key = "pipeline.numeric_batch_loader"
+title = "NumericBatchLoader"
+kind = "pipeline"
+import_path = "mlblack.pipeline.datasets:NumericBatchLoader"
+tags = ["pipeline", "datasets"]
+summary = "Batch iterator over a NumericDataView."
+metadata = { "architecture_path" = "pipeline/pipeline.datasets", "module" = "mlblack.pipeline.datasets", "symbol" = "NumericBatchLoader" }
+
+[[entry]]
+key = "pipeline.row_dataset_stream"
+title = "RowDatasetStream"
+kind = "pipeline"
+import_path = "mlblack.pipeline.datasets:RowDatasetStream"
+tags = ["pipeline", "datasets"]
+summary = "Lightweight row streaming surface for local or external datasets."
+metadata = { "architecture_path" = "pipeline/pipeline.datasets", "module" = "mlblack.pipeline.datasets", "symbol" = "RowDatasetStream" }
+
+[[entry]]
+key = "pipeline.s3_parquet_source"
+title = "S3ParquetSource"
+kind = "pipeline"
+import_path = "mlblack.pipeline.sources:S3ParquetSource"
+tags = ["pipeline", "sources"]
+summary = "Read a Parquet dataset from S3 or an S3-compatible store (MinIO, etc.)."
+metadata = { "architecture_path" = "pipeline/pipeline.sources", "module" = "mlblack.pipeline.sources", "symbol" = "S3ParquetSource" }
+
+[[entry]]
+key = "pipeline.seasonal_decomposition"
+title = "SeasonalDecompositionConfig"
+kind = "pipeline"
+import_path = "mlblack.pipeline.time_series:SeasonalDecompositionConfig"
+tags = ["pipeline", "time_series"]
+summary = "STL-like additive seasonal decomposition configuration."
+metadata = { "architecture_path" = "pipeline/pipeline.time_series", "module" = "mlblack.pipeline.time_series", "symbol" = "SeasonalDecompositionConfig" }
+
+[[entry]]
+key = "pipeline.seasonal_decomposition_result"
+title = "SeasonalDecompositionResult"
+kind = "pipeline"
+import_path = "mlblack.pipeline.time_series:SeasonalDecompositionResult"
+tags = ["pipeline", "time_series"]
+summary = "Trend, seasonal and residual arrays aligned to the original series."
+metadata = { "architecture_path" = "pipeline/pipeline.time_series", "module" = "mlblack.pipeline.time_series", "symbol" = "SeasonalDecompositionResult" }
+
+[[entry]]
+key = "pipeline.select_columns"
+title = "SelectColumnsComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.components:SelectColumnsComponent"
+tags = ["pipeline", "components"]
+summary = "SelectColumnsComponent(columns: 'Sequence[int]' = ())"
+metadata = { "architecture_path" = "pipeline/pipeline.components", "module" = "mlblack.pipeline.components", "symbol" = "SelectColumnsComponent" }
+
+[[entry]]
+key = "pipeline.source.hive_query"
+title = "HiveQuerySource"
+kind = "pipeline"
+import_path = "mlblack.pipeline.sources:HiveQuerySource"
+tags = ["pipeline", "source", "hive", "sql", "cloud"]
+summary = "Execute SQL against HiveServer2 and materialise results into a NumericDataView."
+
+[[entry]]
+key = "pipeline.source.jdbc_query"
+title = "JDBCQuerySource"
+kind = "pipeline"
+import_path = "mlblack.pipeline.sources:JDBCQuerySource"
+tags = ["pipeline", "source", "jdbc", "sql", "relational"]
+summary = "Generic JDBC query source — Postgres, MySQL, Oracle, etc. — into NumericDataView."
+
+[[entry]]
+key = "pipeline.source.s3_parquet"
+title = "S3ParquetSource"
+kind = "pipeline"
+import_path = "mlblack.pipeline.sources:S3ParquetSource"
+tags = ["pipeline", "source", "s3", "parquet", "cloud"]
+summary = "Read Parquet datasets from S3 or S3-compatible stores (MinIO) into a NumericDataView."
+
+[[entry]]
+key = "pipeline.stl_seasonal_decomposition"
+title = "STLSeasonalDecompositionComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.time_series:STLSeasonalDecompositionComponent"
+tags = ["pipeline", "time_series"]
+summary = "STL-like deterministic seasonal decomposition for TimeSeriesDataView."
+metadata = { "architecture_path" = "pipeline/pipeline.time_series", "module" = "mlblack.pipeline.time_series", "symbol" = "STLSeasonalDecompositionComponent" }
+
+[[entry]]
+key = "pipeline.time_series_window"
+title = "TimeSeriesWindowConfig"
+kind = "pipeline"
+import_path = "mlblack.pipeline.time_series:TimeSeriesWindowConfig"
+tags = ["pipeline", "time_series"]
+summary = "Lag-window configuration for converting a series into supervised rows."
+metadata = { "architecture_path" = "pipeline/pipeline.time_series", "module" = "mlblack.pipeline.time_series", "symbol" = "TimeSeriesWindowConfig" }
+
+[[entry]]
+key = "pipeline.time_series_windowing"
+title = "TimeSeriesWindowingComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.time_series:TimeSeriesWindowingComponent"
+tags = ["pipeline", "time_series"]
+summary = "Convert TimeSeriesDataView into a lagged NumericDataView."
+metadata = { "architecture_path" = "pipeline/pipeline.time_series", "module" = "mlblack.pipeline.time_series", "symbol" = "TimeSeriesWindowingComponent" }
+
+[[entry]]
+key = "pipeline.tokenized_text_dataset_builder"
+title = "TokenizedTextDatasetBuilder"
+kind = "pipeline"
+import_path = "mlblack.pipeline.datasets:TokenizedTextDatasetBuilder"
+tags = ["pipeline", "datasets"]
+summary = "Build token-id NumericDataView objects from text datasets."
+metadata = { "architecture_path" = "pipeline/pipeline.datasets", "module" = "mlblack.pipeline.datasets", "symbol" = "TokenizedTextDatasetBuilder" }
+
+[[entry]]
+key = "pipeline.z_score_normalize"
+title = "ZScoreNormalizeComponent"
+kind = "pipeline"
+import_path = "mlblack.pipeline.components:ZScoreNormalizeComponent"
+tags = ["pipeline", "components"]
+summary = "ZScoreNormalizeComponent(eps: 'float' = 1e-12, with_mean: 'bool' = True, with_std: 'bool' = True)"
+metadata = { "architecture_path" = "pipeline/pipeline.components", "module" = "mlblack.pipeline.components", "symbol" = "ZScoreNormalizeComponent" }

@@ -63,7 +63,10 @@ def test_temporal_project_build_check_exposes_seven_independent_trainers() -> No
         cwd=ROOT,
         capture_output=True,
         text=True,
-        timeout=30,
+        # Seven isolated Windows CLI processes each cold-import the selected
+        # neural backend. Keep this a correctness check rather than a host
+        # startup-speed benchmark.
+        timeout=60,
         check=False,
     )
 

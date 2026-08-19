@@ -40,7 +40,8 @@ def test_tiny_cnn_codec_and_image_classification_trainer_smoke() -> None:
     result = trainer.fit(max_steps=2)
     assert result.best_feedback is not None
     assert "train.accuracy" in result.best_feedback.metrics
-    assert result.report["adapter"]["name"] == "neural_graph_backprop"
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
+    assert result.report["adapter"]["state"]["provider_transition"]["count"] == 2
     assert result.report["problem"]["route"] == "tiny_cnn"
 
 
@@ -69,7 +70,8 @@ def test_tiny_gnn_codec_and_graph_classification_trainer_smoke() -> None:
     result = trainer.fit(max_steps=2)
     assert result.best_feedback is not None
     assert "train.accuracy" in result.best_feedback.metrics
-    assert result.report["adapter"]["name"] == "neural_graph_backprop"
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
+    assert result.report["adapter"]["state"]["provider_transition"]["count"] == 2
     assert result.report["problem"]["route"] == "tiny_gnn"
 
 
@@ -86,6 +88,8 @@ def test_tiny_cnn_contrastive_retrieval_trainer_smoke() -> None:
     assert result.best_feedback is not None
     assert "train.retrieval_accuracy" in result.best_feedback.metrics
     assert result.report["problem"]["head"] == "retrieval"
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
+    assert result.report["adapter"]["state"]["provider_transition"]["count"] == 2
 
 
 def _image_data() -> ImageDataView:

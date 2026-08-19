@@ -7,6 +7,10 @@ __pycache__/
 .mypy_cache/
 .mlblack_cache/
 
+build/
+dist/
+*.egg-info/
+
 examples/out/
 runs/
 out/

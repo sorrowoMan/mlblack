@@ -1,0 +1,47 @@
+[[entry]]
+key = "dashboard.artifact_html"
+title = "artifact dashboard export"
+kind = "dashboard"
+import_path = "mlblack.catalog.artifacts:export_artifact_html"
+tags = ["artifact", "symbolic", "html", "report"]
+summary = "Exports a static HTML viewer for typed mlblack artifacts."
+
+[[entry]]
+key = "dashboard.backend_matrix_html"
+title = "backend capability matrix export"
+kind = "dashboard"
+import_path = "mlblack.catalog.backend_dashboard:export_backend_matrix_html"
+tags = ["backend", "capability", "matrix", "html", "report"]
+summary = "Exports a static HTML matrix of backend capability support."
+
+[[entry]]
+key = "dashboard.catalog_html"
+title = "catalog dashboard export"
+kind = "dashboard"
+import_path = "mlblack.catalog.dashboard:export_catalog_html"
+tags = ["catalog", "html", "report"]
+summary = "Exports a lightweight HTML catalog report."
+
+[[entry]]
+key = "dashboard.catalog_streamlit"
+title = "catalog Streamlit dashboard"
+kind = "dashboard"
+import_path = "mlblack.catalog.dashboard:launch_catalog_dashboard"
+tags = ["catalog", "streamlit", "web", "dashboard", "db-only"]
+summary = "Launches an interactive Streamlit catalog dashboard similar to the nsgablack catalog UI."
+
+[[entry]]
+key = "dashboard.catalog_web"
+title = "catalog query web app"
+kind = "dashboard"
+import_path = "mlblack.catalog.web_app:serve_catalog_web"
+tags = ["catalog", "web", "query", "db-only"]
+summary = "Serves a lightweight catalog query UI and JSON API without external web dependencies."
+
+[[entry]]
+key = "dashboard.experiment_html"
+title = "experiment dashboard export"
+kind = "dashboard"
+import_path = "mlblack.catalog.experiment.dashboard:export_experiment_html"
+tags = ["experiment", "html", "report"]
+summary = "Exports a lightweight HTML experiment record report."

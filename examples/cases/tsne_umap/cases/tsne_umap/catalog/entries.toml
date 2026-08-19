@@ -15,11 +15,3 @@ kind = "problem"
 import_path = "problem.example_problem:ExampleRegressionProblem"
 tags = ["example", "regression"]
 summary = "Custom regression problem for tsne_umap."
-
-[[entries]]
-key = "adapter.tsne_umap_gd"
-title = "Tsne_Umap Gradient Descent Adapter"
-kind = "adapter"
-import_path = "adapter.example_adapter:ExampleGradientDescentAdapter"
-tags = ["example", "gradient_descent"]
-summary = "Custom gradient descent adapter for tsne_umap."

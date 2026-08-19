@@ -5,9 +5,9 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.adapters import RandomSearchAdapter
-from mlblack.core import ComposableTrainer
-from mlblack.core.contracts import ComponentContract, ContractMixin
+from mlblack.integrations.nsgablack_control import build_learning_solver
+from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
+from blackbase.contracts import ComponentContract, ContractMixin
 from mlblack.models.symbolic import parameterize_expression
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline.symbolic import FunctionPool, FunctionPoolPipeline, FunctionPoolPipelineConfig
@@ -225,12 +225,13 @@ class OrthogonalBasisOuterProblem(_BlackBoxProblem, ContractMixin):
             )
         )
         problem = OrthogonalBasisEvaluationProblem(self.data)
-        adapter = RandomSearchAdapter(
+        adapter = build_optimization_adapter(
+            "search.random_gaussian",
             population_size=int(self.config.inner_population_size),
             mutation_scale=float(self.config.inner_mutation_scale),
             random_seed=int(self.config.random_seed),
         )
-        trainer = ComposableTrainer(
+        trainer = build_learning_solver(
             problem=problem,
             representation=representation,
             adapter=adapter,

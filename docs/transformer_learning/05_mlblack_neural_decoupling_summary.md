@@ -116,7 +116,7 @@ failure_modes
 
 ---
 
-### 5.2 FunctionalBackpropAdapter 完整化
+### 5.2 FunctionalGradientLearningProblem 完整化
 
 **目标**  
 统一梯度协议，消除 route/backend 特例分支。
@@ -208,7 +208,7 @@ artifact_backend
 ## 6. 下一步落地顺序（建议）
 
 1. 先做 capability contract 与错误边界（否则后续测试不稳定）。
-2. 再收敛 FunctionalBackpropAdapter 协议。
+2. 再收敛函数式梯度 Problem/Provider 协议。
 3. 同步建设 benchmark suite。
 4. 最后把资源上下文贯通到所有关键 case。
 

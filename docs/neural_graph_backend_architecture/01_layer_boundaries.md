@@ -1,23 +1,26 @@
 # 01. Layer Boundaries
 
+> 统一口径：MLBlack 只定义 Problem/Provider/Codec 语义；nsgablack
+> GradientOptimizerAdapter 与 ComposableSolver 是唯一优化控制面。
+
 ## 核心边界
 
 | 层 | 代表对象 | 负责什么 | 不负责什么 |
 | --- | --- | --- | --- |
 | Structure semantics | `NeuralGraphSpec` | 描述模型结构、block、head、参数化方式。 | 不执行 tensor 运算。 |
 | Codec / Decoder | `NeuralGraphCodec` | 把 flat unknown state 和 spec 解码成模型对象。 | 不决定使用 torch/jax/tf。 |
-| Representation | `NeuralGraphRepresentation` | 对接 Trainer 的 `init/repair/decode/describe`。 | 不自己选择 backend。 |
+| Representation | `NeuralGraphRepresentation` | 对接 Solver 的 `init/repair/decode/describe`。 | 不自己选择 backend。 |
 | Problem | `LearningProblem` | 吃数据，调用模型，返回 loss/metrics/feedback。 | 不拥有优化算法，不私自建 backend。 |
-| Adapter | `OptimizerAdapter` | 根据 feedback 或 backend-native loss 更新 unknown state。 | 不直接吃业务数据。 |
-| Backend | `mlblack.backends.*` | tensor、lowering、loss、autograd、optimizer、artifact。 | 不定义搜索语义，不做 Trainer 编排。 |
-| Trainer/L0 context | `Trainer.compute_backend_session` | 本次 run 的 compute backend 选择和能力预检。 | 不实现具体 tensor kernel。 |
+| Adapter | `GradientOptimizerAdapter` | 根据 Feedback/StateRef 选择稳定更新方法与参数。 | 不直接吃业务数据，不持有 Tensor，不选择设备。 |
+| Evaluation Provider / Backend | `TorchEvaluationProvider` + `mlblack.backends.*` | tensor、lowering、loss、autograd、版本化设备态与 artifact。 | 不选择 SGD/Adam/AdamW，不做 Solver 编排。 |
+| LearningSolver/L0 context | `LearningSolver.compute_backend_session` | 本次 run 的 compute backend 选择和能力预检。 | 不实现具体 tensor kernel。 |
 | Project substrate | project_config/run_project/L0 | 阶段编排、并行、资源授权、ResourceContext grant。 | 不定义 ML 模型语义，不写死 trainer 后端细节。 |
 | nsgablack search Case | solver/adapter/problem/representation | 需要优化搜索、Pareto、结构候选生成时提供搜索语义。 | 不拥有跨 Case 编排和全局资源授权。 |
 
 ## 正确依赖方向
 
 ```text
-Trainer
+LearningSolver
   owns compute_backend_session
 
 Representation / Problem / Adapter
@@ -93,14 +96,18 @@ model + state + context
 ```text
 Problem.compute_backend_loss(...)
   -> backend-native loss object
-  -> NeuralGraphBackpropAdapter calls backend.autograd.backward(...)
+  -> TorchEvaluationProvider calls backend.autograd.backward(...)
+  -> Feedback.gradient_ref + evaluation_state_ref
+  -> GradientOptimizerAdapter selects gradient.adam/sgd/adamw
+  -> Provider executes the version-fenced transition
 ```
 
 原因是：
 
 ```text
 Problem 负责“这个模型好不好”。
-Adapter 负责“怎么更新参数”。
+Adapter 负责“选什么更新机制与参数”。
+Provider 负责“在已授权 backend 上执行该机制并持有活设备态”。
 ```
 
 对于 JAX / TensorFlow MLP 当前路线：
@@ -108,22 +115,26 @@ Adapter 负责“怎么更新参数”。
 ```text
 Problem.compute_functional_gradient(...)
   -> backend.autograd.functional.grad
-  -> FunctionalBackpropAdapter updates flat state
+  -> FunctionalGradientLearningProblem emits Feedback.gradients
+  -> GradientOptimizerAdapter updates flat state
 ```
 
 这说明函数式后端走 functional grad，不伪装成 torch-style backward。
 
 ## Setup 生命周期
 
-当前神经图 backend 解析发生在 Trainer setup：
+标准 Torch 神经图 backend 解析发生在唯一 Solver 控制面的 setup：
 
 ```text
-ComposableTrainer.setup()
+LearningSolver.setup()
   -> collect backend_requires
   -> require_compute_backend(...)
-  -> representation.setup(trainer, context)
-  -> adapter.setup(trainer)
+  -> representation.setup(control, context)
+  -> ComposableSolver / adapter.setup(control)
 ```
+
+JAX / TensorFlow 已统一为函数式 ML Problem/Provider + NSGABlack Adapter，
+不存在第二套 Trainer 控制面。
 
 `NeuralGraphRepresentation.setup(...)` 会：
 

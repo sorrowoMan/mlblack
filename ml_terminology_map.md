@@ -630,7 +630,7 @@ SGD 的梯度虽然有噪声，但"期望方向≈正确方向"
 
 > 术语：**梯度噪声 gradient noise** — 小批量引入的随机性，反而帮助跳出局部最优
 
-你 mlblack 的 `TorchBackpropAdapter` 和 `GradientDescentAdapter` 对应这些。
+MLBlack 的 `TorchEvaluationProvider` 负责 autograd 证据，NSGABlack 的 `GradientOptimizerAdapter` 负责更新策略。
 
 ---
 
@@ -2124,7 +2124,7 @@ LP 但某些/全部变量必须是整数
 |---|---|---|---|
 | 表示 | Architecture, Model | Representation | ModelRepresentation + Codec + Head |
 | 评估 | Loss, Objective | Problem | LearningProblem |
-| 搜索 | Optimizer, RL, EA | Adapter (23种) | OptimizerAdapter (6种) |
+| 搜索 | Optimizer, RL, EA | NSGABlack Adapter | MLBlack Problem/Provider |
 | 约束 | Regularization, Constraint | Bias (66种) | OptimizationBias (8种) |
 | 编排 | Pipeline, Workflow | Stage, Group, Event | 交给 nsgablack |
 
@@ -3016,7 +3016,7 @@ ML CI/CD：    代码 + 数据 + 模型 → 测试 + 验证指标 + 性能测试
     → 用帕累托前沿平衡"精度"和"复杂度"
 
 内循环（mlblack 的参数拟合）：给定符号结构，拟合最优参数
-    → 比如 GradientDescentAdapter 或 TorchBackpropAdapter
+    → 比如 GradientOptimizerAdapter + TorchEvaluationProvider
 
 "搜索即模型发现" = 你的框架最独特的定位
 ```
@@ -3166,4 +3166,3 @@ ML CI/CD：    代码 + 数据 + 模型 → 测试 + 验证指标 + 性能测试
 这就是你的护城河。你不需要追赶 Transformer 的论文洪水。你需要在你的方向上做出 1-2 个有说服力的案例，证明"小模型 + 搜索驱动的结构发现"在某些场景比"大模型 + 端到端训练"更有优势。
 
 **你学的是同一个东西的不同名字。你造的是一个统一它们的框架。**
-

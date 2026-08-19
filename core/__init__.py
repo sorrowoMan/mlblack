@@ -1,4 +1,3 @@
-﻿from .adapter import OptimizerAdapter
 from .artifacts import (
     ArtifactBuilder,
     ArtifactBundle,
@@ -25,29 +24,33 @@ from .artifact_provider import (
 )
 from .backend_session import ComputeBackendSession, ComputeBackendSpec, get_compute_backend_from_context
 from .capability import Capability
-from .context_contracts import ContextContract
-from .context_keys import (
-    CONTEXT_KEY_ALIASES,
+from blackbase.context import (
     CONTEXT_KEY_SET,
+    ContextContract,
+    InMemoryContextStore,
+    InMemorySnapshotStore,
     METRIC_FALLBACKS,
     METRIC_KEYS,
-    REGISTERED_CONTEXT_KEYS,
+    SnapshotRecord,
     normalize_context_key,
     normalize_context_keys,
     register_context_keys,
     unknown_context_keys,
     validate_context_keys,
 )
-from .diagnostic import DiagnosticProblem, DiagnosticRunner, DiagnosticTrainer, build_diagnostic_trainer
-from .contracts import ComponentContract, ContractMixin, combine_contracts
+from .diagnostic import (
+    DiagnosticProblem,
+    DiagnosticRepresentation,
+    DiagnosticRunner,
+    build_diagnostic_solver,
+)
+from blackbase.contracts import ComponentContract, ContractMixin, combine_contracts
+from blackbase.resources import ResourceAudit, ResourceContext, ResourceEvent
 from .head import HeadBlock, OutputHead
 from .problem import LearningProblem
+from .provider_problem import FunctionalGradientLearningProblem, ProviderBackedLearningProblem
 from .representation import ModelRepresentation
-from .resources import ResourceAudit, ResourceContext, ResourceEvent
 from .state import TrainerState, build_trainer_state, replay_trainer, restore_trainer_state, stable_state_signature
-from .stores import InMemoryContextStore, InMemorySnapshotStore, SnapshotRecord
-from .trainer import BlankTrainer, ComposableTrainer, Trainer
-from .trainer_stage import ArtifactRef, CompletionPolicy, SerialTrainer, StageSpec
 from .types import (
     Feedback,
     PopulationSnapshot,
@@ -61,22 +64,20 @@ __all__ = [
     "ArtifactBuilder",
     "ArtifactBundle",
     "ArtifactProvider",
-    "BlankTrainer",
     "Capability",
     "CaseRuntimeArtifactProvider",
     "ComponentContract",
-    "ComposableTrainer",
     "ComputeBackendSession",
     "ComputeBackendSpec",
-    "CONTEXT_KEY_ALIASES",
     "CONTEXT_KEY_SET",
     "ContextContract",
-    "DiagnosticProblem",
-    "DiagnosticRunner",
-    "DiagnosticTrainer",
     "ContractMixin",
+    "DiagnosticProblem",
+    "DiagnosticRepresentation",
+    "DiagnosticRunner",
     "EstimatorStateArtifact",
     "Feedback",
+    "FunctionalGradientLearningProblem",
     "HeadBlock",
     "InMemoryContextStore",
     "InMemorySnapshotStore",
@@ -85,38 +86,32 @@ __all__ = [
     "METRIC_FALLBACKS",
     "METRIC_KEYS",
     "ModelArtifact",
-    "NeuralGraphArtifact",
     "ModelRepresentation",
-    "OptimizerAdapter",
+    "NeuralGraphArtifact",
     "OutputHead",
     "PopulationSnapshot",
+    "ProviderBackedLearningProblem",
     "ResourceAudit",
     "ResourceContext",
     "ResourceEvent",
-    "REGISTERED_CONTEXT_KEYS",
     "RunReport",
+    "SerializerSelector",
     "SklearnMLPArtifact",
     "SnapshotRecord",
-    "SerializerSelector",
+    "SolveQuality",
+    "SolverResult",
     "SymbolicIntervalArtifact",
     "SymbolicModelArtifact",
     "TorchModelArtifact",
-    "ArtifactRef",
-    "CompletionPolicy",
-    "SerialTrainer",
-    "StageSpec",
-    "Trainer",
     "TrainerResult",
-    "SolverResult",
-    "SolveQuality",
     "TrainerState",
     "TrainerStateArtifact",
     "TreeEnsembleArtifact",
     "TypedModelArtifact",
     "UnknownState",
     "XGBoostArtifact",
+    "build_diagnostic_solver",
     "build_trainer_state",
-    "build_diagnostic_trainer",
     "combine_contracts",
     "get_compute_backend_from_context",
     "normalize_context_key",

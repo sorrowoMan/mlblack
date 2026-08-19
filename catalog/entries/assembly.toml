@@ -1,0 +1,7 @@
+[[entry]]
+key = "assembly.build_trainer"
+title = "build_trainer"
+kind = "assembly"
+import_path = "mlblack.assembly.builders:build_trainer"
+tags = ["scaffold", "trainer", "inner-training"]
+summary = "Builds one ML trainer Case surface; orchestration belongs to the shared Project substrate."

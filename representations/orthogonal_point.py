@@ -1,11 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Mapping
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.head import OutputHead
 from mlblack.core.representation import ModelRepresentation
 from mlblack.core.types import UnknownState

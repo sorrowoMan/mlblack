@@ -1,5 +1,8 @@
 # 02. Capability Contracts
 
+> Torch 的规范组合是 Problem + TorchEvaluationProvider + nsgablack
+> GradientOptimizerAdapter。Provider 必须声明 state kinds、materialization targets 与 transition methods。
+
 ## 为什么不用一个全局大接口
 
 不同执行系统的能力不等价：
@@ -231,7 +234,7 @@ Codec/Problem/Adapter:
 
 ```text
 compute_backend="numpy"
-adapter=NeuralGraphBackpropAdapter
+problem_requires="autograd.backward"
 ```
 
 应报错：

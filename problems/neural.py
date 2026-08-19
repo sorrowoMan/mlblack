@@ -10,7 +10,7 @@ import numpy as np
 
 from mlblack.core.artifacts import NeuralGraphArtifact
 from mlblack.core.backend_session import get_compute_backend_from_context
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
 from mlblack.pipeline.data_views import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView, PreferencePairDataView, TimeSeriesDataView
@@ -43,7 +43,7 @@ class BackendLossEvaluation:
 _NEURAL_EVALUATION_PROVIDES = ("feedback.objectives", "feedback.loss", "feedback.metrics", "feedback.signals")
 _BACKEND_MODE_REQUIREMENTS = ("tensor.device", "autograd.mode.train", "autograd.mode.eval", "autograd.no_grad")
 _DIFFERENTIABLE_LOSS_NOTE = (
-    "Computes neural loss/metrics; gradients are owned by NeuralGraphBackpropAdapter via compute_backend_loss()."
+    "Computes neural loss/metrics; gradients are produced by the Evaluation Provider from compute_backend_loss()."
 )
 
 
@@ -366,6 +366,300 @@ class TinyTransformerDPOPreferenceProblem(LearningProblem):
             "sequence_length": int(self.data.sequence_length),
             "has_valid": self.data.chosen_valid is not None,
             "beta": float(self.beta),
+        }
+
+
+class TabularNeuralClassificationProblem(LearningProblem):
+    """Differentiable classification semantics for tabular NeuralGraph models."""
+
+    name = "tabular_neural_classification"
+    backend_requires = (
+        *_BACKEND_MODE_REQUIREMENTS,
+        "tensor.float_tensor",
+        "tensor.class_labels",
+        "loss.cross_entropy",
+        "metrics.classification",
+    )
+    context_requires = ("candidate.model", "data.X_train", "data.y_train")
+    context_optional = ("data.X_valid", "data.y_valid", "resource.device")
+    context_provides = _NEURAL_EVALUATION_PROVIDES
+    context_mutates = ()
+    context_cache = ()
+    requires_metrics = ()
+    metrics_fallback = "strict"
+    context_notes = _DIFFERENTIABLE_LOSS_NOTE
+    contract = ComponentContract(
+        name=name,
+        requires=context_requires,
+        optional=context_optional,
+        provides=context_provides,
+        supports_gradient=True,
+        supports_batch=False,
+        supports_resume=False,
+        metadata={"family": "neural", "route": "tabular", "head": "classification"},
+    )
+
+    def __init__(
+        self,
+        data: NumericDataView,
+        *,
+        head_name: str = "classification",
+        use_valid_objective: bool = True,
+    ) -> None:
+        self.data = data
+        self.head_name = str(head_name)
+        self.use_valid_objective = bool(use_valid_objective)
+
+    def compute_backend_loss(
+        self,
+        model: Any,
+        state: UnknownState,
+        context: Mapping[str, Any],
+        *,
+        differentiable: bool = True,
+    ) -> BackendLossEvaluation:
+        _ = state
+        backend = _backend(
+            context,
+            (
+                "tensor.float_tensor",
+                "tensor.class_labels",
+                "loss.cross_entropy",
+                "metrics.classification",
+            ),
+        )
+        device = backend.tensor.device(context)
+        if differentiable:
+            backend.autograd.train(model, device=device)
+        else:
+            backend.autograd.eval(model, device=device)
+        train_context = nullcontext() if differentiable else backend.autograd.no_grad()
+        with train_context:
+            X_train = backend.tensor.float_tensor(self.data.X_train, device=device)
+            y_train = backend.tensor.class_labels(self.data.y_train, device=device)
+            train_loss, train_logits = backend.losses.generic_classification_loss(
+                model(X_train),
+                y_train,
+                self.head_name,
+            )
+            metrics = backend.losses.classification_metrics(
+                train_logits,
+                y_train,
+                prefix="train",
+            )
+        objective_loss = backend.losses.scalar(train_loss)
+        objective_prefix = "train"
+        if self.data.X_valid is not None and self.data.y_valid is not None:
+            backend.autograd.eval(model)
+            with backend.autograd.no_grad():
+                X_valid = backend.tensor.float_tensor(self.data.X_valid, device=device)
+                y_valid = backend.tensor.class_labels(self.data.y_valid, device=device)
+                valid_loss, valid_logits = backend.losses.generic_classification_loss(
+                    model(X_valid),
+                    y_valid,
+                    self.head_name,
+                )
+                metrics.update(
+                    backend.losses.classification_metrics(
+                        valid_logits,
+                        y_valid,
+                        prefix="valid",
+                    )
+                )
+            if self.use_valid_objective:
+                objective_loss = backend.losses.scalar(valid_loss)
+                objective_prefix = "valid"
+        return BackendLossEvaluation(
+            # The exported flat gradient is the derivative of cross-entropy.
+            # Error rate remains a metric: publishing it as a second objective
+            # would falsely claim that the same gradient differentiates both
+            # objectives at the Adapter boundary.
+            objectives=np.asarray([objective_loss], dtype=float),
+            loss=train_loss,
+            loss_value=float(objective_loss),
+            metrics=metrics,
+            signals={
+                "task": "tabular_neural_classification",
+                "head": self.head_name,
+                "primary_prefix": objective_prefix,
+            },
+        )
+
+    def evaluate(
+        self,
+        model: Any,
+        state: UnknownState,
+        context: Mapping[str, Any],
+    ) -> Feedback:
+        return self.compute_backend_loss(
+            model,
+            state,
+            context,
+            differentiable=False,
+        ).as_feedback()
+
+    def build_model_artifact(
+        self,
+        model: Any,
+        context: Mapping[str, Any] | None = None,
+    ) -> NeuralGraphArtifact:
+        return _build_generic_neural_artifact(
+            name=self.name,
+            model=model,
+            head="classification",
+            task="tabular_neural_classification",
+            context=dict(context or {}),
+        )
+
+    def describe(self) -> Mapping[str, Any]:
+        return {
+            "name": self.name,
+            "family": "neural",
+            "route": "tabular",
+            "head": "classification",
+            "n_train": int(self.data.X_train.shape[0]),
+            "n_features": int(self.data.X_train.shape[1]),
+            "has_valid": self.data.X_valid is not None,
+        }
+
+
+class TabularNeuralRegressionProblem(LearningProblem):
+    """Differentiable point-regression semantics for tabular NeuralGraph models."""
+
+    name = "tabular_neural_regression"
+    backend_requires = (*_BACKEND_MODE_REQUIREMENTS, "tensor.float_tensor")
+    context_requires = ("candidate.model", "data.X_train", "data.y_train")
+    context_optional = ("data.X_valid", "data.y_valid", "resource.device")
+    context_provides = _NEURAL_EVALUATION_PROVIDES
+    context_mutates = ()
+    context_cache = ()
+    requires_metrics = ()
+    metrics_fallback = "strict"
+    context_notes = _DIFFERENTIABLE_LOSS_NOTE
+    contract = ComponentContract(
+        name=name,
+        requires=context_requires,
+        optional=context_optional,
+        provides=context_provides,
+        supports_gradient=True,
+        supports_batch=False,
+        supports_resume=False,
+        metadata={"family": "neural", "route": "tabular", "head": "point"},
+    )
+
+    def __init__(
+        self,
+        data: NumericDataView,
+        *,
+        head_name: str = "point",
+        use_valid_objective: bool = True,
+    ) -> None:
+        self.data = data
+        self.head_name = str(head_name)
+        self.use_valid_objective = bool(use_valid_objective)
+
+    def compute_backend_loss(
+        self,
+        model: Any,
+        state: UnknownState,
+        context: Mapping[str, Any],
+        *,
+        differentiable: bool = True,
+    ) -> BackendLossEvaluation:
+        _ = state
+        backend = _backend(context, ("tensor.float_tensor",))
+        torch = backend.tensor.torch()
+        device = backend.tensor.device(context)
+        if differentiable:
+            backend.autograd.train(model, device=device)
+        else:
+            backend.autograd.eval(model, device=device)
+        train_context = nullcontext() if differentiable else backend.autograd.no_grad()
+        with train_context:
+            batch = context.get("data.batch")
+            X_source = self.data.X_train if batch is None else batch.X
+            y_source = self.data.y_train if batch is None else batch.y
+            X_train = backend.tensor.float_tensor(X_source, device=device)
+            y_train = backend.tensor.float_tensor(y_source, device=device)
+            if y_train.ndim == 1:
+                y_train = y_train.unsqueeze(-1)
+            train_output = _extract_head_output(model(X_train), self.head_name)
+            train_prediction = train_output.reshape(y_train.shape)
+            train_loss = torch.nn.functional.mse_loss(train_prediction, y_train)
+            metrics = _forecast_regression_metrics(
+                y_train.detach().cpu().numpy(),
+                train_prediction.detach().cpu().numpy(),
+                prefix="train",
+            )
+        objective_loss = float(train_loss.detach().cpu().item())
+        objective_prefix = "train"
+        if self.data.X_valid is not None and self.data.y_valid is not None:
+            backend.autograd.eval(model)
+            with backend.autograd.no_grad():
+                X_valid = backend.tensor.float_tensor(self.data.X_valid, device=device)
+                y_valid = backend.tensor.float_tensor(self.data.y_valid, device=device)
+                if y_valid.ndim == 1:
+                    y_valid = y_valid.unsqueeze(-1)
+                valid_output = _extract_head_output(model(X_valid), self.head_name)
+                valid_prediction = valid_output.reshape(y_valid.shape)
+                valid_loss = torch.nn.functional.mse_loss(valid_prediction, y_valid)
+                metrics.update(
+                    _forecast_regression_metrics(
+                        y_valid.detach().cpu().numpy(),
+                        valid_prediction.detach().cpu().numpy(),
+                        prefix="valid",
+                    )
+                )
+            if self.use_valid_objective:
+                objective_loss = float(valid_loss.detach().cpu().item())
+                objective_prefix = "valid"
+        return BackendLossEvaluation(
+            objectives=np.asarray([objective_loss], dtype=float),
+            loss=train_loss,
+            loss_value=float(objective_loss),
+            metrics=metrics,
+            signals={
+                "task": "tabular_neural_regression",
+                "head": self.head_name,
+                "primary_prefix": objective_prefix,
+            },
+        )
+
+    def evaluate(
+        self,
+        model: Any,
+        state: UnknownState,
+        context: Mapping[str, Any],
+    ) -> Feedback:
+        return self.compute_backend_loss(
+            model,
+            state,
+            context,
+            differentiable=False,
+        ).as_feedback()
+
+    def build_model_artifact(
+        self,
+        model: Any,
+        context: Mapping[str, Any] | None = None,
+    ) -> NeuralGraphArtifact:
+        return _build_generic_neural_artifact(
+            name=self.name,
+            model=model,
+            head="point",
+            task="tabular_neural_regression",
+            context=dict(context or {}),
+        )
+
+    def describe(self) -> Mapping[str, Any]:
+        return {
+            "name": self.name,
+            "family": "neural",
+            "route": "tabular",
+            "head": "point",
+            "n_train": int(self.data.X_train.shape[0]),
+            "n_features": int(self.data.X_train.shape[1]),
+            "has_valid": self.data.X_valid is not None,
         }
 
 
@@ -813,6 +1107,14 @@ class TemporalNeuralRollingOriginProblem(LearningProblem):
         self.objective_metrics = tuple(str(m) for m in objective_metrics)
         self.seasonal_period = int(seasonal_period)
 
+    def get_num_objectives(self) -> int:
+        count = len(self.objective_metrics)
+        if count <= 0:
+            raise ValueError(
+                "TemporalNeuralRollingOriginProblem requires at least one objective metric"
+            )
+        return count
+
     def evaluate(self, model: Any, state: UnknownState, context: Mapping[str, Any]) -> Feedback:
         _ = state
         seq_len = _resolve_sequence_length(model, self.sequence_length)
@@ -827,7 +1129,7 @@ class TemporalNeuralRollingOriginProblem(LearningProblem):
         origins = _build_rolling_origins(y.shape[0], min_train, horizon, self.max_origins)
 
         try:
-            import torch
+            __import__("torch")
         except Exception as exc:  # pragma: no cover
             raise RuntimeError("TemporalNeuralRollingOriginProblem requires optional dependency 'torch'") from exc
 

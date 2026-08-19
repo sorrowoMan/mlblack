@@ -1,0 +1,104 @@
+[[entry]]
+key = "head.binary_logistic"
+title = "BinaryLogisticHead"
+kind = "head"
+import_path = "mlblack.representations.heads.probability:BinaryLogisticHead"
+tags = ["classification", "probability", "logistic"]
+summary = "Wraps a scalar logit decoder as binary predict_proba output."
+
+[[entry]]
+key = "head.center_radius_interval"
+title = "CenterRadiusIntervalHead"
+kind = "head"
+import_path = "mlblack.representations.heads.interval:CenterRadiusIntervalHead"
+tags = ["head", "representations", "heads", "interval"]
+summary = "Interval head: center base model + positive radius base model."
+metadata = { "architecture_path" = "representation/representations.heads.interval", "module" = "mlblack.representations.heads.interval", "symbol" = "CenterRadiusIntervalHead" }
+
+[[entry]]
+key = "head.interval"
+title = "IntervalHead"
+kind = "head"
+import_path = "mlblack.representations.heads.interval:IntervalHead"
+tags = ["head", "representations", "heads", "interval"]
+summary = "Interval head: lower base model + upper base model."
+metadata = { "architecture_path" = "representation/representations.heads.interval", "module" = "mlblack.representations.heads.interval", "symbol" = "IntervalHead" }
+
+[[entry]]
+key = "head.negative_binomial"
+title = "NegativeBinomialHead"
+kind = "head"
+import_path = "mlblack.representations.heads.distribution:NegativeBinomialHead"
+tags = ["head", "representations", "heads", "distribution"]
+summary = "NegativeBinomialHead(alpha_transform: 'str' = 'softplus')"
+metadata = { "architecture_path" = "representation/representations.heads.distribution", "module" = "mlblack.representations.heads.distribution", "symbol" = "NegativeBinomialHead" }
+
+[[entry]]
+key = "head.normal"
+title = "NormalHead"
+kind = "head"
+import_path = "mlblack.representations.heads.distribution:NormalHead"
+tags = ["head", "representations", "heads", "distribution"]
+summary = "NormalHead(sigma_transform: 'str' = 'softplus')"
+metadata = { "architecture_path" = "representation/representations.heads.distribution", "module" = "mlblack.representations.heads.distribution", "symbol" = "NormalHead" }
+
+[[entry]]
+key = "head.piecewise"
+title = "PiecewiseHead"
+kind = "head"
+import_path = "mlblack.representations.heads.conditional:PiecewiseHead"
+tags = ["conditional", "piecewise", "branch"]
+summary = "Allocates one base decoder block per branch and returns a PiecewiseModel."
+
+[[entry]]
+key = "head.point"
+title = "PointHead"
+kind = "head"
+import_path = "mlblack.representations.heads.point:PointHead"
+tags = ["head", "representations", "heads", "point"]
+summary = "Point-output head: one base model, direct predict output."
+metadata = { "architecture_path" = "representation/representations.heads.point", "module" = "mlblack.representations.heads.point", "symbol" = "PointHead" }
+
+[[entry]]
+key = "head.poisson"
+title = "PoissonHead"
+kind = "head"
+import_path = "mlblack.representations.heads.distribution:PoissonHead"
+tags = ["head", "representations", "heads", "distribution"]
+summary = "PoissonHead(rate_transform: 'str' = 'softplus')"
+metadata = { "architecture_path" = "representation/representations.heads.distribution", "module" = "mlblack.representations.heads.distribution", "symbol" = "PoissonHead" }
+
+[[entry]]
+key = "head.probability_calibration"
+title = "ProbabilityCalibrationHead"
+kind = "head"
+import_path = "mlblack.representations.heads.probability:ProbabilityCalibrationHead"
+tags = ["head", "representations", "heads", "probability"]
+summary = "Base probability/logit model plus one temperature parameter."
+metadata = { "architecture_path" = "representation/representations.heads.probability", "module" = "mlblack.representations.heads.probability", "symbol" = "ProbabilityCalibrationHead" }
+
+[[entry]]
+key = "head.softmax"
+title = "SoftmaxHead"
+kind = "head"
+import_path = "mlblack.representations.heads.probability:SoftmaxHead"
+tags = ["classification", "probability", "multiclass"]
+summary = "Allocates one base decoder block per class and returns softmax probabilities."
+
+[[entry]]
+key = "head.symbolic_basis_set"
+title = "SymbolicBasisSetHead"
+kind = "head"
+import_path = "mlblack.representations.heads.symbolic:SymbolicBasisSetHead"
+tags = ["head", "representations", "heads", "symbolic"]
+summary = "Multi-symbol head that splits one state into expression blocks."
+metadata = { "architecture_path" = "representation/representations.heads.symbolic", "module" = "mlblack.representations.heads.symbolic", "symbol" = "SymbolicBasisSetHead" }
+
+[[entry]]
+key = "head.two_model_interval"
+title = "TwoModelIntervalHead"
+kind = "head"
+import_path = "mlblack.representations.heads.interval:TwoModelIntervalHead"
+tags = ["head", "representations", "heads", "interval"]
+summary = "Interval head: lower base model + upper base model."
+metadata = { "architecture_path" = "representation/representations.heads.interval", "module" = "mlblack.representations.heads.interval", "symbol" = "TwoModelIntervalHead" }

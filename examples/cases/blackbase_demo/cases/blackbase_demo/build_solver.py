@@ -6,7 +6,8 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from mlblack.core import ResourceContext, Trainer
+from mlblack.core import ResourceContext
+from mlblack.integrations.nsgablack_control import build_learning_solver
 
 try:
     from .adapter import DemoRandomSearchAdapter
@@ -23,8 +24,8 @@ def build_solver(
     *,
     resource_context: Mapping[str, Any] | ResourceContext | None = None,
     component_overrides: Mapping[str, Any] | None = None,
-) -> Trainer:
-    """装配一个可运行的 Trainer，并消费 Project 发放的 L0 grant。"""
+) -> Any:
+    """装配一个 ML 语义 facade，并消费 Project 发放的 L0 grant。"""
 
     settings = dict(config or {})
     overrides = dict(component_overrides or {})
@@ -54,7 +55,7 @@ def build_solver(
         threads=1,
         namespace="blackbase_demo.case",
     )
-    return Trainer(
+    return build_learning_solver(
         problem=problem,
         representation=representation,
         adapter=adapter,

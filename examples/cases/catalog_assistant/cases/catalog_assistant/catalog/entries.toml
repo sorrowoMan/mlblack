@@ -15,11 +15,3 @@ kind = "problem"
 import_path = "problem.example_problem:ExampleRegressionProblem"
 tags = ["example", "regression"]
 summary = "Custom regression problem for catalog_assistant."
-
-[[entries]]
-key = "adapter.catalog_assistant_gd"
-title = "Catalog_Assistant Gradient Descent Adapter"
-kind = "adapter"
-import_path = "adapter.example_adapter:ExampleGradientDescentAdapter"
-tags = ["example", "gradient_descent"]
-summary = "Custom gradient descent adapter for catalog_assistant."

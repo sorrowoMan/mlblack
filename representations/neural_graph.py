@@ -1,11 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Mapping
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.representation import ModelRepresentation
 from mlblack.core.types import UnknownState
 from mlblack.representations.codecs import NeuralGraphCodec, NeuralGraphSpec, ParameterLayout
@@ -64,6 +64,36 @@ class NeuralGraphRepresentation(ModelRepresentation):
         self.layout: ParameterLayout | None = None
         self.dimension = 0
         self.base_dimension = 0
+
+    @classmethod
+    def mlp(
+        cls,
+        *,
+        input_dim: int,
+        hidden_layers: tuple[int, ...] = (64, 32),
+        output_dim: int = 1,
+        activation: str = "relu",
+        dropout: float = 0.0,
+        random_seed: int = 42,
+        representation_name: str = "mlp",
+    ) -> "NeuralGraphRepresentation":
+        """Build the canonical MLP representation from one structural spec."""
+
+        spec = NeuralGraphSpec.mlp(
+            input_dim=int(input_dim),
+            hidden_layers=tuple(int(value) for value in hidden_layers),
+            output_dim=int(output_dim),
+            activation=str(activation),
+            dropout=float(dropout),
+            name=representation_name,
+        )
+        return cls(
+            NeuralGraphRepresentationConfig(
+                graph_spec=spec,
+                random_seed=int(random_seed),
+                representation_name=representation_name,
+            )
+        )
 
     @classmethod
     def tiny_transformer(

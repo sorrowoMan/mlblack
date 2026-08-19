@@ -1,5 +1,9 @@
 # 04. Add Backend Guide
 
+> 新 backend 若要进入规范梯度路径，应实现 BlackBase EvaluationProvider 的评估、
+> `StateTransitionRequest` 和 `StateMaterializationRequest` 契约；不要再新增一个把
+> backward、optimizer 和设备状态揉在一起的 ML 私有 Adapter。
+
 这篇说明后续如何新增一个 compute backend。目标是让新 backend 接入现有 `NeuralGraphCodec / Problem / Adapter / Artifact` 路线，而不是改出第二套训练框架。
 
 ## 什么时候需要新 backend
@@ -171,11 +175,7 @@ optimizer.step
 parameters.flat_export
 ```
 
-适配：
-
-```text
-NeuralGraphBackpropAdapter
-```
+执行：`TorchEvaluationProvider` 产生梯度，`nsgablack GradientOptimizerAdapter` 选择更新方法。
 
 Functional-style：
 
@@ -197,7 +197,8 @@ optimizer.sgd_step
 ```text
 Problem.compute_functional_gradient(...)
   -> backend.autograd.functional.grad
-  -> FunctionalBackpropAdapter
+  -> FunctionalGradientLearningProblem
+  -> nsgablack GradientOptimizerAdapter
 ```
 
 关键规则：

@@ -1,0 +1,96 @@
+[[entry]]
+key = "conditional.binary_gate"
+title = "BinaryGate"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.primitives:BinaryGate"
+tags = ["conditional", "pipeline", "primitives"]
+summary = "BinaryGate(feature_index: 'int' = 0, threshold: 'float' = 0.0)"
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.primitives", "module" = "mlblack.pipeline.conditional.primitives", "symbol" = "BinaryGate" }
+
+[[entry]]
+key = "conditional.composer"
+title = "PrimitiveFeatureComposer"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.composer:PrimitiveFeatureComposer"
+tags = ["composer", "feature-engineering", "piecewise"]
+summary = "Composes conditional primitives into deterministic feature transforms."
+
+[[entry]]
+key = "conditional.conditional"
+title = "ConditionalPrimitive"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.primitives:ConditionalPrimitive"
+tags = ["conditional", "pipeline", "primitives"]
+summary = "Auto-discovered mlblack component `conditional.conditional`."
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.primitives", "module" = "mlblack.pipeline.conditional.primitives", "symbol" = "ConditionalPrimitive" }
+
+[[entry]]
+key = "conditional.conditional_primitive"
+title = "ConditionalPrimitiveSpec"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.primitives:ConditionalPrimitiveSpec"
+tags = ["conditional", "pipeline", "primitives"]
+summary = "Declarative conditional primitive used by symbolic grammar lowering."
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.primitives", "module" = "mlblack.pipeline.conditional.primitives", "symbol" = "ConditionalPrimitiveSpec" }
+
+[[entry]]
+key = "conditional.hinge_feature"
+title = "HingeFeature"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.primitives:HingeFeature"
+tags = ["conditional", "pipeline", "primitives"]
+summary = "HingeFeature(feature_index: 'int' = 0, knot: 'float' = 0.0, side: 'str' = 'right')"
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.primitives", "module" = "mlblack.pipeline.conditional.primitives", "symbol" = "HingeFeature" }
+
+[[entry]]
+key = "conditional.one_hot_gate"
+title = "OneHotGate"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.primitives:OneHotGate"
+tags = ["conditional", "pipeline", "primitives"]
+summary = "OneHotGate(feature_index: 'int' = 0, values: 'Sequence[float]' = <factory>)"
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.primitives", "module" = "mlblack.pipeline.conditional.primitives", "symbol" = "OneHotGate" }
+
+[[entry]]
+key = "conditional.primitive_feature_composer"
+title = "PrimitiveFeatureComposer"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.composer:PrimitiveFeatureComposer"
+tags = ["conditional", "pipeline", "composer"]
+summary = "PrimitiveFeatureComposer(primitives: 'Sequence[ConditionalPrimitive | Mapping[str, Any] | str]', include_original: 'bool' = True, metadata: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.composer", "module" = "mlblack.pipeline.conditional.composer", "symbol" = "PrimitiveFeatureComposer" }
+
+[[entry]]
+key = "conditional.primitives"
+title = "Conditional Primitives"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.primitives:ConditionalPrimitive"
+tags = ["binary-gate", "soft-gate", "hinge", "onehot"]
+summary = "Reusable conditional feature and routing primitives."
+
+[[entry]]
+key = "conditional.route_then_formula_composer"
+title = "RouteThenFormulaComposer"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.composer:RouteThenFormulaComposer"
+tags = ["conditional", "pipeline", "composer"]
+summary = "Composable condition descriptor for representation builders."
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.composer", "module" = "mlblack.pipeline.conditional.composer", "symbol" = "RouteThenFormulaComposer" }
+
+[[entry]]
+key = "conditional.shared_backbone_residual_composer"
+title = "SharedBackboneResidualComposer"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.composer:SharedBackboneResidualComposer"
+tags = ["conditional", "pipeline", "composer"]
+summary = "SharedBackboneResidualComposer(backbone: 'Any', residual_branches: 'Sequence[Any]', router: 'Any | None' = None, metadata: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.composer", "module" = "mlblack.pipeline.conditional.composer", "symbol" = "SharedBackboneResidualComposer" }
+
+[[entry]]
+key = "conditional.soft_gate"
+title = "SoftGate"
+kind = "conditional"
+import_path = "mlblack.pipeline.conditional.primitives:SoftGate"
+tags = ["conditional", "pipeline", "primitives"]
+summary = "SoftGate(feature_index: 'int' = 0, threshold: 'float' = 0.0, temperature: 'float' = 1.0)"
+metadata = { "architecture_path" = "pipeline/pipeline.conditional.primitives", "module" = "mlblack.pipeline.conditional.primitives", "symbol" = "SoftGate" }

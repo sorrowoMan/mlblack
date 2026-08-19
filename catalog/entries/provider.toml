@@ -1,0 +1,17 @@
+[[entry]]
+key = "provider.torch_evaluation"
+title = "TorchEvaluationProvider"
+kind = "provider"
+import_path = "mlblack.backends.torch_neural.evaluation_provider:TorchEvaluationProvider"
+tags = ["provider", "torch", "autograd", "evaluation", "l0", "gradient", "state-transition", "materialization"]
+summary = "Torch 评估 Provider：在 Project L0 grant 内执行 ML Problem 的 loss/autograd/device 语义，并持有版本化参数、梯度与 optimizer slot；优化方法仍由 nsgablack Adapter 选择。"
+metadata = { "architecture_path" = "backends.torch_neural.evaluation_provider", "algorithm_owner" = "nsgablack.adapter", "resource_authority" = "blackbase.project_l0", "state_protocol" = "blackbase.state_transition+materialization" }
+
+[[entry]]
+key = "provider.arimasarimax"
+title = "ARIMASARIMAXProvider"
+kind = "provider"
+import_path = "mlblack.models.time_series:ARIMASARIMAXProvider"
+tags = ["provider", "models", "time_series"]
+summary = "Provider that fits ARIMA/SARIMAX specs through numpy or statsmodels."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "ARIMASARIMAXProvider" }

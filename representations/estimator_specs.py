@@ -5,7 +5,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.representation import ModelRepresentation
 from mlblack.core.types import UnknownState
 from mlblack.models import EstimatorFactory, EstimatorSpecModel
@@ -15,7 +15,7 @@ from mlblack.representations.codecs import (
     EstimatorSpecCodec,
     TreeMechanismSpec,
     TunableParameterSpec,
-    tunables_from_legacy,
+    build_tunable_parameter_specs,
 )
 
 
@@ -56,7 +56,7 @@ class EstimatorSpecRepresentation(ModelRepresentation):
 
     def __init__(self, config: EstimatorRouteConfig) -> None:
         self.config = config
-        tunables = tuple(config.tunables) or tunables_from_legacy(
+        tunables = tuple(config.tunables) or build_tunable_parameter_specs(
             tuple(config.tunable_params),
             dict(config.bounds),
             tuple(config.integer_params),

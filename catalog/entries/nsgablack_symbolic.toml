@@ -1,0 +1,152 @@
+[[entry]]
+key = "nsgablack_symbolic.basis_conditioned_symbolic_task"
+title = "BasisConditionedSymbolicTaskProblem"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.task_symbolic_problem:BasisConditionedSymbolicTaskProblem"
+tags = ["nsgablack_symbolic", "integrations", "task_symbolic_problem"]
+summary = "nsgablack-compatible Stage 2 problem."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.task_symbolic_problem", "module" = "mlblack.integrations.nsgablack_symbolic.task_symbolic_problem", "symbol" = "BasisConditionedSymbolicTaskProblem" }
+
+[[entry]]
+key = "nsgablack_symbolic.expression_graph_cache"
+title = "ExpressionGraphCache"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.graph_cache:ExpressionGraphCache"
+tags = ["nsgablack_symbolic", "integrations", "graph_cache"]
+summary = "Reusable cache for symbolic expression values and derivative expressions."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.graph_cache", "module" = "mlblack.integrations.nsgablack_symbolic.graph_cache", "symbol" = "ExpressionGraphCache" }
+
+[[entry]]
+key = "nsgablack_symbolic.function_pool_index_search_space"
+title = "FunctionPoolIndexSearchSpace"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.search_space:FunctionPoolIndexSearchSpace"
+tags = ["nsgablack_symbolic", "integrations", "search_space"]
+summary = "Index-coded outer search space over a symbolic FunctionPool."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.search_space", "module" = "mlblack.integrations.nsgablack_symbolic.search_space", "symbol" = "FunctionPoolIndexSearchSpace" }
+
+[[entry]]
+key = "nsgablack_symbolic.orthogonal_basis_outer"
+title = "OrthogonalBasisOuterProblem"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.orthogonal_problem:OrthogonalBasisOuterProblem"
+tags = ["nsgablack_symbolic", "integrations", "orthogonal_problem"]
+summary = "nsgablack-compatible Stage 1 problem for symbolic basis search."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.orthogonal_problem", "module" = "mlblack.integrations.nsgablack_symbolic.orthogonal_problem", "symbol" = "OrthogonalBasisOuterProblem" }
+
+[[entry]]
+key = "nsgablack_symbolic.orthogonal_basis_set_artifact"
+title = "OrthogonalBasisSetArtifact"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.artifacts:OrthogonalBasisSetArtifact"
+tags = ["nsgablack_symbolic", "integrations", "artifacts"]
+summary = "Stage 1 output boundary consumed by Stage 2."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.artifacts", "module" = "mlblack.integrations.nsgablack_symbolic.artifacts", "symbol" = "OrthogonalBasisSetArtifact" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_basis_artifact"
+title = "SymbolicBasisArtifact"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.artifacts:SymbolicBasisArtifact"
+tags = ["nsgablack_symbolic", "integrations", "artifacts"]
+summary = "Stage 1 output boundary consumed by Stage 2."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.artifacts", "module" = "mlblack.integrations.nsgablack_symbolic.artifacts", "symbol" = "SymbolicBasisArtifact" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_basis_consensus_analyzer"
+title = "SymbolicBasisConsensusAnalyzer"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.basis_consensus:SymbolicBasisConsensusAnalyzer"
+tags = ["nsgablack_symbolic", "integrations", "basis_consensus"]
+summary = "Artifact/report capability for basis consensus and overlap."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.basis_consensus", "module" = "mlblack.integrations.nsgablack_symbolic.basis_consensus", "symbol" = "SymbolicBasisConsensusAnalyzer" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_branch_evaluator"
+title = "SymbolicBranchEvaluator"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.evaluation:SymbolicBranchEvaluator"
+tags = ["nsgablack_symbolic", "integrations", "evaluation"]
+summary = "Branch/regime audit evaluator for fitted symbolic task artifacts."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.evaluation", "module" = "mlblack.integrations.nsgablack_symbolic.evaluation", "symbol" = "SymbolicBranchEvaluator" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_candidate_scorer"
+title = "SymbolicCandidateScorer"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.search_policy:SymbolicCandidateScorer"
+tags = ["nsgablack_symbolic", "integrations", "search_policy"]
+summary = "Candidate scoring policy for nsgablack symbolic outer search."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.search_policy", "module" = "mlblack.integrations.nsgablack_symbolic.search_policy", "symbol" = "SymbolicCandidateScorer" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_expression_audit_producer"
+title = "SymbolicExpressionAuditProducer"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.expression_audit:SymbolicExpressionAuditProducer"
+tags = ["nsgablack_symbolic", "integrations", "expression_audit"]
+summary = "Produces symbolic artifact audit sections from expressions and term metadata."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.expression_audit", "module" = "mlblack.integrations.nsgablack_symbolic.expression_audit", "symbol" = "SymbolicExpressionAuditProducer" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_fold_evaluator"
+title = "SymbolicFoldEvaluator"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.evaluation:SymbolicFoldEvaluator"
+tags = ["nsgablack_symbolic", "integrations", "evaluation"]
+summary = "Lightweight fold evaluator for symbolic artifacts."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.evaluation", "module" = "mlblack.integrations.nsgablack_symbolic.evaluation", "symbol" = "SymbolicFoldEvaluator" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_orthogonal_nested_suite"
+title = "SymbolicOrthogonalNestedSuite"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.builders:SymbolicOrthogonalNestedSuite"
+tags = ["nsgablack_symbolic", "integrations", "builders"]
+summary = "Serial Stage 1 -> Stage 2 symbolic plan surface."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.builders", "module" = "mlblack.integrations.nsgablack_symbolic.builders", "symbol" = "SymbolicOrthogonalNestedSuite" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_overfit_guard"
+title = "SymbolicOverfitGuard"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.overfit_guard:SymbolicOverfitGuard"
+tags = ["nsgablack_symbolic", "integrations", "overfit_guard"]
+summary = "Scores train/validation drift for symbolic structure search."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.overfit_guard", "module" = "mlblack.integrations.nsgablack_symbolic.overfit_guard", "symbol" = "SymbolicOverfitGuard" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_path_memory"
+title = "SymbolicPathMemory"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.path_memory:SymbolicPathMemory"
+tags = ["nsgablack_symbolic", "integrations", "path_memory"]
+summary = "Persistent memory for symbolic structure search paths."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.path_memory", "module" = "mlblack.integrations.nsgablack_symbolic.path_memory", "symbol" = "SymbolicPathMemory" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_replay_record_builder"
+title = "SymbolicReplayRecordBuilder"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.replay:SymbolicReplayRecordBuilder"
+tags = ["nsgablack_symbolic", "integrations", "replay"]
+summary = "Builds JSON-compatible replay records for nested symbolic candidates."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.replay", "module" = "mlblack.integrations.nsgablack_symbolic.replay", "symbol" = "SymbolicReplayRecordBuilder" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_structure_guard"
+title = "SymbolicStructureGuard"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.structure_guard:SymbolicStructureGuard"
+tags = ["nsgablack_symbolic", "integrations", "structure_guard"]
+summary = "Outer-search structural guard for symbolic candidates."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.structure_guard", "module" = "mlblack.integrations.nsgablack_symbolic.structure_guard", "symbol" = "SymbolicStructureGuard" }
+
+[[entry]]
+key = "nsgablack_symbolic.symbolic_task_artifact"
+title = "SymbolicTaskArtifact"
+kind = "nsgablack_symbolic"
+import_path = "mlblack.integrations.nsgablack_symbolic.artifacts:SymbolicTaskArtifact"
+tags = ["nsgablack_symbolic", "integrations", "artifacts"]
+summary = "Stage 2 task-expression artifact."
+metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.artifacts", "module" = "mlblack.integrations.nsgablack_symbolic.artifacts", "symbol" = "SymbolicTaskArtifact" }

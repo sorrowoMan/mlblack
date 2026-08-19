@@ -230,8 +230,8 @@ from mlblack.assembly import (
 ### ✅ 脚手架生成
 
 ```python
-from mlblack.project.scaffold_legacy import init_project
-init_project(tmpdir)
+from mlblack.project import create_project
+create_project(tmpdir)
 # 生成 10 个 config.py + 1 preset_registry.py
 ```
 

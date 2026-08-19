@@ -5,7 +5,6 @@ import pytest
 
 from mlblack.core import ArtifactBuilder, ComputeBackendSession, ComputeBackendSpec, render_artifact_html
 from mlblack.assembly import build_trainer
-from mlblack.adapters import FunctionalBackpropAdapter, FunctionalBackpropConfig
 from mlblack.pipeline.data_views import NumericDataView, PreferencePairDataView
 from mlblack.pipeline import VocabularyTokenizer
 from mlblack.integrations import (
@@ -15,6 +14,7 @@ from mlblack.integrations import (
     PretrainedModelBridgeConfig,
     PretrainedTokenizerBridge,
     PretrainedTokenizerBridgeConfig,
+    build_gradient_trainer,
 )
 from mlblack.integrations.nsgablack_neural import TransformerSpecSearchConfig, TransformerSpecSearchProblem
 from mlblack.presets import (
@@ -24,16 +24,9 @@ from mlblack.presets import (
 )
 from mlblack.models import NumpyMLPPointModel
 from mlblack.backends import get_backend
-from mlblack.representations.codecs import (
-    NeuralBackboneSpec,
-    NeuralGraphCodec,
-    NeuralGraphSpec,
-    NumpyMLPCodec,
-    NumpyMLPCodecConfig,
-)
+from mlblack.representations.codecs import NeuralGraphCodec, NeuralGraphSpec
 from mlblack.representations import NeuralGraphRepresentation
 from mlblack.problems import SupervisedRegressionProblem
-from mlblack.core import Trainer
 
 
 def _backend_context() -> dict[str, object]:
@@ -119,38 +112,22 @@ def test_jax_backend_mlp_regression_trainer_smoke() -> None:
     representation = NeuralGraphRepresentation(
         NeuralGraphSpec.mlp(input_dim=2, hidden_layers=(4,), output_dim=1, activation="tanh")
     )
-    trainer = Trainer(
+    trainer = build_gradient_trainer(
         problem=SupervisedRegressionProblem(data),
         representation=representation,
-        adapter=FunctionalBackpropAdapter(FunctionalBackpropConfig(learning_rate=0.05, max_grad_norm=10.0)),
+        method="gradient.sgd",
+        compute_backend="jax",
+        learning_rate=0.05,
+        max_gradient_norm=10.0,
         run_name="jax_mlp_regression_smoke",
-        compute_backend=ComputeBackendSpec(name="jax", device="cpu"),
     )
 
     result = trainer.fit(max_steps=2)
     assert len(result.history) == 2
     assert result.best_feedback is not None
-    assert result.report["adapter"]["name"] == "functional_backprop"
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
     assert result.report["compute_backend"]["resolved_name"] == "jax"
     assert result.report["representation"]["parameter_layout"]["metadata"]["backend"] == "jax"
-
-
-def test_functional_backprop_fails_fast_on_numpy_backend() -> None:
-    X_train = np.asarray([[0.0, 0.0], [1.0, 0.0]], dtype=float)
-    y_train = X_train[:, 0]
-    data = NumericDataView(X_train=X_train, y_train=y_train)
-    trainer = Trainer(
-        problem=SupervisedRegressionProblem(data),
-        representation=NeuralGraphRepresentation(
-            NeuralGraphSpec.mlp(input_dim=2, hidden_layers=(3,), output_dim=1, activation="tanh")
-        ),
-        adapter=FunctionalBackpropAdapter(FunctionalBackpropConfig(learning_rate=0.05)),
-        run_name="numpy_functional_backprop_missing_capability",
-        compute_backend=ComputeBackendSpec(name="numpy", device="cpu"),
-    )
-
-    with pytest.raises(ValueError, match="autograd.functional.grad"):
-        trainer.fit(max_steps=1)
 
 
 def test_tensorflow_backend_mlp_regression_trainer_smoke_if_installed() -> None:
@@ -158,34 +135,22 @@ def test_tensorflow_backend_mlp_regression_trainer_smoke_if_installed() -> None:
     X_train = np.asarray([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]], dtype=float)
     y_train = X_train[:, 0] - X_train[:, 1]
     data = NumericDataView(X_train=X_train, y_train=y_train)
-    trainer = Trainer(
+    trainer = build_gradient_trainer(
         problem=SupervisedRegressionProblem(data),
         representation=NeuralGraphRepresentation(
             NeuralGraphSpec.mlp(input_dim=2, hidden_layers=(4,), output_dim=1, activation="tanh")
         ),
-        adapter=FunctionalBackpropAdapter(FunctionalBackpropConfig(learning_rate=0.05, max_grad_norm=10.0)),
+        method="gradient.sgd",
+        compute_backend="tensorflow",
+        learning_rate=0.05,
+        max_gradient_norm=10.0,
         run_name="tensorflow_mlp_regression_smoke",
-        compute_backend=ComputeBackendSpec(name="tensorflow", device="cpu"),
     )
 
     result = trainer.fit(max_steps=2)
     assert len(result.history) == 2
-    assert result.report["adapter"]["name"] == "functional_backprop"
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
     assert result.report["compute_backend"]["resolved_name"] == "tensorflow"
-
-
-def test_legacy_numpy_mlp_codec_import_still_works() -> None:
-    codec = NumpyMLPCodec(
-        NumpyMLPCodecConfig(
-            input_dim=2,
-            backbone=NeuralBackboneSpec(hidden_layers=(3,)),
-            output_dim=1,
-        )
-    )
-    values = codec.init_values()
-    model = codec.decode(values)
-    assert isinstance(model, NumpyMLPPointModel)
-    assert model.predict(np.ones((2, 2), dtype=float)).shape == (2,)
 
 
 def test_neural_graph_codec_decodes_tiny_transformer_classification() -> None:
@@ -351,9 +316,12 @@ def test_tiny_transformer_classification_trainer_smoke() -> None:
     result = trainer.fit(max_steps=2)
     assert len(result.history) == 2
     assert result.best_feedback is not None
-    assert result.best_feedback.gradients is None
-    assert result.report["adapter"]["name"] == "neural_graph_backprop"
-    assert result.report["adapter"]["state"]["optimizer_state"]
+    assert result.best_feedback.gradients is not None
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
+    assert result.report["adapter"]["state"]["first_moment"]
+    assert result.report["adapter"]["state"]["provider_transition"]["count"] == 2
+    assert trainer.evaluation_provider.spec.problem_ids == (trainer.problem.problem_id,)
+    assert trainer.evaluation_provider.spec.metadata["algorithm_owner"] == "adapter"
     assert result.report["problem"]["route"] == "tiny_transformer"
 
     bundle = ArtifactBuilder().build(trainer, result)
@@ -404,8 +372,8 @@ def test_tiny_transformer_lm_trainer_smoke() -> None:
     assert len(result.history) == 2
     assert result.best_feedback is not None
     assert "train.perplexity" in result.best_feedback.metrics
-    assert result.report["adapter"]["name"] == "neural_graph_backprop"
-    assert result.report["adapter"]["state"]["optimizer_state"]
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
+    assert result.report["adapter"]["state"]["provider_transition"]["count"] == 2
 
 
 def test_tiny_transformer_lm_assembly_preset_smoke() -> None:
@@ -451,6 +419,8 @@ def test_tiny_transformer_dpo_preference_trainer_smoke() -> None:
     assert result.best_feedback is not None
     assert "train.preference_accuracy" in result.best_feedback.metrics
     assert result.report["problem"]["head"] == "preference_dpo"
+    assert result.report["adapter"]["name"] == "gradient_optimizer"
+    assert result.report["adapter"]["state"]["provider_transition"]["count"] == 1
 
 
 def test_vocabulary_tokenizer_and_pretrained_bridge_describe_smoke() -> None:

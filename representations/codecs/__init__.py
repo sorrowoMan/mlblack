@@ -10,7 +10,7 @@
     TreeSamplingMechanismSpec,
     TreeSplitMechanismSpec,
     TunableParameterSpec,
-    tunables_from_legacy,
+    build_tunable_parameter_specs,
 )
 from .linear import LinearCodecConfig, LinearPointCodec, OrthogonalLinearCodecConfig, OrthogonalLinearPointCodec
 from .neural import (
@@ -23,8 +23,6 @@ from .neural import (
     NeuralGraphCodec,
     NeuralGraphSpec,
     NeuralHeadSpec,
-    NumpyMLPCodec,
-    NumpyMLPCodecConfig,
     ParameterLayout,
 )
 from .symbolic import (
@@ -51,8 +49,6 @@ __all__ = [
     "NeuralGraphCodec",
     "NeuralGraphSpec",
     "NeuralHeadSpec",
-    "NumpyMLPCodec",
-    "NumpyMLPCodecConfig",
     "ParameterLayout",
     "OrthogonalLinearCodecConfig",
     "OrthogonalLinearPointCodec",
@@ -66,6 +62,6 @@ __all__ = [
     "TreeSamplingMechanismSpec",
     "TreeSplitMechanismSpec",
     "TunableParameterSpec",
-    "tunables_from_legacy",
+    "build_tunable_parameter_specs",
 ]
 

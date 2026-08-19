@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from blackbase.abc import ProblemBase
 
-from .contracts import ComponentContract, ContractMixin
+from blackbase.contracts import ComponentContract, ContractMixin
 from .types import Feedback, UnknownState
 
 
@@ -37,6 +37,37 @@ class LearningProblem(ProblemBase, ContractMixin):
         provides=("feedback.objectives", "feedback.metrics"),
         supports_batch=False,
     )
+    objective_count = 1
+
+    def get_num_objectives(self) -> int:
+        """Return the stable optimization objective arity.
+
+        Objective shape is part of the Problem contract, not something the
+        control plane may guess from the first evaluation. Problems with a
+        configurable objective vector should override this method.
+        """
+
+        count = int(self.objective_count)
+        if count <= 0:
+            raise ValueError("LearningProblem objective_count must be positive")
+        return count
+
+    def prepare_model_for_evaluation(
+        self,
+        model: Any,
+        state: UnknownState,
+        context: Mapping[str, Any],
+    ) -> Any:
+        """Materialize one decoded candidate for semantic evaluation.
+
+        Representations own candidate encoding and decoding.  Problems and
+        Providers own data-dependent work such as closed-form fitting or an
+        external estimator's ``fit(...)`` call.  The default is the identity
+        projection used by already-executable models.
+        """
+
+        del state, context
+        return model
 
     # --- ProblemBase abstract method ---
 

@@ -15,11 +15,3 @@ kind = "problem"
 import_path = "problem.example_problem:ExampleRegressionProblem"
 tags = ["example", "regression"]
 summary = "Custom regression problem for benchmarks."
-
-[[entries]]
-key = "adapter.benchmarks_gd"
-title = "Benchmarks Gradient Descent Adapter"
-kind = "adapter"
-import_path = "adapter.example_adapter:ExampleGradientDescentAdapter"
-tags = ["example", "gradient_descent"]
-summary = "Custom gradient descent adapter for benchmarks."

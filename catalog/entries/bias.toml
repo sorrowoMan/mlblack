@@ -1,0 +1,66 @@
+[[entry]]
+key = "bias.branch_policy"
+title = "BranchPolicyBias"
+kind = "bias"
+import_path = "mlblack.bias.policies:BranchPolicyBias"
+tags = ["soft-preference", "conditional", "branch"]
+summary = "Exposes branch preferences for conditional/piecewise representations."
+
+[[entry]]
+key = "bias.dynamic_pool"
+title = "DynamicPoolBias"
+kind = "bias"
+import_path = "mlblack.bias.policies:DynamicPoolBias"
+tags = ["soft-preference", "pool", "event"]
+summary = "Projects a context-dependent candidate/model pool hint."
+
+[[entry]]
+key = "bias.l2_scale"
+title = "L2ScaleBias"
+kind = "bias"
+import_path = "mlblack.bias.policies:L2ScaleBias"
+tags = ["bias", "policies"]
+summary = "Expose a dynamic L2 scale to problems/adapters through context."
+metadata = { "architecture_path" = "bias.policies", "module" = "mlblack.bias.policies", "symbol" = "L2ScaleBias" }
+
+[[entry]]
+key = "bias.noop"
+title = "NoopBias"
+kind = "bias"
+import_path = "mlblack.bias.policies:NoopBias"
+tags = ["bias", "policies"]
+summary = "Soft preference component for optimization feedback/context."
+metadata = { "architecture_path" = "bias.policies", "module" = "mlblack.bias.policies", "symbol" = "NoopBias" }
+
+[[entry]]
+key = "bias.objective_policy"
+title = "ObjectivePolicyBias"
+kind = "bias"
+import_path = "mlblack.bias.policies:ObjectivePolicyBias"
+tags = ["soft-preference", "multi-objective", "policy"]
+summary = "Context-aware objective reweighting policy."
+
+[[entry]]
+key = "bias.objective_weight"
+title = "ObjectiveWeightBias"
+kind = "bias"
+import_path = "mlblack.bias.policies:ObjectiveWeightBias"
+tags = ["soft-preference", "multi-objective"]
+summary = "Reweights objective dimensions before adapter update."
+
+[[entry]]
+key = "bias.optimization"
+title = "OptimizationBias"
+kind = "bias"
+import_path = "mlblack.bias.base:OptimizationBias"
+tags = ["bias", "base"]
+summary = "Soft preference component for optimization feedback/context."
+metadata = { "architecture_path" = "bias.base", "module" = "mlblack.bias.base", "symbol" = "OptimizationBias" }
+
+[[entry]]
+key = "bias.state_l2"
+title = "StateL2Bias"
+kind = "bias"
+import_path = "mlblack.bias.policies:StateL2Bias"
+tags = ["soft-preference", "regularization"]
+summary = "Adds a soft L2 penalty to feedback objectives."

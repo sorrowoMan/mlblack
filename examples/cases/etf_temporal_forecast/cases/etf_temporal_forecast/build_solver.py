@@ -120,9 +120,3 @@ def build_solver(
     if resource_context is not None:
         runner.set_resource_context(resource_context)
     return runner
-
-
-def build_project_trainer(**kwargs):
-    """Backward-compatible name for older docs; prefer build_solver()."""
-
-    return build_solver(**kwargs)

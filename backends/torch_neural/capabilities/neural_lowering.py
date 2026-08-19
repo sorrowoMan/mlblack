@@ -7,6 +7,7 @@ import numpy as np
 from mlblack.backends.contracts import BackendCapabilityContract
 from mlblack.representations.codecs.neural.specs import NeuralGraphSpec
 
+from ..mlp import decode_mlp, is_mlp_spec, mlp_initial_values, mlp_parameter_layout
 from ..graph import decode_tiny_gnn, gnn_initial_values, gnn_parameter_layout, is_tiny_gnn_spec
 from ..tabular import decode_tabnet, is_tabular_tabnet_spec, tabnet_initial_values, tabnet_parameter_layout
 from ..temporal import decode_temporal, is_temporal_spec, temporal_initial_values, temporal_parameter_layout, temporal_route
@@ -25,6 +26,7 @@ class TorchNeuralLoweringCapability:
         capability="neural_lowering",
         provides=(
             "neural.lowering",
+            "neural.lowering.mlp",
             "neural.lowering.transformer",
             "neural.lowering.cnn",
             "neural.lowering.gnn",
@@ -39,12 +41,14 @@ class TorchNeuralLoweringCapability:
             "parameters.init": "initial_values(spec, random_seed) -> np.ndarray",
         },
         model_kinds=("torch.nn.Module",),
-        routes=("tiny_transformer", "tiny_cnn", "tiny_gnn", "temporal_lstm", "temporal_tcn", "temporal_transformer", "temporal_nbeats", "temporal_deepar", "temporal_patchtst", "temporal_tft", "tabular_tabnet"),
+        routes=("mlp", "tiny_transformer", "tiny_cnn", "tiny_gnn", "temporal_lstm", "temporal_tcn", "temporal_transformer", "temporal_nbeats", "temporal_deepar", "temporal_patchtst", "temporal_tft", "tabular_tabnet"),
         supports_stateful_module=True,
         notes="Lowers backend-agnostic NeuralGraphSpec routes into tiny torch modules.",
     )
 
     def route(self, spec: NeuralGraphSpec) -> str:
+        if is_mlp_spec(spec):
+            return "mlp"
         if is_tiny_transformer_spec(spec):
             return "tiny_transformer"
         if is_tiny_cnn_spec(spec):
@@ -58,10 +62,12 @@ class TorchNeuralLoweringCapability:
         return str(spec.metadata.get("route", "unknown"))
 
     def supports_spec(self, spec: NeuralGraphSpec) -> bool:
-        return self.route(spec) in {"tiny_transformer", "tiny_cnn", "tiny_gnn", "temporal_lstm", "temporal_tcn", "temporal_transformer", "temporal_nbeats", "temporal_deepar", "temporal_patchtst", "temporal_tft", "tabular_tabnet"}
+        return self.route(spec) in {"mlp", "tiny_transformer", "tiny_cnn", "tiny_gnn", "temporal_lstm", "temporal_tcn", "temporal_transformer", "temporal_nbeats", "temporal_deepar", "temporal_patchtst", "temporal_tft", "tabular_tabnet"}
 
     def parameter_layout(self, spec: NeuralGraphSpec) -> tuple[tuple[tuple[int, ...], ...], tuple[str, ...]]:
         route = self.route(spec)
+        if route == "mlp":
+            return mlp_parameter_layout(spec)
         if route == "tiny_transformer":
             return transformer_parameter_layout(spec)
         if route == "tiny_cnn":
@@ -76,6 +82,8 @@ class TorchNeuralLoweringCapability:
 
     def initial_values(self, spec: NeuralGraphSpec, *, random_seed: int = 42) -> np.ndarray:
         route = self.route(spec)
+        if route == "mlp":
+            return mlp_initial_values(spec, random_seed=random_seed)
         if route == "tiny_transformer":
             return transformer_initial_values(spec, random_seed=random_seed)
         if route == "tiny_cnn":
@@ -90,6 +98,8 @@ class TorchNeuralLoweringCapability:
 
     def decode_neural_graph(self, values: np.ndarray, spec: NeuralGraphSpec, *, random_seed: int = 42) -> Any:
         route = self.route(spec)
+        if route == "mlp":
+            return decode_mlp(values, spec, random_seed=random_seed)
         if route == "tiny_transformer":
             return decode_tiny_transformer(values, spec, random_seed=random_seed)
         if route == "tiny_cnn":

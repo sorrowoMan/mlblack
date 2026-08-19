@@ -1,46 +1,71 @@
 from __future__ import annotations
 
-from blackbase.plugin import Plugin
+from blackbase.plugin import PluginBase
 
-from mlblack.capabilities.resource_audit import ResourceAuditCapability
-from mlblack.core.trainer import BlankTrainer
+from mlblack.core import Capability, Feedback, LearningProblem, ModelRepresentation, UnknownState
+from mlblack.integrations import build_learning_solver
+from nsgablack.adapters import FixedCandidateAdapter
 
 
-def test_blank_trainer_build_context_runs_shared_plugin_chain() -> None:
-    class ContextPlugin(Plugin):
+class _Representation(ModelRepresentation):
+    def init(self, context):
+        del context
+        return UnknownState([0.0])
+
+    def decode(self, state, context=None):
+        del context
+        return state.as_array()
+
+
+class _Problem(LearningProblem):
+    def evaluate(self, model, state, context=None):
+        del model, state, context
+        return Feedback(objectives=[0.0])
+
+
+def _solver():
+    return build_learning_solver(
+        problem=_Problem(),
+        representation=_Representation(),
+        adapter=FixedCandidateAdapter(),
+        run_name="plugin_demo",
+    )
+
+
+def test_learning_solver_build_context_runs_shared_plugin_chain() -> None:
+    class ContextPlugin(PluginBase):
         def __init__(self) -> None:
             super().__init__("context_plugin")
 
         def on_context_build(self, context):
             return {**context, "plugin.context": "seen"}
 
-    trainer = BlankTrainer(run_name="context_demo")
-    trainer.add_plugin(ContextPlugin())
-
-    context = trainer.build_context()
-
-    assert context["run_name"] == "context_demo"
-    assert context["plugin.context"] == "seen"
+    solver = _solver()
+    solver.add_plugin(ContextPlugin())
+    assert solver.build_context()["plugin.context"] == "seen"
 
 
-def test_legacy_capability_uses_shared_blackbase_adapter() -> None:
-    trainer = BlankTrainer(
-        run_name="resource_demo",
-        resource_context={"threads": 2, "namespace": "resource_demo"},
-    )
-    capability = ResourceAuditCapability()
-    trainer.add_capability(capability)
+def test_ml_capability_maps_fit_words_to_shared_solver_lifecycle() -> None:
+    class ContextCapability(Capability):
+        context_provides = ("ml.seen",)
 
-    trainer.plugin_manager.on_solver_init(trainer)
-    trainer.history.append({"step": 4, "score": 0.25})
-    trainer.plugin_manager.on_generation_end(4)
-    trainer.plugin_manager.on_solver_finish(
-        {"report": {"resources": trainer.resource_context.as_dict()}}
-    )
+        def __init__(self) -> None:
+            super().__init__(name="context_capability")
+            self.events = []
 
-    assert trainer.context_store["resource.audit.fit_start"]["threads"] == 2
-    assert trainer.context_store["resource.audit.last_step"]["step"] == 4
-    assert trainer.context_store["resource.audit.fit_end"]["report_resources"]["threads"] == 2
-    assert type(trainer._capability_adapters[0]).__module__.startswith(
-        "blackbase.adapters.mlblack.plugin"
-    )
+        def on_fit_start(self, trainer, context):
+            self.events.append(("fit_start", trainer, dict(context)))
+
+        def on_step_end(self, trainer, context, row):
+            self.events.append(("step_end", trainer, dict(context), dict(row)))
+
+    solver = _solver()
+    capability = ContextCapability()
+    solver.add_capability(capability)
+    solver.fit(max_steps=1)
+
+    assert capability.events[0][0] == "fit_start"
+    assert capability.events[0][1] is solver
+    assert capability.events[0][2]["run_name"] == "plugin_demo"
+    assert any(event[0] == "step_end" for event in capability.events)
+    assert capability.get_context_contract()["provides"] == ("ml.seen",)

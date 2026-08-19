@@ -1,0 +1,294 @@
+[[entry]]
+key = "model.arimasarimax"
+title = "ARIMASARIMAXSpec"
+kind = "model"
+import_path = "mlblack.models.time_series:ARIMASARIMAXSpec"
+tags = ["model", "models", "time_series"]
+summary = "Declarative ARIMA/SARIMAX order and fitting options."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "ARIMASARIMAXSpec" }
+
+[[entry]]
+key = "model.arimasarimax_forecast"
+title = "ARIMASARIMAXForecastModel"
+kind = "model"
+import_path = "mlblack.models.time_series:ARIMASARIMAXForecastModel"
+tags = ["model", "models", "time_series"]
+summary = "Fitted ARIMA/SARIMAX-style forecaster with a numpy ARX fallback route."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "ARIMASARIMAXForecastModel" }
+
+[[entry]]
+key = "model.binary_logistic_probability"
+title = "BinaryLogisticProbabilityModel"
+kind = "model"
+import_path = "mlblack.models.probability:BinaryLogisticProbabilityModel"
+tags = ["model", "models", "probability"]
+summary = "Probability wrapper around a scalar logit model."
+metadata = { "architecture_path" = "models.probability", "module" = "mlblack.models.probability", "symbol" = "BinaryLogisticProbabilityModel" }
+
+[[entry]]
+key = "model.center_radius_interval"
+title = "CenterRadiusIntervalModel"
+kind = "model"
+import_path = "mlblack.models.outputs:CenterRadiusIntervalModel"
+tags = ["model", "models", "outputs"]
+summary = "Interval predictor built from center and radius models."
+metadata = { "architecture_path" = "models.outputs", "module" = "mlblack.models.outputs", "symbol" = "CenterRadiusIntervalModel" }
+
+[[entry]]
+key = "model.estimator_spec"
+title = "EstimatorSpecModel"
+kind = "model"
+import_path = "mlblack.models.estimators:EstimatorSpecModel"
+tags = ["model", "models", "estimators"]
+summary = "Decoded external estimator specification."
+metadata = { "architecture_path" = "models.estimators", "module" = "mlblack.models.estimators", "symbol" = "EstimatorSpecModel" }
+
+[[entry]]
+key = "model.fitted_estimator"
+title = "FittedEstimatorModel"
+kind = "model"
+import_path = "mlblack.models.estimators:FittedEstimatorModel"
+tags = ["model", "models", "estimators"]
+summary = "Prediction wrapper around an already fitted external estimator."
+metadata = { "architecture_path" = "models.estimators", "module" = "mlblack.models.estimators", "symbol" = "FittedEstimatorModel" }
+
+[[entry]]
+key = "model.integrated_prediction"
+title = "IntegratedPredictionModel"
+kind = "model"
+import_path = "mlblack.models.composition:IntegratedPredictionModel"
+tags = ["composition", "integration", "residual", "stacking"]
+summary = "Combines named fitted model predictions without owning training orchestration."
+
+[[entry]]
+key = "model.interval_prediction"
+title = "IntervalPredictionModel"
+kind = "model"
+import_path = "mlblack.models.outputs:IntervalPredictionModel"
+tags = ["model", "models", "outputs"]
+summary = "Two-bound interval predictor built from lower and upper models."
+metadata = { "architecture_path" = "models.outputs", "module" = "mlblack.models.outputs", "symbol" = "IntervalPredictionModel" }
+
+[[entry]]
+key = "model.lag_estimator_forecast"
+title = "LagEstimatorForecastModel"
+kind = "model"
+import_path = "mlblack.models.time_series:LagEstimatorForecastModel"
+tags = ["model", "models", "time_series"]
+summary = "Forecast wrapper around an already-fitted lag-feature estimator."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "LagEstimatorForecastModel" }
+
+[[entry]]
+key = "model.linear_autoregressive_fit_spec"
+title = "LinearAutoregressiveFitSpec"
+kind = "model"
+import_path = "mlblack.models.time_series:LinearAutoregressiveFitSpec"
+tags = ["model", "models", "time_series", "fit-spec", "closed-form"]
+summary = "Declarative AR/ARX closed-form fitting request materialized by the time-series Problem."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "LinearAutoregressiveFitSpec" }
+
+[[entry]]
+key = "model.linear_autoregressive_forecast"
+title = "LinearAutoregressiveForecastModel"
+kind = "model"
+import_path = "mlblack.models.time_series:LinearAutoregressiveForecastModel"
+tags = ["model", "models", "time_series"]
+summary = "Linear AR/ARX-style forecaster fitted on lagged windows."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "LinearAutoregressiveForecastModel" }
+
+[[entry]]
+key = "model.linear_point"
+title = "LinearPointModel"
+kind = "model"
+import_path = "mlblack.models.linear:LinearPointModel"
+tags = ["model", "models", "linear"]
+summary = "Decoded point model: f(x) = intercept + X @ weights."
+metadata = { "architecture_path" = "models.linear", "module" = "mlblack.models.linear", "symbol" = "LinearPointModel" }
+
+[[entry]]
+key = "model.naive_forecast"
+title = "NaiveForecastModel"
+kind = "model"
+import_path = "mlblack.models.time_series:NaiveForecastModel"
+tags = ["model", "models", "time_series"]
+summary = "Naive, seasonal-naive, or moving-average univariate forecaster."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "NaiveForecastModel" }
+
+[[entry]]
+key = "model.negative_binomial_distribution"
+title = "NegativeBinomialDistributionModel"
+kind = "model"
+import_path = "mlblack.models.distributions:NegativeBinomialDistributionModel"
+tags = ["model", "models", "distributions"]
+summary = "NegativeBinomialDistributionModel(mu_model: 'Any', alpha_model: 'Any', alpha_transform: 'str' = 'softplus', metadata: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "models.distributions", "module" = "mlblack.models.distributions", "symbol" = "NegativeBinomialDistributionModel" }
+
+[[entry]]
+key = "model.normal_distribution"
+title = "NormalDistributionModel"
+kind = "model"
+import_path = "mlblack.models.distributions:NormalDistributionModel"
+tags = ["model", "models", "distributions"]
+summary = "NormalDistributionModel(mu_model: 'Any', sigma_model: 'Any', sigma_transform: 'str' = 'softplus', metadata: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "models.distributions", "module" = "mlblack.models.distributions", "symbol" = "NormalDistributionModel" }
+
+[[entry]]
+key = "model.numpy_mlp_point"
+title = "NumpyMLPPointModel"
+kind = "model"
+import_path = "mlblack.models.neural:NumpyMLPPointModel"
+tags = ["model", "models", "neural"]
+summary = "Small decoded MLP point model backed by numpy arrays."
+metadata = { "architecture_path" = "models.neural", "module" = "mlblack.models.neural", "symbol" = "NumpyMLPPointModel" }
+
+[[entry]]
+key = "model.orthogonal_feature_map"
+title = "OrthogonalFeatureMap"
+kind = "model"
+import_path = "mlblack.models.linear:OrthogonalFeatureMap"
+tags = ["model", "models", "linear"]
+summary = "Data-side feature map used by decoded point models."
+metadata = { "architecture_path" = "models.linear", "module" = "mlblack.models.linear", "symbol" = "OrthogonalFeatureMap" }
+
+[[entry]]
+key = "model.orthogonal_linear_point"
+title = "OrthogonalLinearPointModel"
+kind = "model"
+import_path = "mlblack.models.linear:OrthogonalLinearPointModel"
+tags = ["model", "models", "linear"]
+summary = "Decoded point model: f(x) = intercept + Q(x) @ weights."
+metadata = { "architecture_path" = "models.linear", "module" = "mlblack.models.linear", "symbol" = "OrthogonalLinearPointModel" }
+
+[[entry]]
+key = "model.piecewise"
+title = "PiecewiseModel"
+kind = "model"
+import_path = "mlblack.models.conditional:PiecewiseModel"
+tags = ["model", "models", "conditional"]
+summary = "PiecewiseModel(router: 'Router', branch_models: 'Sequence[Any]', default_branch: 'int' = 0, metadata: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "models.conditional", "module" = "mlblack.models.conditional", "symbol" = "PiecewiseModel" }
+
+[[entry]]
+key = "model.poisson_distribution"
+title = "PoissonDistributionModel"
+kind = "model"
+import_path = "mlblack.models.distributions:PoissonDistributionModel"
+tags = ["model", "models", "distributions"]
+summary = "PoissonDistributionModel(rate_model: 'Any', rate_transform: 'str' = 'softplus', metadata: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "models.distributions", "module" = "mlblack.models.distributions", "symbol" = "PoissonDistributionModel" }
+
+[[entry]]
+key = "model.prediction_input"
+title = "PredictionInputSpec"
+kind = "model"
+import_path = "mlblack.models.composition:PredictionInputSpec"
+tags = ["model", "models", "composition"]
+summary = "Input requirement for one component model inside an integrated model."
+metadata = { "architecture_path" = "models.composition", "module" = "mlblack.models.composition", "symbol" = "PredictionInputSpec" }
+
+[[entry]]
+key = "model.prediction_integration"
+title = "PredictionIntegrationSpec"
+kind = "model"
+import_path = "mlblack.models.composition:PredictionIntegrationSpec"
+tags = ["model", "models", "composition"]
+summary = "How named model predictions are combined into one prediction."
+metadata = { "architecture_path" = "models.composition", "module" = "mlblack.models.composition", "symbol" = "PredictionIntegrationSpec" }
+
+[[entry]]
+key = "model.prediction_integration_component"
+title = "PredictionIntegrationComponent"
+kind = "model"
+import_path = "mlblack.models.composition:PredictionIntegrationComponent"
+tags = ["composition", "integration", "residual", "stacking", "component"]
+summary = "Builds IntegratedPredictionModel from named fitted component models."
+
+[[entry]]
+key = "model.prediction_io"
+title = "PredictionIOContract"
+kind = "model"
+import_path = "mlblack.models.composition:PredictionIOContract"
+tags = ["model", "models", "composition"]
+summary = "I/O contract for routing inputs and validating component predictions."
+metadata = { "architecture_path" = "models.composition", "module" = "mlblack.models.composition", "symbol" = "PredictionIOContract" }
+
+[[entry]]
+key = "model.prediction_output"
+title = "PredictionOutputSpec"
+kind = "model"
+import_path = "mlblack.models.composition:PredictionOutputSpec"
+tags = ["model", "models", "composition"]
+summary = "Output requirement consumed by the integration strategy."
+metadata = { "architecture_path" = "models.composition", "module" = "mlblack.models.composition", "symbol" = "PredictionOutputSpec" }
+
+[[entry]]
+key = "model.probability_calibration"
+title = "ProbabilityCalibrationModel"
+kind = "model"
+import_path = "mlblack.models.conditional:ProbabilityCalibrationModel"
+tags = ["model", "models", "conditional"]
+summary = "Simple probability calibration wrapper."
+metadata = { "architecture_path" = "models.conditional", "module" = "mlblack.models.conditional", "symbol" = "ProbabilityCalibrationModel" }
+
+[[entry]]
+key = "model.router"
+title = "Router"
+kind = "model"
+import_path = "mlblack.models.conditional:Router"
+tags = ["model", "models", "conditional"]
+summary = "Auto-discovered mlblack component `model.router`."
+metadata = { "architecture_path" = "models.conditional", "module" = "mlblack.models.conditional", "symbol" = "Router" }
+
+[[entry]]
+key = "model.softmax_probability"
+title = "SoftmaxProbabilityModel"
+kind = "model"
+import_path = "mlblack.models.probability:SoftmaxProbabilityModel"
+tags = ["model", "models", "probability"]
+summary = "Probability wrapper around one scalar logit model per class."
+metadata = { "architecture_path" = "models.probability", "module" = "mlblack.models.probability", "symbol" = "SoftmaxProbabilityModel" }
+
+[[entry]]
+key = "model.statsmodels_sarimax_forecast"
+title = "StatsmodelsSARIMAXForecastModel"
+kind = "model"
+import_path = "mlblack.models.time_series:StatsmodelsSARIMAXForecastModel"
+tags = ["model", "models", "time_series"]
+summary = "Forecast wrapper around a fitted statsmodels SARIMAXResults object."
+metadata = { "architecture_path" = "models.time_series", "module" = "mlblack.models.time_series", "symbol" = "StatsmodelsSARIMAXForecastModel" }
+
+[[entry]]
+key = "model.symbolic_basis_set"
+title = "SymbolicBasisSetModel"
+kind = "model"
+import_path = "mlblack.models.symbolic:SymbolicBasisSetModel"
+tags = ["model", "models", "symbolic"]
+summary = "Decoded multi-expression output used by orthogonal basis search."
+metadata = { "architecture_path" = "models.symbolic", "module" = "mlblack.models.symbolic", "symbol" = "SymbolicBasisSetModel" }
+
+[[entry]]
+key = "model.symbolic_expression"
+title = "SymbolicExpressionModel"
+kind = "model"
+import_path = "mlblack.models.symbolic:SymbolicExpressionModel"
+tags = ["model", "models", "symbolic"]
+summary = "Decoded symbolic point model with fitted parameter values."
+metadata = { "architecture_path" = "models.symbolic", "module" = "mlblack.models.symbolic", "symbol" = "SymbolicExpressionModel" }
+
+[[entry]]
+key = "model.temperature_calibrated_probability"
+title = "TemperatureCalibratedProbabilityModel"
+kind = "model"
+import_path = "mlblack.models.probability:TemperatureCalibratedProbabilityModel"
+tags = ["model", "models", "probability"]
+summary = "Temperature calibration wrapper for probability-capable models."
+metadata = { "architecture_path" = "models.probability", "module" = "mlblack.models.probability", "symbol" = "TemperatureCalibratedProbabilityModel" }
+
+[[entry]]
+key = "model.threshold_router"
+title = "ThresholdRouter"
+kind = "model"
+import_path = "mlblack.models.conditional:ThresholdRouter"
+tags = ["model", "models", "conditional"]
+summary = "Route rows by threshold bins on one feature column."
+metadata = { "architecture_path" = "models.conditional", "module" = "mlblack.models.conditional", "symbol" = "ThresholdRouter" }

@@ -147,7 +147,7 @@ format validity
 ```text
 TransformerRepresentation
   + LMHead / ClassificationHead
-  + TorchBackpropAdapter
+  + TorchEvaluationProvider + GradientOptimizerAdapter
 ```
 
 只做小模型，不做 LLM 预训练。
@@ -398,7 +398,7 @@ mini_transformer_classification_demo
 小 synthetic token dataset
 小 Transformer encoder/decoder
 classification head
-TorchBackpropAdapter
+TorchEvaluationProvider + GradientOptimizerAdapter
 attention head diversity metric
 artifact report
 ```

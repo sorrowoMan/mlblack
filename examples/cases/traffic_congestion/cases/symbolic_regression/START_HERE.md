@@ -2,7 +2,7 @@
 
 ## Overview
 
-Linear regression baseline on real traffic CI data. Uses `GradientDescentAdapter` + custom MSE problem + simple coefficient vector representation. This case establishes the baseline RMSE for the symbolic expression search approach.
+Linear regression baseline on real traffic CI data. Uses stable `gradient.sgd` + custom MSE problem + simple coefficient vector representation. This case establishes the baseline RMSE for the symbolic expression search approach.
 
 ## Component Composition
 
@@ -10,7 +10,7 @@ Linear regression baseline on real traffic CI data. Uses `GradientDescentAdapter
 |---|---|---|
 | Problem | CIDirectRegressionProblem | Custom (MSE + analytic gradient) |
 | Representation | CIDirectRepresentation | Custom (flat coef vector) |
-| Adapter | GradientDescentAdapter | Framework `adapter.gradient_descent` |
+| Adapter | GradientOptimizerAdapter | Stable method `gradient.sgd` |
 | Pipeline | ZScoreNormalizeComponent | Framework `pipeline` |
 
 ## Quick Start

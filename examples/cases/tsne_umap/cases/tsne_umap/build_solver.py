@@ -17,8 +17,8 @@ import numpy as np
 
 from sklearn.datasets import load_digits
 
-from mlblack.adapters.gradient_descent import GradientDescentAdapter, GradientDescentConfig
-from mlblack.core.trainer import ComposableTrainer
+from mlblack.integrations.nsgablack_control import LearningSolver, build_learning_solver
+from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
 from mlblack.project.scaffold import print_case_check
 
 from problem.tsne_problem import TSNEProblem
@@ -34,7 +34,7 @@ def build_tsne_trainer(
     exaggeration_steps: int = 100,
     run_name: str = "tsne_digits",
     component_overrides=None,
-) -> ComposableTrainer:
+) -> LearningSolver:
     n_samples = X.shape[0]
 
     representation = build_pipeline(n_samples, output_dim=2, component_overrides=component_overrides)
@@ -44,16 +44,14 @@ def build_tsne_trainer(
         exaggeration=exaggeration,
         exaggeration_steps=exaggeration_steps,
     )
-    adapter = GradientDescentAdapter(
-        GradientDescentConfig(
-            learning_rate=learning_rate,
-            min_learning_rate=1e-8,
-            max_grad_norm=None,
-            require_gradient=True,
-        )
+    adapter = build_optimization_adapter(
+        "gradient.sgd",
+        learning_rate=learning_rate,
+        min_learning_rate=1e-8,
+        max_gradient_norm=None,
     )
 
-    trainer = ComposableTrainer(
+    trainer = build_learning_solver(
         problem=problem,
         representation=representation,
         adapter=adapter,

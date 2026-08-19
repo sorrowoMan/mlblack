@@ -384,7 +384,7 @@ nsgablack outer solver
       representation = TransformerRepresentation(spec)
       head = ClassificationHead / LMHead
       problem = TransformerProblem(data)
-      adapter = TorchBackpropAdapter / LoRAAdapter
+      provider = TorchEvaluationProvider / LoRA-aware Provider
 
   objectives:
     validation loss

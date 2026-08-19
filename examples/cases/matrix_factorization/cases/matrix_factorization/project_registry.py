@@ -38,7 +38,7 @@ def register_project_components():
         "kind": "assembly",
         "import_path": "build_trainer:build_mf_trainer",
         "tags": ["matrix_factorization", "gradient_descent", "framework_adapter", "demo"],
-        "summary": "Custom MF problem/representation wired to framework GradientDescentAdapter.",
+        "summary": "Custom MF problem/representation wired to stable gradient.sgd.",
     })
 
 

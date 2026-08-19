@@ -157,6 +157,143 @@ class NumericBatchLoader:
         }
 
 
+class NumericBatchSchedule:
+    """Stateful, replayable training-batch schedule.
+
+    The schedule owns epoch/cursor/shuffle semantics.  Evaluation Providers
+    consume the selected batch but do not decide how data is ordered.  Shuffle
+    order is derived from ``seed + epoch`` so checkpoint restore needs only the
+    small logical cursor instead of a backend RNG object.
+    """
+
+    def __init__(
+        self,
+        data: NumericDataView,
+        config: DatasetStreamConfig | None = None,
+    ) -> None:
+        self.data = data
+        self.config = config or DatasetStreamConfig(
+            batch_size=max(1, int(data.X_train.shape[0]))
+        )
+        self.epoch_index = 0
+        self.batch_cursor = 0
+        self.batch_index = 0
+
+    def next_train(self) -> NumericBatch:
+        X = np.asarray(self.data.X_train)
+        y = np.asarray(self.data.y_train)
+        n_rows = int(X.shape[0])
+        if n_rows <= 0:
+            raise ValueError("NumericBatchSchedule requires at least one training row")
+
+        batch_size = max(1, int(self.config.batch_size))
+        if batch_size >= n_rows:
+            indices = self._epoch_indices(n_rows)
+            epoch = int(self.epoch_index)
+            self.epoch_index += 1
+            self.batch_cursor = 0
+            self.batch_index = 0
+            return self._batch(indices, epoch=epoch, batch_index=0)
+
+        while True:
+            indices = self._epoch_indices(n_rows)
+            start = int(self.batch_cursor)
+            stop = min(n_rows, start + batch_size)
+            selected = indices[start:stop]
+            if bool(self.config.drop_last) and selected.shape[0] < batch_size:
+                self._advance_epoch()
+                continue
+
+            epoch = int(self.epoch_index)
+            batch_index = int(self.batch_index)
+            if stop >= n_rows:
+                self._advance_epoch()
+            else:
+                self.batch_cursor = stop
+                self.batch_index += 1
+            return self._batch(selected, epoch=epoch, batch_index=batch_index)
+
+    def get_state(self) -> Mapping[str, Any]:
+        return {
+            "epoch_index": int(self.epoch_index),
+            "batch_cursor": int(self.batch_cursor),
+            "batch_index": int(self.batch_index),
+            "n_train": int(self.data.X_train.shape[0]),
+            "config": {
+                "batch_size": int(self.config.batch_size),
+                "shuffle": bool(self.config.shuffle),
+                "drop_last": bool(self.config.drop_last),
+                "seed": int(self.config.seed),
+            },
+        }
+
+    def set_state(self, state: Mapping[str, Any]) -> None:
+        saved_rows = int(state.get("n_train", self.data.X_train.shape[0]))
+        if saved_rows != int(self.data.X_train.shape[0]):
+            raise ValueError(
+                "batch schedule checkpoint row count does not match current data"
+            )
+        saved_config = dict(state.get("config", {}) or {})
+        expected_config = {
+            "batch_size": int(self.config.batch_size),
+            "shuffle": bool(self.config.shuffle),
+            "drop_last": bool(self.config.drop_last),
+            "seed": int(self.config.seed),
+        }
+        if saved_config and saved_config != expected_config:
+            raise ValueError(
+                "batch schedule checkpoint configuration does not match current schedule"
+            )
+        epoch_index = int(state.get("epoch_index", 0) or 0)
+        batch_cursor = int(state.get("batch_cursor", 0) or 0)
+        batch_index = int(state.get("batch_index", 0) or 0)
+        n_rows = int(self.data.X_train.shape[0])
+        if epoch_index < 0 or batch_index < 0 or not 0 <= batch_cursor < n_rows:
+            raise ValueError("invalid NumericBatchSchedule checkpoint cursor")
+        self.epoch_index = epoch_index
+        self.batch_cursor = batch_cursor
+        self.batch_index = batch_index
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "name": "numeric_batch_schedule",
+            **dict(self.get_state()),
+        }
+
+    def _epoch_indices(self, n_rows: int) -> np.ndarray:
+        indices = np.arange(int(n_rows), dtype=int)
+        if bool(self.config.shuffle):
+            rng = np.random.default_rng(int(self.config.seed) + int(self.epoch_index))
+            rng.shuffle(indices)
+        return indices
+
+    def _advance_epoch(self) -> None:
+        self.epoch_index += 1
+        self.batch_cursor = 0
+        self.batch_index = 0
+
+    def _batch(
+        self,
+        indices: np.ndarray,
+        *,
+        epoch: int,
+        batch_index: int,
+    ) -> NumericBatch:
+        selected = np.asarray(indices, dtype=int).reshape(-1)
+        return NumericBatch(
+            X=np.asarray(self.data.X_train[selected], dtype=float),
+            y=np.asarray(self.data.y_train[selected], dtype=float).reshape(-1),
+            indices=tuple(int(value) for value in selected),
+            split="train",
+            metadata={
+                "epoch": int(epoch),
+                "batch_index": int(batch_index),
+                "batch_size": int(selected.shape[0]),
+                "source": "numeric_batch_schedule",
+            },
+        )
+
+
 @dataclass(frozen=True)
 class TokenizedTextDatasetConfig:
     text_column: str = "text"
@@ -282,6 +419,7 @@ __all__ = [
     "DatasetStreamConfig",
     "NumericBatch",
     "NumericBatchLoader",
+    "NumericBatchSchedule",
     "RowBatch",
     "RowDatasetStream",
     "TokenizedTextDatasetBuilder",

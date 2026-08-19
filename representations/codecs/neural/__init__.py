@@ -4,8 +4,6 @@ from .mlp import (
     NeuralBatchingSpec,
     NeuralEngineSpec,
     NeuralOptimizationSpec,
-    NumpyMLPCodec,
-    NumpyMLPCodecConfig,
 )
 from .specs import NeuralBlockSpec, NeuralComponentSpec, NeuralGraphSpec, NeuralHeadSpec
 
@@ -19,7 +17,5 @@ __all__ = [
     "NeuralGraphSpec",
     "NeuralHeadSpec",
     "NeuralOptimizationSpec",
-    "NumpyMLPCodec",
-    "NumpyMLPCodecConfig",
     "ParameterLayout",
 ]

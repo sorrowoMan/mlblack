@@ -1,0 +1,17 @@
+[[entry]]
+key = "trainer.learning_solver"
+title = "LearningSolver"
+kind = "trainer"
+import_path = "mlblack.integrations.nsgablack_control:LearningSolver"
+tags = ["trainer", "ml-semantics", "nsgablack", "single-control-plane"]
+summary = "ML 训练词汇的正式 facade；fit/TrainerResult 是结果投影，唯一求解生命周期由 NSGABlack ComposableSolver 提供。"
+metadata = { "architecture_path" = "integrations.nsgablack_control", "control_plane" = "nsgablack.ComposableSolver", "compatibility_layer" = false }
+
+[[entry]]
+key = "trainer.diagnostic_solver"
+title = "build_diagnostic_solver"
+kind = "trainer"
+import_path = "mlblack.core.diagnostic:build_diagnostic_solver"
+tags = ["trainer", "diagnostic", "one-shot", "nsgablack"]
+summary = "通过 NSGABlack FixedCandidateAdapter 运行一次 ML 诊断，不建立私有 Trainer 循环。"
+metadata = { "architecture_path" = "core.diagnostic", "control_plane" = "nsgablack.ComposableSolver" }

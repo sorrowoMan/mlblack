@@ -703,11 +703,6 @@ __all__ = [
     "SYMBOLIC_ARTIFACT_SCHEMA_VERSION",
     "SYMBOLIC_ARTIFACT_FIELDS",
     "SymbolicArtifactSchema",
-    "SymbolicBasisArtifact",
     "SymbolicTaskArtifact",
     "symbolic_artifact_schema_descriptor",
 ]
-
-# Alias: SymbolicBasisArtifact is the historical name for OrthogonalBasisSetArtifact
-SymbolicBasisArtifact = OrthogonalBasisSetArtifact
-

@@ -13,7 +13,7 @@ from blackbase.resources import ArtifactSerializer, DataRef
 
 
 class ArtifactProvider(Protocol):
-    """Publish a finished Trainer model and return its durable reference."""
+    """Publish a fitted model and return its durable reference."""
 
     def publish_best_model(self, trainer: Any) -> DataRef | None: ...
 

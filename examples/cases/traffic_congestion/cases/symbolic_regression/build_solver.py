@@ -1,8 +1,8 @@
 import sys; from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent))
 from typing import Mapping
 import numpy as np
-from mlblack.core.trainer import ComposableTrainer
-from mlblack.adapters.gradient_descent import GradientDescentAdapter, GradientDescentConfig
+from mlblack.integrations.nsgablack_control import build_learning_solver
+from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback
 
@@ -53,10 +53,12 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
     data = overrides.get("data") or build_pipeline(CSV_PATH)
     problem = overrides.get("problem") or CIDirectRegressionProblem(data)
     representation = overrides.get("representation") or build_representation(data)
-    adapter = overrides.get("adapter") or GradientDescentAdapter(
-        config=GradientDescentConfig(learning_rate=float(payload.get("learning_rate", 0.01)))
+    adapter = overrides.get("adapter") or build_optimization_adapter(
+        "gradient.sgd",
+        learning_rate=float(payload.get("learning_rate", 0.01)),
+        max_gradient_norm=1e3,
     )
-    trainer = ComposableTrainer(
+    trainer = build_learning_solver(
         problem=problem,
         adapter=adapter,
         representation=representation,

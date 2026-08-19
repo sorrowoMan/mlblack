@@ -2,6 +2,11 @@
 
 这组文档记录 `mlblack` 神经图语义与后端执行之间的稳定边界。
 
+> 当前规范 Torch 路径见 [统一梯度训练路径](../architecture/UNIFIED_GRADIENT_PATH.md)：
+> ML Problem 定义 loss/metric，TorchEvaluationProvider 执行计算并持有设备态，
+> nsgablack GradientOptimizerAdapter 选择稳定优化方法。Torch 梯度由
+> TorchEvaluationProvider 产生，JAX/TensorFlow 梯度由 FunctionalGradientLearningProblem 产生。
+
 当前规则：
 
 > Codec 定义模型是什么。Backend capability 定义模型能怎么运行。Project L0 发放资源。Case 消费 `ResourceContext` 并报告实际 backend。
@@ -23,8 +28,10 @@ Case builder 接收 ResourceContext
   -> NeuralGraphCodec.parameter_layout(context)
   -> NeuralGraphCodec.init_values(context)
   -> NeuralGraphCodec.decode(values, context)
-  -> LearningProblem.evaluate(...) or backend loss
-  -> Adapter.update(...)
+  -> LearningProblem.compute_backend_loss(...)
+  -> EvaluationProvider -> Feedback / StateRef
+  -> GradientOptimizerAdapter -> StateTransitionRequest
+  -> StateMaterializationRequest -> UnknownState
   -> ArtifactBuilder / backend artifacts
 ```
 
@@ -32,8 +39,9 @@ Case builder 接收 ResourceContext
 
 - `NeuralGraphCodec` 不选择全局 backend。
 - `NeuralGraphRepresentationConfig` 不拥有资源。
-- `Problem` 不创建私有 backend。
-- `Adapter` 不绕过 `backend.session`。
+- `Problem` 定义 loss/metric，但不创建私有 backend。
+- 通用 Adapter 不读取 `backend.session`；它只消费 Feedback/StateRef 并选择方法。
+- Evaluation Provider 消费已授权 backend session，不选择优化算法。
 - backend capability 不足时必须 fail-fast，不允许静默切到另一个 backend。
 - 资源授权属于共享 Project / L0 substrate。
 

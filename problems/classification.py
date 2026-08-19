@@ -4,7 +4,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
 from mlblack.pipeline.data_views import NumericDataView
@@ -89,6 +89,9 @@ class SupervisedClassificationProblem(LearningProblem):
                 "primary_prefix": objective_prefix,
             },
         )
+
+    def get_num_objectives(self) -> int:
+        return len(self.objective_metrics) + int(self.complexity_weight > 0.0)
 
     def describe(self) -> Mapping[str, Any]:
         return {

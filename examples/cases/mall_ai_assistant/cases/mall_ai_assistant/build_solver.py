@@ -18,7 +18,7 @@ from mlblack.project.scaffold import print_case_check
 _HERE = Path(__file__).resolve().parent
 
 
-@dataclass(frozen=True)
+@dataclass
 class MigratedExampleRunner:
     name: str
     original_path: Path
@@ -56,12 +56,6 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
         original_path=_HERE / "original" / "mall_ai_assistant",
         resource_context=dict(resource_context or {}),
     )
-
-
-def build_project_trainer() -> MigratedExampleRunner:
-    """Backward-compatible name for older docs; prefer build_solver()."""
-
-    return build_solver()
 
 
 def main(argv=None) -> int:

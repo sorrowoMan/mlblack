@@ -5,9 +5,9 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.adapters import GradientDescentAdapter, RandomSearchAdapter
-from mlblack.core import ComposableTrainer
+from mlblack.integrations.nsgablack_control import build_learning_solver
 from mlblack.core.types import UnknownState
+from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.problems import FixedSymbolicRegressionProblem, SupervisedClassificationProblem, SupervisedIntervalRegressionProblem
 from mlblack.representations import SymbolicExpressionConfig, SymbolicExpressionRepresentation
@@ -356,25 +356,31 @@ def _branch_refit_metrics(
         task = str(artifact.task_kind or "regression").strip().lower()
         if task == "interval" or str(artifact.head_kind).startswith("interval"):
             problem = SupervisedIntervalRegressionProblem(data, use_valid_objective=False)
-            adapter = RandomSearchAdapter(
+            adapter = build_optimization_adapter(
+                "search.random_gaussian",
                 population_size=int(config.branch_refit_population_size),
                 mutation_scale=float(config.branch_refit_mutation_scale),
                 random_seed=17,
             )
-            adapter.set_state({"best_state": list(artifact.fitted_state)})
+            adapter.set_population((UnknownState(values=artifact.fitted_state),))
         elif task == "classification" or str(artifact.head_kind) in {"binary_logistic", "softmax", "probability_calibration"}:
             problem = SupervisedClassificationProblem(data, use_valid_objective=False)
-            adapter = RandomSearchAdapter(
+            adapter = build_optimization_adapter(
+                "search.random_gaussian",
                 population_size=int(config.branch_refit_population_size),
                 mutation_scale=float(config.branch_refit_mutation_scale),
                 random_seed=23,
             )
-            adapter.set_state({"best_state": list(artifact.fitted_state)})
+            adapter.set_population((UnknownState(values=artifact.fitted_state),))
         else:
             problem = FixedSymbolicRegressionProblem(data, use_valid_objective=False)
-            adapter = GradientDescentAdapter(learning_rate=float(config.branch_refit_learning_rate), require_gradient=True)
-            adapter.set_state({"current_state": list(artifact.fitted_state)})
-        trainer = ComposableTrainer(
+            adapter = build_optimization_adapter(
+                "gradient.sgd",
+                learning_rate=float(config.branch_refit_learning_rate),
+                max_gradient_norm=1e3,
+            )
+            adapter.set_population((UnknownState(values=artifact.fitted_state),))
+        trainer = build_learning_solver(
             problem=problem,
             representation=representation,
             adapter=adapter,

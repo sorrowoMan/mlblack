@@ -129,7 +129,7 @@ _KIND_USAGE: dict[str, dict[str, tuple[str, ...]]] = {
     },
     "assembly": {
         "use_when": ("需要把一个 inner trainer 的 ML 组件按标准 spec 装起来时使用；不承担 workflow/runtime 编排。",),
-        "minimal_wiring": ("TrainerAssemblySpec + component_overrides -> build_trainer -> ComposableTrainer",),
+        "minimal_wiring": ("TrainerAssemblySpec + component_overrides -> build_trainer -> LearningSolver",),
         "required_roles": ("trainer", "adapter", "representation", "problem"),
     },
     "schema": {
@@ -203,13 +203,13 @@ _EXACT_USAGE_HINTS: dict[str, dict[str, tuple[str, ...]]] = {
 }
 
 _PATTERN_RULES: tuple[tuple[tuple[str, ...], dict[str, tuple[str, ...]]], ...] = (
-    (("gradient_descent",), {"use_when": ("当 Problem 能产出 feedback.gradients，且 UnknownState 可以用一阶梯度直接更新时使用。",), "minimal_wiring": ("feedback.gradients + candidate.unknown_state -> GradientDescentAdapter.update -> adapter.current_state/population.candidates",)}),
-    (("functional_backprop",), {"use_when": ("当梯度由 Problem/Backend 的 functional route 统一产出，而不是 Adapter 私下读取模型内部细节时使用。",), "minimal_wiring": ("candidate.model + backend.contract + problem-owned gradients -> FunctionalBackpropAdapter -> optimizer step",)}),
-    (("torch_backprop",), {"use_when": ("当参数向量对应 torch/MLP 训练路径，并需要 batch/device/optimizer state 时使用。",), "minimal_wiring": ("ResourceContext/device + numpy_mlp representation + training data -> TorchBackpropAdapter.step",)}),
+    (("gradient_optimizer",), {"use_when": ("Problem/Provider 能提供梯度，并希望通过 stable method 选择 SGD/Adam/AdamW 时使用。",), "minimal_wiring": ("Problem/Provider Feedback.gradients -> build_optimization_adapter('gradient.sgd') -> nsgablack GradientOptimizerAdapter",)}),
+    (("functional_gradient",), {"use_when": ("JAX/TensorFlow 等后端以函数式方式产生梯度时使用。",), "minimal_wiring": ("candidate.model + functional backend -> FunctionalGradientLearningProblem -> Feedback.gradients -> nsgablack GradientOptimizerAdapter",)}),
+    (("torch_evaluation", "nsgablack_gradient"), {"use_when": ("当 ML Problem 需要 Torch/autograd，而优化方法应通过 gradient.sgd/adam/adamw 跨后端复用时使用。",), "minimal_wiring": ("DataSchedule + ML Problem/Representation -> TorchEvaluationProvider -> Feedback.gradients -> nsgablack GradientOptimizerAdapter",)}),
     (("random_search",), {"use_when": ("当模型不可微、head 不提供梯度，或需要黑盒 baseline 搜索时使用。",), "minimal_wiring": ("current best + sampling scale -> candidates -> Problem feedback -> keep/improve state",)}),
     (("estimator",), {"use_when": ("当 UnknownState 解码为 sklearn/xgboost/tree 等外部 estimator spec，并由 Problem 负责 fit/score 时使用。",), "minimal_wiring": ("EstimatorSpecRepresentation -> estimator factory/problem fit -> objectives -> estimator search/update",)}),
     (("linear",), {"use_when": ("当 UnknownState 表示线性权重/截距，并需要解码成点预测模型时使用。",), "minimal_wiring": ("flat weights -> linear codec/representation -> linear model -> supervised problem",)}),
-    (("numpy_mlp",), {"use_when": ("当希望用轻量 numpy MLP 表征做本地解码、预测或作为 torch backprop 的参数布局基础时使用。",), "minimal_wiring": ("flat parameters -> NumpyMLP codec/representation -> NumpyMLPPointModel.predict",)}),
+    (("neural_graph", "mlp"), {"use_when": ("需要让同一个 MLP 结构与参数布局跨 NumPy/Torch/JAX/TensorFlow lowering 复用时使用。",), "minimal_wiring": ("NeuralGraphSpec.mlp -> NeuralGraphCodec -> backend lowering -> model",)}),
     (("symbolic",), {"use_when": ("当候选空间涉及符号表达式、basis-set、function pool、grammar 或符号参数拟合时使用。",), "minimal_wiring": ("symbolic genome/spec/pool + UnknownState -> symbolic component -> symbolic model/problem/artifact",)}),
     (("probability",), {"use_when": ("当模型输出需要概率语义、predict_proba 或概率校准时使用。",), "minimal_wiring": ("base decoder logits -> probability head -> predict_proba/predict -> classification problem",)}),
     (("softmax",), {"use_when": ("当多分类模型需要每类一个 decoder block 并输出 softmax probability 时使用。",), "minimal_wiring": ("per-class decoder blocks -> SoftmaxHead -> multiclass probability model",)}),
@@ -227,7 +227,7 @@ _PATTERN_RULES: tuple[tuple[tuple[str, ...], dict[str, tuple[str, ...]]], ...] =
     (("feature_space",), {"use_when": ("当需要记录、传播或审计特征空间元数据，而不是实际训练模型时使用。",), "minimal_wiring": ("NumericDataView -> FeatureSpaceComponent -> metadata-enriched NumericDataView",)}),
     (("conditional",), {"use_when": ("当数据流或模型输出需要 gate、branch、primitive feature 或 conditional routing 时使用。",), "minimal_wiring": ("conditional primitive/composer -> feature/router output -> representation/head/problem",)}),
     (("dynamic_pool",), {"use_when": ("当候选函数池、branch pool 或搜索池需要根据 residual/gradient/signal 动态扩张和裁剪时使用。",), "minimal_wiring": ("feedback/signal + pool policy -> updated pool hint -> outer search/representation",)}),
-    (("checkpoint",), {"use_when": ("当训练过程需要可恢复 state snapshot，或需要把 trainer state 写入 artifact/snapshot store 时使用。",), "minimal_wiring": ("Trainer lifecycle -> CheckpointCapability -> TrainerStateArtifact/SnapshotStore",)}),
+    (("checkpoint",), {"use_when": ("当训练过程需要恢复 Adapter、Provider、DataSchedule、Representation 与 Solver 权威状态时，使用 nsgablack 的统一 CheckpointResumePlugin。",), "minimal_wiring": ("LearningSolver.checkpoint_components -> CheckpointResumePlugin v3 -> Snapshot/Artifact store",)}),
     (("experiment",), {"use_when": ("当需要记录 run、step、metric、event，并支持后续查询/可视化时使用。",), "minimal_wiring": ("Trainer/Capability events -> experiment store -> query/dashboard",)}),
     (("resource_audit",), {"use_when": ("当需要审计外层注入的 ResourceContext 是否真正传到 mlblack inner training 时使用。",), "minimal_wiring": ("ResourceContext -> ResourceAuditCapability -> run report/artifact metadata",)}),
     (("catalog",), {"use_when": ("当需要查询组件用途、契约字段、关联组件、运行流程或 DB-only catalog UI 时使用。",), "minimal_wiring": ("materialize_catalog_db -> catalog store -> query/show/dashboard",)}),

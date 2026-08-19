@@ -15,6 +15,49 @@ class LinearPointModel:
     feature_names: Sequence[str] = field(default_factory=tuple)
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        weights = np.array(self.weights, dtype=float, copy=True).reshape(-1)
+        if not np.all(np.isfinite(weights)):
+            raise ValueError("linear model weights must contain only finite values")
+        if not np.isfinite(float(self.intercept)):
+            raise ValueError("linear model intercept must be finite")
+        names = tuple(str(name) for name in self.feature_names)
+        if names and len(names) != weights.shape[0]:
+            raise ValueError(
+                "feature_names length must match the linear model weight count"
+            )
+        weights.setflags(write=False)
+        object.__setattr__(self, "intercept", float(self.intercept))
+        object.__setattr__(self, "weights", weights)
+        object.__setattr__(self, "feature_names", names)
+        object.__setattr__(self, "metadata", dict(self.metadata or {}))
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return the stable, backend-neutral model artifact envelope."""
+
+        return {
+            "schema": "mlblack.linear_point_model.v1",
+            "intercept": float(self.intercept),
+            "weights": np.asarray(self.weights, dtype=float).tolist(),
+            "feature_names": list(self.feature_names),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "LinearPointModel":
+        schema = str(payload.get("schema", ""))
+        if schema != "mlblack.linear_point_model.v1":
+            raise ValueError(
+                "unsupported linear model schema; expected "
+                "mlblack.linear_point_model.v1"
+            )
+        return cls(
+            intercept=float(payload["intercept"]),
+            weights=np.asarray(payload["weights"], dtype=float),
+            feature_names=tuple(str(name) for name in payload.get("feature_names", ())),
+            metadata=dict(payload.get("metadata", {}) or {}),
+        )
+
     def predict(self, X: np.ndarray) -> np.ndarray:
         X_arr = np.asarray(X, dtype=float)
         weights = np.asarray(self.weights, dtype=float).reshape(-1)

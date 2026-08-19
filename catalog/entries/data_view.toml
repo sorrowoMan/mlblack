@@ -1,0 +1,53 @@
+[[entry]]
+key = "data_view.graph"
+title = "GraphDataView"
+kind = "data_view"
+import_path = "mlblack.pipeline.data_views.graph:GraphDataView"
+tags = ["data_view", "pipeline", "data_views", "graph"]
+summary = "Dense graph tensors for small GNN smoke tasks."
+metadata = { "architecture_path" = "pipeline/data_views/graph", "module" = "mlblack.pipeline.data_views.graph", "symbol" = "GraphDataView" }
+
+[[entry]]
+key = "data_view.image"
+title = "ImageDataView"
+kind = "data_view"
+import_path = "mlblack.pipeline.data_views.image:ImageDataView"
+tags = ["data_view", "pipeline", "data_views", "image"]
+summary = "Image tensors in NCHW layout."
+metadata = { "architecture_path" = "pipeline/data_views/image", "module" = "mlblack.pipeline.data_views.image", "symbol" = "ImageDataView" }
+
+[[entry]]
+key = "data_view.image_contrastive_pair"
+title = "ImageContrastivePairDataView"
+kind = "data_view"
+import_path = "mlblack.pipeline.data_views.contrastive:ImageContrastivePairDataView"
+tags = ["data_view", "pipeline", "data_views", "contrastive"]
+summary = "Anchor/positive/negative image triples for retrieval smoke tasks."
+metadata = { "architecture_path" = "pipeline/data_views/contrastive", "module" = "mlblack.pipeline.data_views.contrastive", "symbol" = "ImageContrastivePairDataView" }
+
+[[entry]]
+key = "data_view.numeric"
+title = "NumericDataView"
+kind = "data_view"
+import_path = "mlblack.pipeline.data_views.numeric:NumericDataView"
+tags = ["data_view", "pipeline", "data_views", "numeric"]
+summary = "Prepared numeric supervised data consumed by LearningProblem implementations."
+metadata = { "architecture_path" = "pipeline/data_views/numeric", "module" = "mlblack.pipeline.data_views.numeric", "symbol" = "NumericDataView" }
+
+[[entry]]
+key = "data_view.preference_pair"
+title = "PreferencePairDataView"
+kind = "data_view"
+import_path = "mlblack.pipeline.data_views.sequence:PreferencePairDataView"
+tags = ["data_view", "pipeline", "data_views", "sequence"]
+summary = "Token-id pairs for preference/DPO-style training."
+metadata = { "architecture_path" = "pipeline/data_views/sequence", "module" = "mlblack.pipeline.data_views.sequence", "symbol" = "PreferencePairDataView" }
+
+[[entry]]
+key = "data_view.time_series"
+title = "TimeSeriesDataView"
+kind = "data_view"
+import_path = "mlblack.pipeline.data_views.time_series:TimeSeriesDataView"
+tags = ["data_view", "pipeline", "data_views", "time_series"]
+summary = "Ordered univariate time-series data with optional exogenous features."
+metadata = { "architecture_path" = "pipeline/data_views/time_series", "module" = "mlblack.pipeline.data_views.time_series", "symbol" = "TimeSeriesDataView" }

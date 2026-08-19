@@ -3,9 +3,13 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 import numpy as np
+from blackbase.call_binding import (
+    CallCandidate,
+    invoke_bound_once_with_outcome,
+)
 
 from mlblack.core.backend_session import get_compute_backend_from_context
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
 from mlblack.pipeline.data_views import NumericDataView
@@ -16,6 +20,7 @@ class SupervisedRegressionProblem(LearningProblem):
     """Data-dependent evaluator for point regression."""
 
     name = "supervised_regression"
+    objective_count = 2
     context_requires = ('candidate.model', 'data.X_train', 'data.y_train')
     context_optional = ('data.X_valid', 'data.y_valid', 'model.parameter_gradient')
     context_provides = ('feedback.objectives', 'feedback.loss', 'feedback.metrics', 'feedback.residuals', 'feedback.gradients', 'feedback.signals')
@@ -171,15 +176,43 @@ class SupervisedEstimatorFitRegressionProblem(SupervisedRegressionProblem):
         supports_resume=False,
     )
 
-    def evaluate(self, model: Any, state: UnknownState, context: Mapping[str, Any]) -> Feedback:
+    def prepare_model_for_evaluation(
+        self,
+        model: Any,
+        state: UnknownState,
+        context: Mapping[str, Any],
+    ) -> Any:
+        del state
         if not isinstance(model, EstimatorSpecModel):
+            return model
+        spec = _clamp_estimator_spec_to_resource(model, context)
+        estimator = spec.build_estimator()
+        if not callable(getattr(estimator, "fit", None)):
+            raise TypeError("decoded estimator does not expose fit(...)")
+        fit_info = _fit_estimator_with_lifecycle(estimator, spec, self.data, context)
+        return FittedEstimatorModel(
+            estimator=estimator,
+            family=spec.family,
+            route=spec.route,
+            params=dict(spec.params),
+            metadata={
+                "source": "SupervisedEstimatorFitRegressionProblem.prepare_model_for_evaluation",
+                "fit_lifecycle": dict(fit_info),
+                "source_spec": spec.describe(),
+            },
+        )
+
+    def evaluate(self, model: Any, state: UnknownState, context: Mapping[str, Any]) -> Feedback:
+        if isinstance(model, EstimatorSpecModel):
+            raise TypeError(
+                "EstimatorSpecModel must be materialized through "
+                "prepare_model_for_evaluation(...) before evaluation"
+            )
+        if not isinstance(model, FittedEstimatorModel):
             return super().evaluate(model, state, context)
 
-        model = _clamp_estimator_spec_to_resource(model, context)
-        estimator = model.build_estimator()
-        if not hasattr(estimator, "fit"):
-            raise TypeError("decoded estimator does not expose fit(...)")
-        fit_info = _fit_estimator_with_lifecycle(estimator, model, self.data, context)
+        estimator = model.estimator
+        fit_info = dict(model.metadata.get("fit_lifecycle", {}))
         train_pred = np.asarray(estimator.predict(self.data.X_train), dtype=float).reshape(-1)
         train_metrics = _regression_metrics(self.data.y_train, train_pred, prefix="train")
         train_residual = train_pred - self.data.y_train
@@ -205,8 +238,6 @@ class SupervisedEstimatorFitRegressionProblem(SupervisedRegressionProblem):
                 **{f"estimator.lifecycle.{key}": value for key, value in fit_info.items() if isinstance(value, (str, int, float, bool)) or value is None},
             }
         )
-        context["last_fitted_estimator_spec"] = model.describe()
-        context["last_fitted_estimator_lifecycle"] = fit_info
         objectives = np.asarray(
             [
                 float(objective_mse),
@@ -236,23 +267,20 @@ class SupervisedEstimatorFitRegressionProblem(SupervisedRegressionProblem):
         return base
 
     def build_model_artifact(self, model: Any, context: Mapping[str, Any] | None = None) -> Any:
-        if not isinstance(model, EstimatorSpecModel):
-            return model
-        estimator = model.build_estimator()
-        _fit_estimator_with_lifecycle(estimator, model, self.data, dict(context or {}))
-        return FittedEstimatorModel(
-            estimator=estimator,
-            family=model.family,
-            route=model.route,
-            params=dict(model.params),
-            metadata={"source": "SupervisedEstimatorFitRegressionProblem.build_model_artifact"},
-        )
+        del context
+        if isinstance(model, EstimatorSpecModel):
+            raise TypeError(
+                "cannot publish an unfitted EstimatorSpecModel; publish the "
+                "FittedEstimatorModel produced during evaluation"
+            )
+        return model
 
 
 class SupervisedIntervalRegressionProblem(LearningProblem):
     """Evaluator for decoded interval-output models."""
 
     name = "supervised_interval_regression"
+    objective_count = 3
     context_requires = ('candidate.interval_model', 'model.predict_interval', 'data.X_train', 'data.y_train')
     context_optional = ('data.X_valid', 'data.y_valid')
     context_provides = ('feedback.objectives', 'feedback.metrics', 'feedback.residuals', 'feedback.constraints', 'feedback.signals')
@@ -376,15 +404,26 @@ def _fit_estimator_with_lifecycle(
     continuation = _extract_continuation(mechanisms)
     if resume_payload is not None and continuation.get("mode") == "xgb_model" and _safe_accepts_fit_kwarg(estimator, "xgb_model"):
         fit_kwargs["xgb_model"] = resume_payload
-    try:
-        estimator.fit(data.X_train, data.y_train, **fit_kwargs)
-        fit_status = "ok"
-    except TypeError:
-        if early_stopping.get("strict"):
-            raise
+    call_forms = [
+        CallCandidate(
+            args=(data.X_train, data.y_train),
+            kwargs=fit_kwargs,
+            label="fit_kwargs",
+        )
+    ]
+    if not early_stopping.get("strict"):
+        call_forms.append(
+            CallCandidate(
+                args=(data.X_train, data.y_train),
+                label="without_fit_kwargs",
+            )
+        )
+    outcome = invoke_bound_once_with_outcome(estimator.fit, call_forms)
+    if outcome.candidate_label == "without_fit_kwargs":
         fit_kwargs = {}
-        estimator.fit(data.X_train, data.y_train)
         fit_status = "fallback_no_fit_kwargs"
+    else:
+        fit_status = "ok"
     return {
         "status": fit_status,
         "fit_kwargs": tuple(sorted(fit_kwargs.keys())),

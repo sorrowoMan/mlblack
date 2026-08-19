@@ -24,7 +24,7 @@ XGBoost baseline for predicting Congestion Index (CI) from 38 engineered feature
 |---|---|---|
 | Problem | SupervisedEstimatorFitRegressionProblem | 框架 problem.supervised_estimator_fit |
 | Representation | EstimatorSpecRepresentation + XGBoost factory | 框架 representation.estimator_spec |
-| Adapter | EstimatorSpecSearchAdapter | 框架 adapter.estimator_spec_search |
+| Adapter | GaussianSearchAdapter | NSGABlack `search.random_gaussian` |
 
 ## 效果对比
 

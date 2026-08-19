@@ -60,6 +60,7 @@ class ARIMASARIMAXForecastModel:
     exog_params: np.ndarray
     training_history: np.ndarray
     differenced_history: np.ndarray
+    training_exogenous: np.ndarray | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -68,6 +69,11 @@ class ARIMASARIMAXForecastModel:
         object.__setattr__(self, "exog_params", np.asarray(self.exog_params, dtype=float).reshape(-1))
         object.__setattr__(self, "training_history", np.asarray(self.training_history, dtype=float).reshape(-1))
         object.__setattr__(self, "differenced_history", np.asarray(self.differenced_history, dtype=float).reshape(-1))
+        if self.training_exogenous is not None:
+            exog = np.asarray(self.training_exogenous, dtype=float)
+            if exog.ndim == 1:
+                exog = exog.reshape(-1, 1)
+            object.__setattr__(self, "training_exogenous", exog)
 
     def forecast(
         self,
@@ -84,6 +90,20 @@ class ARIMASARIMAXForecastModel:
         steps = int(horizon)
         if steps <= 0:
             raise ValueError("horizon must be positive")
+        hist_array = np.asarray(hist, dtype=float)
+        if not _same_history(hist_array, self.training_history):
+            refit_data = _history_data_view(
+                hist_array,
+                full_history=self.training_history,
+                full_exogenous=self.training_exogenous,
+            )
+            refit = _fit_arima_sarimax_numpy(refit_data, self.spec)
+            return refit.forecast(
+                hist_array,
+                steps,
+                exogenous_future=exogenous_future,
+                context=context,
+            )
         p, d, _q = self.spec.normalized_order()
         seasonal_p, seasonal_d, _seasonal_q, period = self.spec.normalized_seasonal_order()
         z_hist = list(_difference_for_supported_orders(np.asarray(hist, dtype=float), d=d, seasonal_d=seasonal_d, period=period))
@@ -305,6 +325,23 @@ class NaiveForecastModel:
 
 
 @dataclass(frozen=True)
+class LinearAutoregressiveFitSpec:
+    """Declarative closed-form AR/ARX fitting request."""
+
+    window_config: TimeSeriesWindowConfig = field(default_factory=TimeSeriesWindowConfig)
+    ridge: float = 0.0
+    metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "model_type": "linear_autoregressive_fit_spec",
+            "window_config": self.window_config.describe(),
+            "ridge": float(self.ridge),
+            "metadata": dict(self.metadata),
+        }
+
+
+@dataclass(frozen=True)
 class LinearAutoregressiveForecastModel:
     """Linear AR/ARX-style forecaster fitted on lagged windows."""
 
@@ -312,11 +349,19 @@ class LinearAutoregressiveForecastModel:
     weights: np.ndarray
     window_config: TimeSeriesWindowConfig
     feature_names: Sequence[str] = tuple()
+    training_history: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=float))
+    training_exogenous: np.ndarray | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "weights", np.asarray(self.weights, dtype=float).reshape(-1))
         object.__setattr__(self, "feature_names", tuple(str(name) for name in self.feature_names))
+        object.__setattr__(self, "training_history", np.asarray(self.training_history, dtype=float).reshape(-1))
+        if self.training_exogenous is not None:
+            exog = np.asarray(self.training_exogenous, dtype=float)
+            if exog.ndim == 1:
+                exog = exog.reshape(-1, 1)
+            object.__setattr__(self, "training_exogenous", exog)
 
     @classmethod
     def fit(
@@ -343,6 +388,12 @@ class LinearAutoregressiveForecastModel:
             weights=np.asarray(coef[1:], dtype=float),
             window_config=cfg,
             feature_names=numeric.effective_feature_names,
+            training_history=np.asarray(data.y, dtype=float),
+            training_exogenous=(
+                None
+                if data.exogenous is None
+                else np.asarray(data.exogenous, dtype=float)
+            ),
             metadata={
                 **dict(metadata or {}),
                 "fit": "least_squares",
@@ -370,10 +421,28 @@ class LinearAutoregressiveForecastModel:
         exogenous_future: np.ndarray | None = None,
         context: Mapping[str, Any] | None = None,
     ) -> np.ndarray:
-        _ = context
+        hist = np.asarray(history, dtype=float).reshape(-1)
+        if self.training_history.size and not _same_history(hist, self.training_history):
+            refit_data = _history_data_view(
+                hist,
+                full_history=self.training_history,
+                full_exogenous=self.training_exogenous,
+            )
+            refit = type(self).fit(
+                refit_data,
+                self.window_config,
+                ridge=float(self.metadata.get("ridge", 0.0) or 0.0),
+                metadata={**dict(self.metadata), "refit_for_history": True},
+            )
+            return refit.forecast(
+                hist,
+                horizon,
+                exogenous_future=exogenous_future,
+                context=context,
+            )
         return _recursive_lag_forecast(
             predictor=self.predict,
-            history=history,
+            history=hist,
             horizon=horizon,
             config=self.window_config,
             exogenous_future=exogenous_future,
@@ -569,6 +638,11 @@ def _fit_arima_sarimax_numpy(data: TimeSeriesDataView, spec: ARIMASARIMAXSpec) -
         exog_params=exog_params,
         training_history=y,
         differenced_history=z,
+        training_exogenous=(
+            None
+            if data.exogenous is None
+            else np.asarray(data.exogenous, dtype=float)
+        ),
         metadata={
             **dict(spec.metadata),
             "fit_route": "numpy_least_squares_arx",
@@ -616,6 +690,21 @@ def _matching_history_exog(
     if hist.shape[0] == full.shape[0]:
         return exog
     raise ValueError("statsmodels SARIMAX refit requires exogenous training rows aligned to the provided history")
+
+
+def _history_data_view(
+    history: np.ndarray,
+    *,
+    full_history: np.ndarray,
+    full_exogenous: np.ndarray | None,
+) -> TimeSeriesDataView:
+    hist = np.asarray(history, dtype=float).reshape(-1)
+    exog = _matching_history_exog(
+        hist,
+        full_history=np.asarray(full_history, dtype=float).reshape(-1),
+        full_exog=full_exogenous,
+    )
+    return TimeSeriesDataView.from_values(hist, exogenous=exog)
 
 
 def _safe_float(value: Any) -> float | None:
@@ -704,6 +793,7 @@ __all__ = [
     "ARIMASARIMAXSpec",
     "ForecastResult",
     "LagEstimatorForecastModel",
+    "LinearAutoregressiveFitSpec",
     "LinearAutoregressiveForecastModel",
     "NaiveForecastModel",
     "StatsmodelsSARIMAXForecastModel",

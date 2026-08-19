@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
@@ -45,14 +45,14 @@ class BiasSpec(ComponentSpec):
 
 
 @dataclass(frozen=True)
-class PipelineSpec:
+class DataPipelineSpec:
     components: Sequence[ComponentSpec | Mapping[str, Any] | str] = tuple()
     name: str = "data_pipeline"
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_value(cls, value: Mapping[str, Any] | "PipelineSpec" | None) -> "PipelineSpec":
-        if isinstance(value, PipelineSpec):
+    def from_value(cls, value: Mapping[str, Any] | "DataPipelineSpec" | None) -> "DataPipelineSpec":
+        if isinstance(value, DataPipelineSpec):
             return value
         payload = dict(value or {})
         return cls(
@@ -146,7 +146,7 @@ class TrainerAssemblySpec:
 @dataclass(frozen=True)
 class InnerTrainingAssemblySpec:
     trainer: TrainerAssemblySpec | Mapping[str, Any]
-    pipeline: PipelineSpec | Mapping[str, Any] | None = None
+    pipeline: DataPipelineSpec | Mapping[str, Any] | None = None
     name: str = "inner_training"
     resource_context: Mapping[str, Any] = field(default_factory=dict)
     capabilities: Sequence[CapabilitySpec | Mapping[str, Any] | str] = tuple()
@@ -163,7 +163,7 @@ class InnerTrainingAssemblySpec:
         return cls(
             name=str(payload.get("name", "inner_training")),
             trainer=TrainerAssemblySpec.from_value(payload.get("trainer", {})),
-            pipeline=PipelineSpec.from_value(payload.get("pipeline")),
+            pipeline=DataPipelineSpec.from_value(payload.get("pipeline")),
             resource_context=dict(payload.get("resource_context", {}) or {}),
             capabilities=tuple(CapabilitySpec.from_value(item) for item in payload.get("capabilities", ())),
             report=dict(payload.get("report", {}) or {}),
@@ -173,8 +173,8 @@ class InnerTrainingAssemblySpec:
     def trainer_spec(self) -> TrainerAssemblySpec:
         return TrainerAssemblySpec.from_value(self.trainer)
 
-    def pipeline_spec(self) -> PipelineSpec:
-        return PipelineSpec.from_value(self.pipeline)
+    def pipeline_spec(self) -> DataPipelineSpec:
+        return DataPipelineSpec.from_value(self.pipeline)
 
     def capability_specs(self) -> tuple[CapabilitySpec, ...]:
         return tuple(CapabilitySpec.from_value(item) for item in self.capabilities)

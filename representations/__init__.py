@@ -25,8 +25,6 @@ from .codecs import (
     NeuralGraphCodec,
     NeuralGraphSpec,
     NeuralHeadSpec,
-    NumpyMLPCodec,
-    NumpyMLPCodecConfig,
     ParameterLayout,
     OrthogonalLinearCodecConfig,
     OrthogonalLinearPointCodec,
@@ -43,7 +41,6 @@ from .codecs import (
 )
 from .linear_point import LinearPointConfig, LinearPointRepresentation
 from .neural_graph import NeuralGraphRepresentation, NeuralGraphRepresentationConfig
-from .neural_mlp import NumpyMLPPointConfig, NumpyMLPPointRepresentation
 from .orthogonal_point import OrthogonalPointConfig, OrthogonalPointLinearRepresentation
 from .symbolic import (
     SymbolicBasisSetConfig,
@@ -51,7 +48,7 @@ from .symbolic import (
     SymbolicExpressionConfig,
     SymbolicExpressionRepresentation,
 )
-from .time_series import BaselineForecastRepresentation, BaselineForecastSearchConfig, FixedForecastModelRepresentation
+from .time_series import BaselineForecastRepresentation, BaselineForecastSearchConfig, ForecastModelSpecRepresentation
 from .conditional import PiecewiseRepresentation, PiecewiseRepresentationConfig
 from .heads import (
     BinaryLogisticHead,
@@ -77,7 +74,7 @@ __all__ = [
     "EstimatorCodecConfig",
     "EstimatorSpecCodec",
     "EstimatorSpecRepresentation",
-    "FixedForecastModelRepresentation",
+    "ForecastModelSpecRepresentation",
     "IntervalHead",
     "LinearCodecConfig",
     "LinearPointCodec",
@@ -94,11 +91,7 @@ __all__ = [
     "NeuralGraphRepresentationConfig",
     "NeuralGraphSpec",
     "NeuralHeadSpec",
-    "NumpyMLPCodec",
-    "NumpyMLPCodecConfig",
     "ParameterLayout",
-    "NumpyMLPPointConfig",
-    "NumpyMLPPointRepresentation",
     "OrthogonalLinearCodecConfig",
     "OrthogonalLinearPointCodec",
     "OrthogonalPointConfig",

@@ -1,4 +1,4 @@
-"""One-shot ML diagnostic semantics on the standard Trainer lifecycle."""
+"""One-shot ML diagnostic semantics on the canonical NSGABlack lifecycle."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from typing import Any
 
 import numpy as np
 
-from .contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from .problem import LearningProblem
-from .trainer import BlankTrainer
-from .types import Feedback, TrainerResult, UnknownState
+from .representation import ModelRepresentation
+from .types import Feedback, UnknownState
 
 
 DiagnosticRunner = Callable[[Mapping[str, Any]], Feedback | Mapping[str, Any] | None]
@@ -77,83 +77,43 @@ class DiagnosticProblem(LearningProblem):
         }
 
 
-class DiagnosticTrainer(BlankTrainer):
-    """Trainer control plane for one independently runnable diagnostic task."""
+class DiagnosticRepresentation(ModelRepresentation):
+    """A semantic placeholder candidate for one-shot diagnostic evaluation."""
 
-    def __init__(
+    name = "diagnostic_constant"
+
+    def init(self, context: Mapping[str, Any]) -> UnknownState:
+        return UnknownState(
+            values=np.zeros(1, dtype=float),
+            metadata={
+                "source": "diagnostic",
+                "run_name": str(context.get("run_name", "diagnostic_run")),
+            },
+        )
+
+    def decode(
         self,
-        *,
-        problem: DiagnosticProblem,
-        run_name: str = "diagnostic_run",
-        resource_context: Mapping[str, Any] | None = None,
+        state: UnknownState,
+        context: Mapping[str, Any] | None = None,
     ) -> None:
-        if not isinstance(problem, DiagnosticProblem):
-            raise TypeError("DiagnosticTrainer requires DiagnosticProblem")
-        super().__init__(
-            problem=problem,
-            representation=None,
-            run_name=run_name,
-            resource_context=resource_context,
-        )
-        self.adapter = None
-
-    def step(self, context: Mapping[str, Any] | None = None) -> Mapping[str, Any]:
-        ctx = self.build_context(context)
-        candidate = UnknownState(
-            values=np.zeros(0, dtype=float),
-            metadata={"source": "diagnostic", "run_name": self.run_name},
-        )
-        self.plugin_manager.on_generation_start(self.step_index)
-        self.plugin_manager.on_evaluate_start(candidate, ctx)
-        feedback = self.problem.evaluate(None, candidate, ctx)
-        self.plugin_manager.on_evaluate_end(candidate, feedback, ctx)
-
-        self.population = (candidate,)
-        self.feedback = (feedback,)
-        self.best_state = candidate
-        self.best_feedback = feedback
-        self.best_score = feedback.scalar_score(constraint_penalty=self.constraint_penalty)
-        snapshot_key = self.write_population_snapshot(
-            self.population,
-            self.feedback,
-            metadata={"trainer": type(self).__name__, "diagnostic": self.problem.name},
-        )
-        row = self._history_row(
-            step=self.step_index,
-            population=self.population,
-            feedback=self.feedback,
-            snapshot_key=snapshot_key,
-        )
-        self.history.append(row)
-        self.plugin_manager.on_generation_end(self.step_index)
-        return row
-
-    def fit(self, max_steps: int = 1) -> TrainerResult:
-        del max_steps
-        return super().fit(max_steps=1)
-
-    def run(self, max_steps: int = 1) -> TrainerResult:
-        return self.fit(max_steps=max_steps)
-
-    def build_report(self) -> dict[str, Any]:
-        report = super().build_report()
-        report["trainer_kind"] = "diagnostic"
-        report["diagnostic"] = {
-            "name": self.problem.name,
-            "result_type": type(self.problem.last_result).__name__,
-        }
-        return report
+        del state, context
+        return None
 
 
-def build_diagnostic_trainer(
+def build_diagnostic_solver(
     runner: DiagnosticRunner,
     *,
     name: str,
     resource_context: Mapping[str, Any] | None = None,
-) -> DiagnosticTrainer:
+) -> Any:
+    from nsgablack.adapters.fixed_candidate import FixedCandidateAdapter
+    from mlblack.integrations.nsgablack_control import build_learning_solver
+
     problem = DiagnosticProblem(runner, name=f"{name}_problem")
-    return DiagnosticTrainer(
+    return build_learning_solver(
         problem=problem,
+        representation=DiagnosticRepresentation(),
+        adapter=FixedCandidateAdapter(),
         run_name=str(name),
         resource_context=resource_context,
     )
@@ -167,4 +127,9 @@ def _compact_metrics(payload: Mapping[str, Any]) -> dict[str, Any]:
     return metrics
 
 
-__all__ = ["DiagnosticProblem", "DiagnosticRunner", "DiagnosticTrainer", "build_diagnostic_trainer"]
+__all__ = [
+    "DiagnosticProblem",
+    "DiagnosticRepresentation",
+    "DiagnosticRunner",
+    "build_diagnostic_solver",
+]

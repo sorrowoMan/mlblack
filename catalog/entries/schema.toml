@@ -1,0 +1,7 @@
+[[entry]]
+key = "schema.scaffold_config"
+title = "ScaffoldConfig"
+kind = "schema"
+import_path = "mlblack.assembly.schema.spec:ScaffoldConfig"
+tags = ["schema", "config", "scaffold"]
+summary = "Top-level JSON-compatible scaffold contract."

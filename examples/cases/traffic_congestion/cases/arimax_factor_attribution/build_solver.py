@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from typing import Mapping
 import numpy as np
 
-from mlblack.core import build_diagnostic_trainer
+from mlblack.core import build_diagnostic_solver
 from mlblack.project.scaffold import print_case_check
 
 try:
@@ -36,7 +36,7 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
         return {"status": "ok", "exit_code": int(exit_code or 0)}
 
     runner = overrides.get("diagnostic_runner") or run_diagnostic
-    return build_diagnostic_trainer(
+    return build_diagnostic_solver(
         runner,
         name="traffic_arimax_factor_attribution",
         resource_context=resource_context,

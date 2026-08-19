@@ -3,11 +3,11 @@
 
 Demonstrates Granger causality testing as a gradient-based mlblack learning problem:
   1. Generate synthetic VAR(1) data with a known sparse coefficient matrix A_true
-  2. Standardize data, recover A via framework GradientDescentAdapter through ComposableTrainer
+  2. Standardize data, recover A via stable gradient.sgd through LearningSolver
   3. Compare recovered vs OLS baseline coefficients
 
 Architecture:
-  MLBlack GradientDescentAdapter   (framework adapter.gradient_descent)
+  nsgablack GradientOptimizerAdapter (stable method gradient.sgd)
   + GrangerRepresentation          (custom: flat(A) <-> (n_vars, n_vars) A matrix)
   + GrangerCausalityProblem        (custom: VAR(1) MSE + L1 sparsity + analytic gradient)
 """
@@ -20,8 +20,8 @@ from pathlib import Path
 
 import numpy as np
 
-from mlblack.core.trainer import ComposableTrainer
-from mlblack.adapters.gradient_descent import GradientDescentAdapter
+from mlblack.integrations.nsgablack_control import build_learning_solver
+from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
 
 _HERE = Path(__file__).resolve().parent
 
@@ -68,14 +68,17 @@ def build_granger_trainer(X, *, l1_weight=0.002, lr=1.0, max_grad_norm=1e3, run_
 
     problem = GrangerCausalityProblem(X, l1_weight=l1_weight, name="granger_problem")
     representation = build_pipeline(n_vars, component_overrides=component_overrides)
-    adapter = GradientDescentAdapter(learning_rate=lr, max_grad_norm=max_grad_norm)
+    adapter = build_optimization_adapter(
+        "gradient.sgd",
+        learning_rate=lr,
+        max_gradient_norm=max_grad_norm,
+    )
 
-    trainer = ComposableTrainer(
+    trainer = build_learning_solver(
         problem=problem,
         representation=representation,
         adapter=adapter,
         run_name=run_name,
-        constraint_penalty=1e6,
     )
 
     return trainer
@@ -161,7 +164,7 @@ def main(argv=None):
     print(f"    OLS nonzero entries (|A| > 0.05): {n_nonzero_ols}")
     print()
 
-    print("[3] Building mlblack trainer (framework GradientDescentAdapter) ...")
+    print("[3] Building mlblack trainer (stable gradient.sgd) ...")
     trainer = build_granger_trainer(
         X,
         l1_weight=args.l1, lr=args.lr,

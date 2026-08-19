@@ -12,14 +12,12 @@ from mlblack.bias import (
     StateL2Bias,
 )
 from mlblack.capabilities import (
-    CheckpointCapability,
-    CheckpointConfig,
     ExperimentTrackerCapability,
     ExperimentTrackerConfig,
     ResourceAuditCapability,
     SQLiteExperimentStore,
 )
-from mlblack.core import Trainer
+from nsgablack.plugins import CheckpointResumeConfig, CheckpointResumePlugin
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.pipeline import (
     ConditionalPrimitiveFeatureComponent,
@@ -29,11 +27,11 @@ from mlblack.pipeline import (
     SelectColumnsComponent,
     ZScoreNormalizeComponent,
 )
-from mlblack.assembly.spec import BiasSpec, CapabilitySpec, ComponentSpec, PipelineSpec, TrainerAssemblySpec
+from mlblack.assembly.spec import BiasSpec, CapabilitySpec, ComponentSpec, DataPipelineSpec, TrainerAssemblySpec
 
 
-def build_pipeline(spec: PipelineSpec | Mapping[str, Any] | None = None) -> DataPipeline:
-    pipeline_spec = PipelineSpec.from_value(spec)
+def build_pipeline(spec: DataPipelineSpec | Mapping[str, Any] | None = None) -> DataPipeline:
+    pipeline_spec = DataPipelineSpec.from_value(spec)
     components = []
     for component_spec in pipeline_spec.component_specs():
         if not component_spec.enabled:
@@ -42,12 +40,13 @@ def build_pipeline(spec: PipelineSpec | Mapping[str, Any] | None = None) -> Data
     return DataPipeline(components, name=pipeline_spec.name)
 
 
-def build_trainer(spec: TrainerAssemblySpec | Mapping[str, Any], data: NumericDataView) -> Trainer:
-    """Build one inner ML trainer.
+def build_trainer(spec: TrainerAssemblySpec | Mapping[str, Any], data: NumericDataView) -> Any:
+    """Build one ML-semantic solver facade.
 
-    This function intentionally does not build workflow/stage/group/backend
-    orchestration. nsgablack owns those layers. mlblack only assembles the
-    ML-specific inner trainer surface.
+    The returned object retains ``fit``/``TrainerResult`` vocabulary, while
+    Adapter-driven optimization is controlled by nsgablack's canonical
+    ``ComposableSolver`` lifecycle.  MLBlack only assembles data, model,
+    Problem, Codec, Provider, Artifact, and backend semantics.
     """
 
     trainer_spec = TrainerAssemblySpec.from_value(spec)
@@ -62,7 +61,7 @@ def build_trainer(spec: TrainerAssemblySpec | Mapping[str, Any], data: NumericDa
             trainer.add_bias(_build_bias(bias_spec))
     for capability_spec in trainer_spec.capability_specs():
         if capability_spec.enabled:
-            trainer.add_capability(_build_capability(capability_spec))
+            trainer.add_plugin(_build_capability(capability_spec))
     return trainer
 
 
@@ -86,7 +85,7 @@ def _build_capability(spec: CapabilitySpec) -> Any:
     name = str(spec.name).strip().lower()
     params = dict(spec.params)
     if name in {"checkpoint", "checkpoint_capability"}:
-        return CheckpointCapability(CheckpointConfig(**params))
+        return CheckpointResumePlugin(config=CheckpointResumeConfig(**params))
     if name in {"resource_audit", "resource"}:
         return ResourceAuditCapability()
     if name in {"experiment_tracker", "tracker", "tracking"}:
@@ -118,7 +117,7 @@ def _build_bias(spec: BiasSpec) -> Any:
     raise ValueError(f"unknown bias: {spec.name}")
 
 
-def _build_preset_trainer(preset: str, data: NumericDataView, params: Mapping[str, Any]) -> Trainer:
+def _build_preset_trainer(preset: str, data: NumericDataView, params: Mapping[str, Any]) -> Any:
     kwargs = dict(params)
     if preset in {"orthogonal_linear_point", "linear_point", "orthogonal_point"}:
         from mlblack.presets import build_orthogonal_linear_point_trainer
@@ -136,10 +135,10 @@ def _build_preset_trainer(preset: str, data: NumericDataView, params: Mapping[st
         from mlblack.presets import build_tree_boosting_estimator_search_trainer
 
         return build_tree_boosting_estimator_search_trainer(data, **kwargs)
-    if preset in {"numpy_mlp_torch_backprop", "torch_mlp", "neural_torch"}:
-        from mlblack.presets import build_numpy_mlp_torch_backprop_trainer
+    if preset == "mlp_regression":
+        from mlblack.presets import build_mlp_regression_trainer
 
-        return build_numpy_mlp_torch_backprop_trainer(data, **kwargs)
+        return build_mlp_regression_trainer(data, **kwargs)
     if preset in {"sklearn_mlp_estimator_search", "sklearn_mlp"}:
         from mlblack.presets import build_sklearn_mlp_estimator_search_trainer
 

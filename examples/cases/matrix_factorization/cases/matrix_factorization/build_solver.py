@@ -4,11 +4,11 @@
 Demonstrates matrix factorization as a gradient-based mlblack learning problem:
   1. Generate synthetic low-rank rating matrix R_ij = U_i @ V_j + noise
   2. Mask 80% of entries as "unobserved"
-  3. Recover U and V via framework GradientDescentAdapter through ComposableTrainer
+  3. Recover U and V via stable gradient.sgd through LearningSolver
   4. Compare against sklearn TruncatedSVD baseline
 
 Architecture:
-  MLBlack GradientDescentAdapter  (framework, no custom adapter needed!)
+  nsgablack GradientOptimizerAdapter (resolved by stable method ID)
   + MFRepresentation              (custom codec: flat(U,V) <-> U,V matrices)
   + MatrixFactorizationProblem    (custom: sparse MSE + analytic gradients)
   + StateL2Bias                   (framework, optional L2 penalty)
@@ -22,8 +22,8 @@ from pathlib import Path
 
 import numpy as np
 
-from mlblack.core.trainer import ComposableTrainer
-from mlblack.adapters.gradient_descent import GradientDescentAdapter
+from mlblack.integrations.nsgablack_control import build_learning_solver
+from mlblack.integrations.nsgablack_optimization import build_optimization_adapter
 from mlblack.bias import StateL2Bias
 
 _HERE = Path(__file__).resolve().parent
@@ -95,14 +95,17 @@ def build_mf_trainer(
         nmf=nmf,
         component_overrides=component_overrides,
     )
-    adapter = GradientDescentAdapter(learning_rate=lr, max_grad_norm=max_grad_norm)
+    adapter = build_optimization_adapter(
+        "gradient.sgd",
+        learning_rate=lr,
+        max_gradient_norm=max_grad_norm,
+    )
 
-    trainer = ComposableTrainer(
+    trainer = build_learning_solver(
         problem=problem,
         representation=representation,
         adapter=adapter,
         run_name=run_name,
-        constraint_penalty=1e6,
     )
 
     if l2_weight > 0:
@@ -199,7 +202,7 @@ def main(argv=None):
           f"({100.0 * (1 - mask.mean()):.1f}% missing)")
     print(f"    Data generation time: {t_gen:.4f}s")
 
-    print("\n[2] Building mlblack trainer (framework GradientDescentAdapter) ...")
+    print("\n[2] Building mlblack trainer (stable gradient.sgd) ...")
     trainer = build_mf_trainer(
         R, mask,
         k=args.k,

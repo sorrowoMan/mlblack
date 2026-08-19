@@ -35,14 +35,14 @@ def test_catalog_relations_and_flow_are_materialized(tmp_path: Path) -> None:
 
     assert result["relations"] > 0
     store = resolve_catalog_store(str(db))
-    relations = store.get_catalog_entry_relations("adapter.gradient_descent")
-    assert relations["flow"]["current_stage"] == "optimization"
-    assert relations["field_refs"]
+    relations = store.get_catalog_entry_relations("integration.nsgablack_optimization")
+    assert relations["flow"]["current_stage"] == "outer_bridge"
+    assert isinstance(relations["field_refs"], list)
 
-    payload = show_entry("adapter.gradient_descent", db_path=str(db))
+    payload = show_entry("integration.nsgablack_optimization", db_path=str(db))
     assert payload["relations"]["usage"]["minimal_wiring"]
-    assert catalog_flow("adapter.gradient_descent", db_path=str(db))["current_stage"] == "optimization"
-    neighbors = catalog_neighbors("adapter.gradient_descent", db_path=str(db))
+    assert catalog_flow("integration.nsgablack_optimization", db_path=str(db))["current_stage"] == "outer_bridge"
+    neighbors = catalog_neighbors("integration.nsgablack_optimization", db_path=str(db))
     assert "context_upstream" in neighbors
 
 

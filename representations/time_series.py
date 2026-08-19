@@ -5,7 +5,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.representation import ModelRepresentation
 from mlblack.core.types import UnknownState
 from mlblack.models.time_series import NaiveForecastModel
@@ -122,55 +122,64 @@ class BaselineForecastRepresentation(ModelRepresentation):
         }
 
 
-class FixedForecastModelRepresentation(ModelRepresentation):
-    """Representation wrapper for evaluating an already-built forecast model."""
+class ForecastModelSpecRepresentation(ModelRepresentation):
+    """Single-candidate Codec for one declarative forecast fit specification."""
 
-    name = "fixed_forecast_model"
-    context_requires = ("candidate.unknown_state", "candidate.forecast_model")
+    name = "forecast_model_spec"
+    context_requires = ("candidate.unknown_state", "candidate.model_spec")
     context_optional = ()
-    context_provides = ("candidate.forecast_model",)
+    context_provides = ("candidate.model_spec",)
     context_mutates = ()
     context_cache = ()
     requires_metrics = ()
     metrics_fallback = "strict"
-    context_notes = "Returns a prebuilt forecast model while preserving the Trainer/Problem protocol."
+    context_notes = "Decodes a declarative fit specification; the Problem/Provider owns fitting."
     contract = ComponentContract(
         name=name,
-        requires=("candidate.unknown_state", "candidate.forecast_model"),
-        provides=("candidate.forecast_model",),
+        requires=("candidate.unknown_state", "candidate.model_spec"),
+        provides=("candidate.model_spec",),
         supports_gradient=False,
         supports_batch=True,
         supports_resume=True,
-        metadata={"family": "time_series", "representation": "fixed_forecast_model"},
+        metadata={"family": "time_series", "representation": "forecast_model_spec"},
     )
 
-    def __init__(self, model: Any, *, metadata: Mapping[str, Any] | None = None) -> None:
-        self.model = model
+    def __init__(self, spec: Any, *, metadata: Mapping[str, Any] | None = None) -> None:
+        self.spec = spec
         self.metadata = dict(metadata or {})
-        self.dimension = 0
+        # NSGABlack candidates are non-empty numeric states.  This sentinel is
+        # a stable identity token, not a fake trainable hyperparameter.
+        self.dimension = 1
 
     def init(self, context: Mapping[str, Any]) -> UnknownState:
         _ = context
-        return UnknownState(values=np.zeros(0, dtype=float), metadata={"source": f"{self.name}_init"})
+        return UnknownState(values=np.zeros(1, dtype=float), metadata={"source": f"{self.name}_init"})
 
     def encode(self, model: Any, context: Mapping[str, Any] | None = None) -> UnknownState:
-        _ = model
         _ = context
+        if model is not self.spec and model != self.spec:
+            raise ValueError("ForecastModelSpecRepresentation only encodes its configured spec")
         return self.init({})
 
     def decode(self, state: UnknownState, context: Mapping[str, Any] | None = None) -> Any:
-        _ = state
+        values = np.asarray(state.as_array(), dtype=float).reshape(-1)
+        if values.shape != (1,):
+            raise ValueError("forecast model spec state must contain one identity token")
         _ = context
-        return self.model
+        return self.spec
+
+    def repair(self, state: UnknownState, context: Mapping[str, Any] | None = None) -> UnknownState:
+        del state, context
+        return self.init({})
 
     def describe(self) -> Mapping[str, Any]:
-        describe = getattr(self.model, "describe", None)
-        model_payload = describe() if callable(describe) else {"model_type": type(self.model).__name__}
+        describe = getattr(self.spec, "describe", None)
+        spec_payload = describe() if callable(describe) else {"spec_type": type(self.spec).__name__}
         return {
             "name": self.name,
             "family": "time_series",
             "dimension": int(self.dimension),
-            "model": model_payload,
+            "spec": spec_payload,
             "metadata": dict(self.metadata),
         }
 
@@ -188,5 +197,5 @@ def _bounds(bounds: Sequence[int], *, lower_floor: int) -> tuple[int, int]:
 __all__ = [
     "BaselineForecastRepresentation",
     "BaselineForecastSearchConfig",
-    "FixedForecastModelRepresentation",
+    "ForecastModelSpecRepresentation",
 ]

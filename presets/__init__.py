@@ -1,7 +1,11 @@
 ﻿from .classification import build_orthogonal_logistic_classification_trainer, build_orthogonal_softmax_classification_trainer
-from .linear import build_orthogonal_linear_interval_trainer, build_orthogonal_linear_point_trainer
+from .linear import (
+    build_linear_point_trainer,
+    build_orthogonal_linear_interval_trainer,
+    build_orthogonal_linear_point_trainer,
+)
 from .neural import (
-    build_numpy_mlp_torch_backprop_trainer,
+    build_mlp_regression_trainer,
     build_sklearn_mlp_estimator_search_trainer,
     build_tabular_tabnet_classification_trainer,
     build_tabular_tabnet_regression_trainer,
@@ -23,9 +27,10 @@ from .time_series import build_arima_sarimax_forecast_trainer, build_baseline_fo
 from .tree import build_tree_boosting_estimator_search_trainer, build_tree_estimator_search_trainer
 
 __all__ = [
-    "build_numpy_mlp_torch_backprop_trainer",
+    "build_mlp_regression_trainer",
     "build_tabular_tabnet_classification_trainer",
     "build_tabular_tabnet_regression_trainer",
+    "build_linear_point_trainer",
     "build_orthogonal_linear_interval_trainer",
     "build_orthogonal_linear_point_trainer",
     "build_orthogonal_logistic_classification_trainer",

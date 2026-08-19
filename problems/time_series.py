@@ -4,9 +4,15 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
+from mlblack.models.time_series import (
+    ARIMASARIMAXProvider,
+    ARIMASARIMAXSpec,
+    LinearAutoregressiveFitSpec,
+    LinearAutoregressiveForecastModel,
+)
 from mlblack.pipeline.data_views import TimeSeriesDataView
 
 
@@ -47,6 +53,30 @@ class TimeSeriesForecastingProblem(LearningProblem):
         self.objective_metrics = tuple(str(metric) for metric in objective_metrics)
         self.seasonal_period = int(seasonal_period)
         self.complexity_weight = float(complexity_weight)
+
+    def prepare_model_for_evaluation(
+        self,
+        model: Any,
+        state: UnknownState,
+        context: Mapping[str, Any],
+    ) -> Any:
+        del state
+        if isinstance(model, LinearAutoregressiveFitSpec):
+            return LinearAutoregressiveForecastModel.fit(
+                self.data,
+                model.window_config,
+                ridge=float(model.ridge),
+                metadata={
+                    **dict(model.metadata),
+                    "materialized_by": self.name,
+                },
+            )
+        if isinstance(model, ARIMASARIMAXSpec):
+            return ARIMASARIMAXProvider(model).fit(
+                self.data,
+                context=context,
+            )
+        return model
 
     def evaluate(self, model: Any, state: UnknownState, context: Mapping[str, Any]) -> Feedback:
         valid_size = _resolve_validation_size(context.get("time_series.validation_size", self.validation_size), self.data.n_obs)
@@ -102,6 +132,9 @@ class TimeSeriesForecastingProblem(LearningProblem):
                 "model_type": type(model).__name__,
             },
         )
+
+    def get_num_objectives(self) -> int:
+        return len(self.objective_metrics) + int(bool(self.complexity_weight))
 
     def describe(self) -> Mapping[str, Any]:
         return {

@@ -4,7 +4,7 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from mlblack.core.contracts import ComponentContract
+from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
 from mlblack.models.symbolic import SymbolicBasisSetModel, SymbolicExpressionModel
@@ -15,6 +15,7 @@ class FixedSymbolicRegressionProblem(LearningProblem):
     """Regression evaluator for fixed symbolic expression decoders."""
 
     name = "fixed_symbolic_regression"
+    objective_count = 2
     context_requires = ("candidate.model", "data.X_train", "data.y_train", "symbolic.expression_spec")
     context_optional = ("data.X_valid", "data.y_valid", "model.parameter_gradient")
     context_provides = (
@@ -126,6 +127,7 @@ class OrthogonalBasisEvaluationProblem(LearningProblem):
     """Evaluate a fitted symbolic basis set for orthogonality objectives."""
 
     name = "orthogonal_basis_evaluation"
+    objective_count = 3
     context_requires = ("candidate.symbolic_basis_model", "data.X_train", "symbolic.genome")
     context_optional = ("data.X_valid", "basis.artifact_ref")
     context_provides = ("feedback.objectives", "feedback.metrics", "feedback.signals", "basis.metrics", "symbolic.artifact")

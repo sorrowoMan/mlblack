@@ -1,0 +1,34 @@
+[[entry]]
+key = "numericizer.default"
+title = "DefaultNumericizer"
+kind = "numericizer"
+import_path = "mlblack.pipeline.numericizer.default:DefaultNumericizer"
+tags = ["data", "schema", "feature-space"]
+summary = "Converts schema-backed raw rows into NumericDataView."
+
+[[entry]]
+key = "numericizer.default_numericizer"
+title = "DefaultNumericizer"
+kind = "numericizer"
+import_path = "mlblack.pipeline.numericizer.default:DefaultNumericizer"
+tags = ["numericizer", "pipeline", "default"]
+summary = "DefaultNumericizer(plan: 'NumericizationPlan')"
+metadata = { "architecture_path" = "pipeline/pipeline.numericizer.default", "module" = "mlblack.pipeline.numericizer.default", "symbol" = "DefaultNumericizer" }
+
+[[entry]]
+key = "numericizer.target"
+title = "TargetCodec"
+kind = "numericizer"
+import_path = "mlblack.pipeline.numericizer.target_codec:TargetCodec"
+tags = ["numericizer", "pipeline", "target_codec"]
+summary = "TargetCodec(kind: 'str' = 'numeric', classes: 'Sequence[Any]' = (), metadata: 'Mapping[str, Any]' = <factory>)"
+metadata = { "architecture_path" = "pipeline/pipeline.numericizer.target_codec", "module" = "mlblack.pipeline.numericizer.target_codec", "symbol" = "TargetCodec" }
+
+[[entry]]
+key = "numericizer.vocabulary_tokenizer"
+title = "VocabularyTokenizer"
+kind = "numericizer"
+import_path = "mlblack.pipeline.numericizer.text:VocabularyTokenizer"
+tags = ["numericizer", "pipeline", "text"]
+summary = "Small local tokenizer/numericizer for transformer smoke tasks."
+metadata = { "architecture_path" = "pipeline/pipeline.numericizer.text", "module" = "mlblack.pipeline.numericizer.text", "symbol" = "VocabularyTokenizer" }

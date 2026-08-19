@@ -13,7 +13,7 @@ NeuralGraphSpec
   -> NeuralGraphCodec
   -> NeuralGraphRepresentation
   -> LearningProblem
-  -> OptimizerAdapter
+  -> nsgablack AlgorithmAdapter
   -> Artifact
 ```
 
@@ -34,7 +34,7 @@ Project stages, parallelism, and resource grants are handled by the shared Proje
 ## Runtime Chain
 
 ```text
-Trainer.compute_backend_session
+LearningSolver.compute_backend_session
   -> capability preflight
   -> NeuralGraphRepresentation.setup
   -> NeuralGraphCodec.parameter_layout(context)
@@ -51,7 +51,7 @@ Trainer.compute_backend_session
 | --- | --- |
 | Codec | defines how unknown state becomes a model |
 | Backend | defines tensor, lowering, loss, autograd, optimizer, artifact execution |
-| Trainer | runs one ML task inside the Case |
+| LearningSolver | projects ML semantics onto the canonical NSGABlack lifecycle |
 | Project L0 | grants resources and records effective runtime |
 
 Backends are not equivalent. A route that requires stateful module backward must fail fast on a backend that only supports functional gradients.

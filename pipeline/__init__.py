@@ -1,6 +1,6 @@
 from .base import DataPipeline, DataPipelineComponent, PipelineFitState
 from .data_views import GraphDataView, ImageContrastivePairDataView, ImageDataView, NumericDataView, PreferencePairDataView, TimeSeriesDataView, as_numeric_data_view, train_valid_split
-from .datasets import DatasetStreamConfig, NumericBatch, NumericBatchLoader, RowBatch, RowDatasetStream, TokenizedTextDatasetBuilder, TokenizedTextDatasetConfig
+from .datasets import DatasetStreamConfig, NumericBatch, NumericBatchLoader, NumericBatchSchedule, RowBatch, RowDatasetStream, TokenizedTextDatasetBuilder, TokenizedTextDatasetConfig
 from .components import IdentityComponent, SelectColumnsComponent, ZScoreNormalizeComponent
 from .sources import HiveQuerySource, JDBCQuerySource, S3ParquetSource
 from .model_conditioning import ModelConditionedTargetBuilder, ModelConditionedTargetComponent, ModelConditionedTargetConfig, build_model_conditioned_target
@@ -78,6 +78,7 @@ __all__ = [
     "NumericDataView",
     "NumericBatch",
     "NumericBatchLoader",
+    "NumericBatchSchedule",
     "NumericFeatureColumn",
     "NumericizationPlan",
     "OneHotGate",

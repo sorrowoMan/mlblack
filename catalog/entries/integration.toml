@@ -1,0 +1,80 @@
+[[entry]]
+key = "integration.nsgablack_gradient"
+title = "build_gradient_trainer"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_gradient:build_gradient_trainer"
+tags = ["integration", "nsgablack", "gradient", "provider", "trainer"]
+summary = "稳定 method ID 装配：nsgablack GradientOptimizerAdapter + mlblack Problem/Provider + BlackBase L0/StateRef runtime。"
+metadata = { "architecture_path" = "integrations.nsgablack_gradient", "methods" = ["gradient.sgd", "gradient.adam", "gradient.adamw"], "compute_backends" = ["torch", "jax", "tensorflow", "problem"] }
+
+[[entry]]
+key = "integration.nsgablack_optimization"
+title = "build_optimization_adapter"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_optimization:build_optimization_adapter"
+tags = ["integration", "nsgablack", "optimization", "stable-method", "adapter"]
+summary = "把 ML 用户词汇解析为稳定优化方法标识，并装配 nsgablack 的 provider-neutral Adapter。"
+metadata = { "architecture_path" = "integrations.nsgablack_optimization", "methods" = ["gradient.sgd", "gradient.adam", "gradient.adamw", "search.random_gaussian"] }
+
+[[entry]]
+key = "integration.learning_solver"
+title = "LearningSolver"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_control:LearningSolver"
+tags = ["integration", "nsgablack", "control-plane", "trainer-facade"]
+summary = "ML 语义 facade：保留 fit/TrainerResult 词汇，唯一优化生命周期由 nsgablack ComposableSolver 控制。"
+metadata = { "architecture_path" = "integrations.nsgablack_control", "control_plane" = "nsgablack.ComposableSolver", "semantic_owner" = "mlblack" }
+
+[[entry]]
+key = "integration.ml_learning_problem_bridge"
+title = "MLLearningProblemBridge"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_control:MLLearningProblemBridge"
+tags = ["integration", "nsgablack", "problem", "feedback"]
+summary = "把 MLBlack LearningProblem 的模型/状态/Feedback 语义投影为 NSGABlack BlackBoxProblem。"
+metadata = { "architecture_path" = "integrations.nsgablack_control", "source_protocol" = "mlblack.LearningProblem", "target_protocol" = "nsgablack.BlackBoxProblem" }
+
+[[entry]]
+key = "integration.ml_representation_bridge"
+title = "MLRepresentationBridge"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_control:MLRepresentationBridge"
+tags = ["integration", "nsgablack", "representation", "codec"]
+summary = "在仓库边界转换 UnknownState 与 ndarray；模型布局、初始化、修复和解码仍由 ML Codec 独占。"
+metadata = { "architecture_path" = "integrations.nsgablack_control", "source_protocol" = "blackbase.UnknownState", "target_protocol" = "nsgablack.ndarray" }
+
+[[entry]]
+key = "integration.nsgablack_learning_case_evaluator"
+title = "NsgablackLearningCaseEvaluator"
+kind = "integration"
+import_path = "mlblack.integrations.nsgablack_learning_case:NsgablackLearningCaseEvaluator"
+tags = ["integration", "nsgablack", "learning_case", "case_runtime"]
+summary = "Invoke a complete ML semantic child Case through the shared CaseRuntime."
+metadata = { "architecture_path" = "integrations.nsgablack_learning_case", "module" = "mlblack.integrations.nsgablack_learning_case", "symbol" = "NsgablackLearningCaseEvaluator" }
+
+[[entry]]
+key = "integration.pretrained_checkpoint_mapper"
+title = "PretrainedCheckpointMapper"
+kind = "integration"
+import_path = "mlblack.integrations.transformers_bridge:PretrainedCheckpointMapper"
+tags = ["integration", "integrations", "transformers_bridge"]
+summary = "Map an external checkpoint state_dict into an mlblack neural graph."
+metadata = { "architecture_path" = "integrations.transformers_bridge", "module" = "mlblack.integrations.transformers_bridge", "symbol" = "PretrainedCheckpointMapper" }
+
+[[entry]]
+key = "integration.pretrained_model_bridge"
+title = "PretrainedModelBridge"
+kind = "integration"
+import_path = "mlblack.integrations.transformers_bridge:PretrainedModelBridge"
+tags = ["integration", "integrations", "transformers_bridge"]
+summary = "Lazy pretrained-model loader for external-model/component use cases."
+metadata = { "architecture_path" = "integrations.transformers_bridge", "module" = "mlblack.integrations.transformers_bridge", "symbol" = "PretrainedModelBridge" }
+
+[[entry]]
+key = "integration.pretrained_tokenizer_bridge"
+title = "PretrainedTokenizerBridge"
+kind = "integration"
+import_path = "mlblack.integrations.transformers_bridge:PretrainedTokenizerBridge"
+tags = ["integration", "integrations", "transformers_bridge"]
+summary = "Lazy bridge to HuggingFace tokenizers."
+metadata = { "architecture_path" = "integrations.transformers_bridge", "module" = "mlblack.integrations.transformers_bridge", "symbol" = "PretrainedTokenizerBridge" }
