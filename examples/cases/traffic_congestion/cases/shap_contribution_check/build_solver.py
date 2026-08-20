@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.inspection import permutation_importance
 
-from mlblack.core import build_diagnostic_solver
+from mlblack.integrations import build_diagnostic_solver
 from mlblack.project.scaffold import print_case_check
 
 try:

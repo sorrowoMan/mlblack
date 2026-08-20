@@ -91,8 +91,41 @@ def test_shared_checkpoint_components_restore_provider_data_schedule() -> None:
     )
     actual = target_schedule.next_train()
 
-    assert {"evaluation_provider", "data_schedule"}.issubset(restored)
+    assert "evaluation_provider" in restored
+    assert "data_schedule" not in restored
     assert actual.indices == expected.indices
+
+
+def test_shared_checkpoint_rejects_provider_configuration_mismatch() -> None:
+    from nsgablack.plugins import CheckpointResumeConfig, CheckpointResumePlugin
+
+    data = _data()
+
+    def build(batch_size: int):
+        schedule = NumericBatchSchedule(
+            data,
+            DatasetStreamConfig(batch_size=batch_size, shuffle=True, seed=31),
+        )
+        return build_gradient_trainer(
+            problem=TabularNeuralRegressionProblem(data),
+            representation=_representation(31),
+            method="gradient.adam",
+            data_schedule=schedule,
+            provider_config=TorchEvaluationProviderConfig(publish_state_refs=True),
+        )
+
+    source = build(3)
+    writer = CheckpointResumePlugin()
+    writer.attach(source)
+    payload = writer._build_payload(solver=source, reason="provider-identity")
+
+    target = build(4)
+    reader = CheckpointResumePlugin(
+        config=CheckpointResumeConfig(strict=True)
+    )
+    reader.attach(target)
+    with pytest.raises(ValueError, match="configuration mismatch"):
+        reader._apply_component_states(target, payload["stateful_components"])
 
 
 def _representation(seed: int) -> NeuralGraphRepresentation:
@@ -182,19 +215,30 @@ def test_assembly_resolves_ml_optimizer_vocabulary_to_stable_method() -> None:
     assert type(trainer.evaluation_provider).__name__ == "TorchEvaluationProvider"
 
 
-def test_unified_builder_rejects_state_refs_without_checkpoint_gradient_shadow() -> None:
+def test_unified_builder_runs_device_only_gradients_with_checkpoint_slot_shadow() -> None:
     pytest.importorskip("torch")
     representation = _representation(7)
-    with pytest.raises(ValueError, match="inline_gradients=True"):
-        build_gradient_trainer(
-            problem=TabularNeuralRegressionProblem(_data()),
-            representation=representation,
-            method="gradient.adam",
-            provider_config=TorchEvaluationProviderConfig(
-                publish_state_refs=True,
-                inline_gradients=False,
-            ),
-        )
+    trainer = build_gradient_trainer(
+        problem=TabularNeuralRegressionProblem(_data()),
+        representation=representation,
+        method="gradient.adam",
+        provider_config=TorchEvaluationProviderConfig(
+            publish_state_refs=True,
+            inline_gradients=False,
+        ),
+    )
+
+    trainer.fit(max_steps=2)
+    feedback = trainer.last_evaluated_feedback[0]
+    adapter_state = trainer.adapter.get_state()
+
+    assert feedback.gradients is None
+    assert isinstance(feedback.gradient_ref, StateRef)
+    assert adapter_state["provider_transition"]["count"] == 2
+    assert adapter_state["provider_transition"]["needs_slot_seed"] is True
+    assert adapter_state["first_moment"] is not None
+    assert adapter_state["second_moment"] is not None
+    assert trainer.evaluation_provider.get_state()["live_state_count"] == 0
 
 
 def test_torch_provider_executes_version_fenced_gradient_transition() -> None:
@@ -219,7 +263,6 @@ def test_torch_provider_executes_version_fenced_gradient_transition() -> None:
     state_ref = feedback.info["evaluation_state_ref"]
     gradient_ref = feedback.gradient_ref
     adapter_runtime = trainer.adapter.get_state()["provider_transition"]
-    successor_ref = StateRef.from_dict(adapter_runtime["state_ref"])
     request = StateTransitionRequest(
         state_ref=state_ref,
         method_id="gradient.sgd",
@@ -233,7 +276,7 @@ def test_torch_provider_executes_version_fenced_gradient_transition() -> None:
         - (0.05 * np.asarray(feedback.gradients, dtype=float))
     )
 
-    assert successor_ref.version == state_ref.version + 1
+    assert adapter_runtime["state_ref"] is None
     assert adapter_runtime["count"] == 1
     assert np.allclose(expected_values, adapter_state.as_array(), atol=1e-6)
     assert trainer.evaluation_provider.get_state()["live_state_count"] == 0
@@ -242,7 +285,7 @@ def test_torch_provider_executes_version_fenced_gradient_transition() -> None:
         trainer.problem.gateway.transition(request, trainer.resource_context)
     with pytest.raises(StateVersionConflict):
         trainer.problem.gateway.materialize(
-            StateMaterializationRequest(state_ref=successor_ref),
+            StateMaterializationRequest(state_ref=state_ref.next_version()),
             trainer.resource_context,
         )
 
@@ -263,15 +306,11 @@ def test_torch_provider_owns_and_versions_adam_slots() -> None:
     )
     trainer.fit(max_steps=2)
     runtime = trainer.adapter.get_state()["provider_transition"]
-    slot_refs = {
-        name: StateRef.from_dict(payload)
-        for name, payload in runtime["slot_refs"].items()
-    }
-
     assert runtime["count"] == 2
-    assert set(slot_refs) == {"m", "v"}
-    assert slot_refs["m"].version == 1
-    assert slot_refs["v"].version == 1
+    assert runtime["slot_refs"] == {}
+    assert runtime["needs_slot_seed"] is True
+    assert trainer.adapter.get_state()["first_moment"] is not None
+    assert trainer.adapter.get_state()["second_moment"] is not None
     assert trainer.evaluation_provider.get_state()["live_state_count"] == 0
     assert trainer._last_state_release is not None
     assert trainer._last_state_release.released_count == 2
@@ -306,9 +345,9 @@ def test_provider_transition_checkpoint_resumes_from_materialized_shadow() -> No
     resumed = restored.adapter.get_population()[0].as_array()
 
     assert runtime["count"] == 2
-    assert runtime["state_ref"] is not None
-    assert set(runtime["slot_refs"]) == {"m", "v"}
-    assert runtime["needs_slot_seed"] is False
+    assert runtime["state_ref"] is None
+    assert runtime["slot_refs"] == {}
+    assert runtime["needs_slot_seed"] is True
     assert restored.adapter.get_state()["step_index"] == 2
     assert not np.allclose(resumed, expected_start)
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,6 +13,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+
+from blackbase.resources import ResourceContext, coerce_resource_context
 
 
 DEFAULT_DATASET_URL = (
@@ -62,22 +63,42 @@ def run_etf_temporal_forecast_multi_seed(
     suite_id: str = "etf_temporal_forecast",
     output_dir: str | Path | None = None,
     potential_params_override: Mapping[str, Any] | None = None,
+    resource_context: Mapping[str, Any] | ResourceContext | None = None,
+    panel_builder: Any | None = None,
 ) -> EtfTemporalForecastResult:
     config = _coerce_config(cfg)
     wf = _coerce_walkforward(walkforward)
     out_dir = Path(output_dir or config.output_dir).expanduser().resolve()
-    out_dir.mkdir(parents=True, exist_ok=True)
 
     returns = _load_returns(config.dataset_url)
-    panel = _build_panel(returns, horizon=int(config.target_horizon))
+    grant = coerce_resource_context(resource_context)
+    threads = max(1, int(grant.threads or 1))
+    panel = (
+        panel_builder.build_panel(returns)
+        if panel_builder is not None
+        else _build_panel(returns, horizon=int(config.target_horizon))
+    )
     records: list[dict[str, Any]] = []
     for seed in tuple(int(s) for s in seeds):
-        records.extend(_evaluate_seed(panel, config, wf, int(seed), potential_params_override))
+        records.extend(
+            _evaluate_seed(
+                panel,
+                config,
+                wf,
+                int(seed),
+                potential_params_override,
+                threads=threads,
+            )
+        )
 
-    summary = _summarize(records, config, wf, returns, suite_id=suite_id, lane_bundle=potential_params_override)
-    (out_dir / "etf_temporal_forecast_summary.json").write_text(
-        json.dumps(summary, indent=2, sort_keys=True),
-        encoding="utf-8",
+    summary = _summarize(
+        records,
+        config,
+        wf,
+        returns,
+        suite_id=suite_id,
+        lane_bundle=potential_params_override,
+        resource_context=grant,
     )
     return EtfTemporalForecastResult(summary=summary, output_dir=out_dir, records=tuple(records))
 
@@ -90,6 +111,8 @@ def run_etf_walkforward_multi_seed(
     suite_id: str = "etf_temporal_forecast",
     output_dir: str | Path | None = None,
     potential_params_override: Mapping[str, Any] | None = None,
+    resource_context: Mapping[str, Any] | ResourceContext | None = None,
+    panel_builder: Any | None = None,
 ) -> EtfTemporalForecastResult:
     return run_etf_temporal_forecast_multi_seed(
         cfg=cfg,
@@ -98,6 +121,8 @@ def run_etf_walkforward_multi_seed(
         suite_id=suite_id,
         output_dir=output_dir,
         potential_params_override=potential_params_override,
+        resource_context=resource_context,
+        panel_builder=panel_builder,
     )
 
 
@@ -180,6 +205,8 @@ def _evaluate_seed(
     wf: WalkForwardSpec,
     seed: int,
     lane_bundle: Mapping[str, Any] | None,
+    *,
+    threads: int,
 ) -> list[dict[str, Any]]:
     dates = tuple(pd.Index(panel["date"]).drop_duplicates().sort_values())
     records: list[dict[str, Any]] = []
@@ -196,7 +223,17 @@ def _evaluate_seed(
         test_dates = _cap_dates(test_dates, panel, int(wf.max_test_panel_rows), from_tail=False)
         train = panel[panel["date"].isin(train_dates)].copy()
         test = panel[panel["date"].isin(test_dates)].copy()
-        records.append(_evaluate_fold(train, test, cfg, seed=seed, fold_idx=fold_idx, lane_bundle=lane_bundle))
+        records.append(
+            _evaluate_fold(
+                train,
+                test,
+                cfg,
+                seed=seed,
+                fold_idx=fold_idx,
+                lane_bundle=lane_bundle,
+                threads=threads,
+            )
+        )
         start += int(wf.step_size)
         fold_idx += 1
     return records
@@ -219,6 +256,7 @@ def _evaluate_fold(
     seed: int,
     fold_idx: int,
     lane_bundle: Mapping[str, Any] | None,
+    threads: int,
 ) -> dict[str, Any]:
     feature_cols = [
         "ret_lag_1",
@@ -239,7 +277,7 @@ def _evaluate_fold(
     predictions: dict[str, np.ndarray] = {}
     model_metrics: dict[str, dict[str, float]] = {}
     for name in model_names:
-        estimator = _build_model(name, seed)
+        estimator = _build_model(name, seed, threads=threads)
         estimator.fit(x_train, y_train)
         pred = np.asarray(estimator.predict(x_test), dtype=float).reshape(-1)
         predictions[name] = pred
@@ -278,7 +316,7 @@ def _models_from_bundle(cfg: EtfTemporalForecastConfig, lane_bundle: Mapping[str
     return tuple(dict.fromkeys(normalized))
 
 
-def _build_model(name: str, seed: int) -> Any:
+def _build_model(name: str, seed: int, *, threads: int = 1) -> Any:
     key = str(name).lower().strip()
     if key == "ridge":
         return make_pipeline(StandardScaler(), Ridge(alpha=1.0))
@@ -287,7 +325,13 @@ def _build_model(name: str, seed: int) -> Any:
     if key in {"hist_gradient_boosting", "hgbt", "gbdt"}:
         return HistGradientBoostingRegressor(max_iter=160, learning_rate=0.04, l2_regularization=0.05, random_state=seed)
     if key == "random_forest":
-        return RandomForestRegressor(n_estimators=96, max_depth=7, min_samples_leaf=20, n_jobs=-1, random_state=seed)
+        return RandomForestRegressor(
+            n_estimators=96,
+            max_depth=7,
+            min_samples_leaf=20,
+            n_jobs=max(1, int(threads)),
+            random_state=seed,
+        )
     if key == "mlp_sklearn":
         return make_pipeline(
             StandardScaler(),
@@ -399,6 +443,7 @@ def _summarize(
     *,
     suite_id: str,
     lane_bundle: Mapping[str, Any] | None,
+    resource_context: ResourceContext,
 ) -> dict[str, Any]:
     aggregate = {
         f"{metric}_mean": _mean(records, metric)
@@ -431,6 +476,7 @@ def _summarize(
         },
         "walkforward": wf.__dict__,
         "lane_bundle": lane_bundle,
+        "resource_context": resource_context.as_dict(),
         "aggregate": aggregate,
         "fold_count": int(len(records)),
         "records": list(records),

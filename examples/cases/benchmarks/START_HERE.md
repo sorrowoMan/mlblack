@@ -1,8 +1,9 @@
-# Start Here: benchmarks
+# 从这里开始
+
+先运行：
 
 ```powershell
-python examples/cases/benchmarks/run_project.py --check
-python examples/cases/benchmarks/run_project.py --check --build-check
+python examples\cases\benchmarks\run_project.py --check --build-check
 ```
 
-Use `cases/<case>/run_solver.py` only for single-Case debugging. Formal runs start at `run_project.py`.
+确认四个真实 Trainer Case 及其资源绑定后，再执行完整基准。

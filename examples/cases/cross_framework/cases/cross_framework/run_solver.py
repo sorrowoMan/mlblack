@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# CLI contract: --check builds the real assembly without running the legacy example.
+# CLI contract: --check builds the real nested Case assembly without executing it.
 
 from pathlib import Path
 import sys

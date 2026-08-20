@@ -100,25 +100,6 @@ class DiagnosticRepresentation(ModelRepresentation):
         return None
 
 
-def build_diagnostic_solver(
-    runner: DiagnosticRunner,
-    *,
-    name: str,
-    resource_context: Mapping[str, Any] | None = None,
-) -> Any:
-    from nsgablack.adapters.fixed_candidate import FixedCandidateAdapter
-    from mlblack.integrations.nsgablack_control import build_learning_solver
-
-    problem = DiagnosticProblem(runner, name=f"{name}_problem")
-    return build_learning_solver(
-        problem=problem,
-        representation=DiagnosticRepresentation(),
-        adapter=FixedCandidateAdapter(),
-        run_name=str(name),
-        resource_context=resource_context,
-    )
-
-
 def _compact_metrics(payload: Mapping[str, Any]) -> dict[str, Any]:
     metrics: dict[str, Any] = {}
     for key, value in payload.items():
@@ -131,5 +112,4 @@ __all__ = [
     "DiagnosticProblem",
     "DiagnosticRepresentation",
     "DiagnosticRunner",
-    "build_diagnostic_solver",
 ]

@@ -574,9 +574,6 @@ class LearningSolver(ComposableSolver):
         provider = getattr(self, "evaluation_provider", None)
         if provider is not None:
             components["evaluation_provider"] = provider
-            schedule = getattr(provider, "data_schedule", None)
-            if schedule is not None:
-                components["data_schedule"] = schedule
         components.update(super().checkpoint_components())
         components["model_representation"] = self.model_representation
         semantic_state = getattr(self.semantic_problem, "get_state", None)

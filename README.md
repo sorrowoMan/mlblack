@@ -7,8 +7,8 @@ is responsible for optimization/search semantics; `mlblack` is responsible for
 ML semantics: representations, codecs, heads, problems, inner fitting, artifacts,
 reports, and the symbolic engine.
 
-Shared substrate baseline: `blackbase>=0.3.3,<0.4.0`; optimization methods are
-resolved from `nsgablack>=0.3.4,<0.4.0`, while ML semantics and compute Providers
+Shared substrate baseline: `blackbase>=0.3.6,<0.4.0`; optimization methods are
+resolved from `nsgablack>=0.3.7,<0.4.0`, while ML semantics and compute Providers
 remain in mlblack.
 MLBlack imports Case orchestration, L0 grants, call binding, Context/Snapshot,
 Catalog primitives and runtime projection envelopes directly from BlackBase;
@@ -66,19 +66,26 @@ lifecycle, cancellation, budget and snapshot execution happens once inside
 `nsgablack.ComposableSolver`. Closed-form and third-party `estimator.fit()`
 routes are ML Problem/Provider implementations inside that same lifecycle;
 MLBlack contains no private Trainer loop or optimization Adapter hierarchy.
+Feedback is immutable evidence. ML Problems/Providers publish an explicit loss
+or an explicitly named objective projection; outer ML/optimization composition
+does not fall back to BlackBase objective averaging or a fixed constraint penalty.
 
 ## Complex Orchestration
 
 Use the shared Project/Case substrate for complex orchestration. A `mlblack` case
 can be outer or inner; it should not recreate a private orchestration or L0 stack.
 
-Current formal cross-framework examples:
+Current formal cross-framework example:
 
 ```powershell
-python examples\cases\cross_framework\run_project.py --check --build-check
 python examples\cases\symbolic_orthogonal_nested\run_project.py --check --build-check
 python examples\cases\symbolic_orthogonal_nested\run_project.py -- --stage1-generations 1 --stage2-generations 1 --stage1-pop-size 4 --stage2-pop-size 4 --stage1-inner-steps 2 --stage2-inner-steps 2
 ```
+
+`examples/cases/cross_framework` is a real outer Solver Case. Its Problem invokes
+the independent `inner_training` Trainer Case through `CaseRunRequest`; lineage,
+child grants, cancellation and the versioned `TrainerResult` envelope all travel
+through the shared BlackBase substrate.
 
 ## Symbolic Nested Learning
 

@@ -212,7 +212,11 @@ def _load_flat_parameters(module: Any, values: np.ndarray) -> None:
             block = values[offset : offset + size].reshape(tuple(parameter.shape))
             offset += size
             parameter.copy_(
-                torch.as_tensor(block, dtype=parameter.dtype, device=parameter.device)
+                torch.as_tensor(
+                    np.array(block, copy=True),
+                    dtype=parameter.dtype,
+                    device=parameter.device,
+                )
             )
 
 

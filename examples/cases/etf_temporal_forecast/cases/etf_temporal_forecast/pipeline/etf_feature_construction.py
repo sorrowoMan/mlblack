@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 import pandas as pd
+import numpy as np
+
+from mlblack.core import ModelRepresentation, UnknownState
+
+try:
+    from ..problem.etf_temporal_problem import EtfTemporalCandidate
+except ImportError:  # direct canonical CLI execution
+    from problem.etf_temporal_problem import EtfTemporalCandidate  # type: ignore
 
 
 @dataclass(frozen=True)
@@ -66,3 +75,46 @@ class EtfFeatureBuilder:
         panel = pd.concat(frames, ignore_index=True)
         panel["ticker_code"] = pd.Categorical(panel["ticker"]).codes.astype(float)
         return panel.dropna(axis=0).reset_index(drop=True)
+
+
+class EtfTemporalRepresentation(ModelRepresentation):
+    """Encode one explicit walk-forward procedure as an ML candidate."""
+
+    name = "etf_temporal_procedure"
+
+    def __init__(
+        self,
+        potential_params_override: Mapping[str, object] | None = None,
+    ) -> None:
+        self.potential_params_override = (
+            None
+            if potential_params_override is None
+            else dict(potential_params_override)
+        )
+
+    def init(self, context) -> UnknownState:
+        del context
+        return UnknownState(
+            values=np.zeros(1, dtype=float),
+            metadata={"procedure": "walk_forward_multi_seed"},
+        )
+
+    def decode(self, state: UnknownState, context=None) -> EtfTemporalCandidate:
+        del state, context
+        return EtfTemporalCandidate(self.potential_params_override)
+
+    def encode(self, model: EtfTemporalCandidate, context=None) -> UnknownState:
+        del context
+        if not isinstance(model, EtfTemporalCandidate):
+            raise TypeError("ETF representation can only encode EtfTemporalCandidate")
+        return UnknownState(
+            values=np.zeros(1, dtype=float),
+            metadata={"procedure": "walk_forward_multi_seed"},
+        )
+
+
+__all__ = [
+    "EtfFeatureBuilder",
+    "EtfTemporalRepresentation",
+    "FeatureBuildSpec",
+]

@@ -1,74 +1,88 @@
-# -*- coding: utf-8 -*-
-"""Canonical build entry for a migrated example case.
-
-This case preserves an older standalone demo under original/. It exposes a
-standard build_solver() surface so the shared Project substrate can discover
-and run it as a Case.
-"""
-
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass, field
-from pathlib import Path
-import runpy
+from typing import Any, Mapping
+
+from nsgablack.adapters.gaussian_search import (
+    GaussianSearchAdapter,
+    GaussianSearchConfig,
+)
+from nsgablack.core.composable_solver import ComposableSolver
 
 from mlblack.project.scaffold import print_case_check
 
-_HERE = Path(__file__).resolve().parent
+from pipeline.main import build_pipeline
+from problem.example_problem import NestedTrainerProblem
 
 
-@dataclass
-class MigratedExampleRunner:
-    name: str
-    original_path: Path
-    resource_context: dict = field(default_factory=dict)
+class CrossFrameworkOuterSolver(ComposableSolver):
+    """Outer optimizer that forwards the injected Case runtime to its Problem."""
 
-    def set_resource_context(self, context):
-        self.resource_context = dict(context or {})
+    def set_case_runtime(self, runtime):
+        self.case_runtime = runtime
+        self.problem.set_case_runtime(runtime)
         return self
 
-    def run(self) -> None:
-        _run_original(self.original_path)
 
+def build_solver(
+    config=None,
+    *,
+    resource_context: Mapping[str, Any] | None = None,
+    component_overrides: Mapping[str, Any] | None = None,
+) -> CrossFrameworkOuterSolver:
+    del config
+    overrides = dict(component_overrides or {})
+    problem_builder = overrides.pop("problem", NestedTrainerProblem)
+    pipeline_builder = overrides.pop("pipeline", build_pipeline)
+    adapter_builder = overrides.pop("adapter", GaussianSearchAdapter)
+    if overrides:
+        raise ValueError(f"unsupported cross-framework overrides: {sorted(overrides)}")
 
-def _run_original(original_path: Path) -> None:
-    if original_path.is_file():
-        runpy.run_path(str(original_path), run_name="__main__")
-        return
-    for candidate in (
-        original_path / "run_case.py",
-        original_path / "server.py",
-        original_path / "neural_graph_benchmark_matrix.py",
-        original_path / "symbolic_orthogonal_nested_benchmark.py",
-        original_path / "__main__.py",
-    ):
-        if candidate.exists():
-            runpy.run_path(str(candidate), run_name="__main__")
-            return
-    raise FileNotFoundError(f"No runnable entrypoint found under {original_path}")
-
-
-def build_solver(config=None, *, resource_context=None, component_overrides=None) -> MigratedExampleRunner:
-    del config, component_overrides
-    return MigratedExampleRunner(
-        name="cross_framework",
-        original_path=_HERE / "original" / "cross_framework",
-        resource_context=dict(resource_context or {}),
+    problem = problem_builder() if callable(problem_builder) else problem_builder
+    pipeline = (
+        pipeline_builder(problem, resource_context=resource_context)
+        if callable(pipeline_builder)
+        else pipeline_builder
     )
+    adapter = (
+        adapter_builder(
+            GaussianSearchConfig(
+                population_size=2,
+                mutation_scale=0.35,
+                random_seed=17,
+                initialization="population",
+                objective_aggregation="first",
+            )
+        )
+        if adapter_builder is GaussianSearchAdapter
+        else adapter_builder() if callable(adapter_builder) else adapter_builder
+    )
+    solver = CrossFrameworkOuterSolver(
+        problem,
+        adapter=adapter,
+        representation_pipeline=pipeline,
+    )
+    solver.max_steps = 1
+    solver.set_random_seed(17)
+    if resource_context is not None:
+        solver.set_resource_context(resource_context)
+    return solver
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Run the migrated cross-framework case.")
-    parser.add_argument("--check", action="store_true", help="Build and validate only; do not run.")
+    parser = argparse.ArgumentParser(description="Run the formal nested cross-framework Case")
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
-    runner = build_solver()
+    solver = build_solver()
     if args.check:
-        print_case_check(runner)
+        print_case_check(solver)
         return 0
-    runner.run()
+    print(solver.run())
     return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
+
+
+__all__ = ["CrossFrameworkOuterSolver", "build_solver", "main"]

@@ -1,6 +1,6 @@
-# 04. Shared Orchestration And Resource Layers
+# 04. 共享编排与资源层
 
-This file name is kept for compatibility, but the architecture statement is unified:
+三仓共享同一套编排和资源口径：
 
 - Orchestration belongs to shared Project substrate.
 - Resource grants belong to shared Project L0 substrate.
@@ -17,12 +17,12 @@ This file name is kept for compatibility, but the architecture statement is unif
 
 ## 2) Entry Resolution
 
-By `.case kind`:
+无论 `.case kind` 是什么：
 
 - `solver` -> `build_solver.py` / `run_solver.py`
-- `trainer` -> `build_trainer.py` / `run_trainer.py`
+- `trainer` -> `build_solver.py` / `run_solver.py`
 
-No dual primary entry.
+Trainer 命名文件只能作为薄别名，不能形成第二主入口。
 
 ## 3) Resource Context Rule
 

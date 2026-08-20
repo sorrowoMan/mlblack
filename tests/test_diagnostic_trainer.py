@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from mlblack.core import Feedback, build_diagnostic_solver
+from mlblack.core import Feedback
+from mlblack.integrations import build_diagnostic_solver
 from mlblack.integrations import LearningSolver
 from nsgablack.adapters import FixedCandidateAdapter
 
@@ -17,7 +18,7 @@ def test_diagnostic_uses_learning_solver_and_runs_once() -> None:
         name="schema_check",
         resource_context={"threads": 2, "namespace": "tests.schema"},
     )
-    result = solver.fit(max_steps=1)
+    result = solver.fit()
 
     assert isinstance(solver, LearningSolver)
     assert isinstance(solver.adapter, FixedCandidateAdapter)

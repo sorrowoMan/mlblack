@@ -81,6 +81,7 @@ def build_mf_trainer(
     nmf=False,
     run_name="mf_rec",
     component_overrides=None,
+    resource_context=None,
 ):
     from problem.matrix_factorization_problem import MatrixFactorizationProblem
     from pipeline.main import build_pipeline
@@ -106,6 +107,7 @@ def build_mf_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
     )
 
     if l2_weight > 0:
@@ -133,7 +135,7 @@ def build_solver(
 ):
     """Canonical unified scaffold entry; returns the assembled Trainer."""
 
-    del config, resource_context
+    del config
     R, _, mask, _, _, _ = generate_synthetic_data(
         n_users=n_users,
         n_items=n_items,
@@ -153,6 +155,7 @@ def build_solver(
         nmf=nmf,
         run_name="mf_demo",
         component_overrides=component_overrides,
+        resource_context=resource_context,
     )
 
 

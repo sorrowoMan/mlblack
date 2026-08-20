@@ -196,7 +196,12 @@ class TransformerSpecSearchProblem(_BlackBoxProblem, ContractMixin):
         result = trainer.fit(max_steps=int(self.config.inner_steps))
         if result.best_feedback is None:
             raise RuntimeError("inner TransformerSpec fit produced no feedback")
-        loss = float(result.best_feedback.loss if result.best_feedback.loss is not None else result.best_feedback.scalar_score())
+        if result.best_feedback.loss is None:
+            raise RuntimeError(
+                "inner TransformerSpec fit must publish an explicit loss; "
+                "the outer Problem will not invent a scalarization from objectives"
+            )
+        loss = float(result.best_feedback.loss)
         complexity = float(_parameter_count_from_report(result.report)) * float(self.config.complexity_weight)
         objectives = (loss, complexity)
         record = TransformerSpecEvaluationRecord(

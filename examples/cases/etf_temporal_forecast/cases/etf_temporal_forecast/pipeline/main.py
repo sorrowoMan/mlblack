@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from .etf_feature_construction import EtfFeatureBuilder, FeatureBuildSpec
+from .etf_feature_construction import (
+    EtfFeatureBuilder,
+    EtfTemporalRepresentation,
+    FeatureBuildSpec,
+)
 
 
 def build_pipeline(
@@ -20,4 +24,9 @@ def build_pipeline(
     return overrides.get("feature_builder") or EtfFeatureBuilder(spec)
 
 
-__all__ = ["EtfFeatureBuilder", "FeatureBuildSpec", "build_pipeline"]
+__all__ = [
+    "EtfFeatureBuilder",
+    "EtfTemporalRepresentation",
+    "FeatureBuildSpec",
+    "build_pipeline",
+]

@@ -42,7 +42,6 @@ from .diagnostic import (
     DiagnosticProblem,
     DiagnosticRepresentation,
     DiagnosticRunner,
-    build_diagnostic_solver,
 )
 from blackbase.contracts import ComponentContract, ContractMixin, combine_contracts
 from blackbase.resources import ResourceAudit, ResourceContext, ResourceEvent
@@ -110,7 +109,6 @@ __all__ = [
     "TypedModelArtifact",
     "UnknownState",
     "XGBoostArtifact",
-    "build_diagnostic_solver",
     "build_trainer_state",
     "combine_contracts",
     "get_compute_backend_from_context",

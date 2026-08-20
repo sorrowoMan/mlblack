@@ -60,7 +60,7 @@ def ols_var1(X):
     return A_ols.T
 
 
-def build_granger_trainer(X, *, l1_weight=0.002, lr=1.0, max_grad_norm=1e3, run_name="granger_demo", component_overrides=None):
+def build_granger_trainer(X, *, l1_weight=0.002, lr=1.0, max_grad_norm=1e3, run_name="granger_demo", component_overrides=None, resource_context=None):
     from problem.granger_causality_problem import GrangerCausalityProblem
     from pipeline.main import build_pipeline
 
@@ -79,6 +79,7 @@ def build_granger_trainer(X, *, l1_weight=0.002, lr=1.0, max_grad_norm=1e3, run_
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
     )
 
     return trainer
@@ -99,7 +100,7 @@ def build_solver(
 ):
     """Canonical unified scaffold entry; returns the assembled Trainer."""
 
-    del config, resource_context
+    del config
     X_raw, _ = generate_var1_data(n_timesteps=n_timesteps, n_vars=n_vars, noise=noise, seed=seed)
     X, _, _ = standardize(X_raw)
     return build_granger_trainer(
@@ -109,6 +110,7 @@ def build_solver(
         max_grad_norm=max_grad_norm,
         run_name="granger_case",
         component_overrides=component_overrides,
+        resource_context=resource_context,
     )
 
 

@@ -1,0 +1,2 @@
+name = benchmark_tiny_gnn_classification
+kind = trainer

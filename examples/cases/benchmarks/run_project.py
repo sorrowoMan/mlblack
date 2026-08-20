@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-"""Project-level entrypoint for this mlblack example project."""
-
 from __future__ import annotations
 
 import sys
@@ -11,9 +8,9 @@ def _ensure_repo_importable() -> None:
     here = Path(__file__).resolve()
     for parent in (here.parent, *here.parents):
         if (parent / "pyproject.toml").is_file() and (parent / "mlblack.py").is_file():
-            text = str(parent.parent)
-            if text not in sys.path:
-                sys.path.insert(0, text)
+            repo_parent = str(parent.parent)
+            if repo_parent not in sys.path:
+                sys.path.insert(0, repo_parent)
             return
 
 

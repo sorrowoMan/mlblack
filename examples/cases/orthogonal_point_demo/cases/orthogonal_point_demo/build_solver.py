@@ -29,14 +29,29 @@ def build_solver(
 ):
     """Assemble and return the inner trainer using the canonical case entry."""
 
-    del config, component_overrides
-    data = build_pipeline(
-        seed=int(seed),
-        n_samples=int(n_samples),
-        valid_ratio=float(valid_ratio),
-        feature_names=("x1", "x2"),
+    del config
+    overrides = dict(component_overrides or {})
+    pipeline_builder = overrides.pop("pipeline", build_pipeline)
+    trainer_builder = overrides.pop(
+        "trainer",
+        build_orthogonal_linear_point_trainer,
     )
-    trainer = build_orthogonal_linear_point_trainer(
+    if overrides:
+        raise ValueError(
+            "unsupported orthogonal_point_demo component overrides: "
+            f"{sorted(overrides)}"
+        )
+    data = (
+        pipeline_builder(
+            seed=int(seed),
+            n_samples=int(n_samples),
+            valid_ratio=float(valid_ratio),
+            feature_names=("x1", "x2"),
+        )
+        if callable(pipeline_builder)
+        else pipeline_builder
+    )
+    trainer = trainer_builder(
         data,
         learning_rate=float(learning_rate),
         l2=float(l2),

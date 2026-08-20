@@ -34,6 +34,7 @@ def build_tsne_trainer(
     exaggeration_steps: int = 100,
     run_name: str = "tsne_digits",
     component_overrides=None,
+    resource_context=None,
 ) -> LearningSolver:
     n_samples = X.shape[0]
 
@@ -56,6 +57,7 @@ def build_tsne_trainer(
         representation=representation,
         adapter=adapter,
         run_name=run_name,
+        resource_context=resource_context,
     )
     return trainer
 
@@ -72,7 +74,7 @@ def build_solver(
 ):
     """Canonical unified scaffold entry; returns the assembled Trainer."""
 
-    del config, resource_context
+    del config
     digits = load_digits()
     X = digits.data.astype(np.float64)
     return build_tsne_trainer(
@@ -82,6 +84,7 @@ def build_solver(
         exaggeration=exaggeration,
         exaggeration_steps=exaggeration_steps,
         component_overrides=component_overrides,
+        resource_context=resource_context,
     )
 
 

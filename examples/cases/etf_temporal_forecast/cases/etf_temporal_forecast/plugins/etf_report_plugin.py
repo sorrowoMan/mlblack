@@ -41,6 +41,7 @@ class EtfReportPlugin(Capability):
         write_json: bool = True,
         write_markdown: bool = True,
     ) -> None:
+        super().__init__(name=self.name)
         self.spec = EtfReportSpec(
             output_dir=str(output_dir),
             run_id=str(run_id),
@@ -52,7 +53,16 @@ class EtfReportPlugin(Capability):
         output_dir = Path(self.spec.output_dir).expanduser().resolve()
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        summary = dict(report or {})
+        semantic_result = getattr(
+            getattr(trainer, "semantic_problem", None),
+            "last_result",
+            None,
+        )
+        summary = (
+            dict(semantic_result.summary)
+            if semantic_result is not None
+            else dict(report or {})
+        )
         payload = {
             "run_id": self.spec.run_id,
             "summary": summary,

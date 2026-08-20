@@ -1,15 +1,16 @@
-# 00. Assembly API Reference
+# 00. 统一装配 API 参考
 
 `mlblack` follows the same Project/Case assembly substrate.
 
-## 1) Case primary entry by kind
+## 1）唯一规范入口
 
-| `.case kind` | Primary assembly | Primary run |
+| `.case kind` | 规范装配入口 | 规范运行入口 |
 | --- | --- | --- |
 | `solver` | `build_solver.py:build_solver()` | `run_solver.py` |
-| `trainer` | `build_trainer.py:build_trainer()` | `run_trainer.py` |
+| `trainer` | `build_solver.py:build_solver()` | `run_solver.py` |
 
-No dual primary entries.
+`kind` 只表达语义与结果投影，不改变入口解析。`build_trainer.py` 必须是
+`build_solver` 的薄别名，`run_trainer.py` 必须只转发到 `run_solver.main`。
 
 ## 2) Pipeline contract
 
@@ -21,10 +22,10 @@ No dual primary entries.
 
 ```python
 def build_solver(config=None, *, resource_context=None, component_overrides=None): ...
-def build_trainer(config=None, *, resource_context=None, component_overrides=None): ...
+def build_solver(config=None, *, resource_context=None, component_overrides=None): ...
 ```
 
-The same signatures are expected in `nsgablack` tutorial and templates.
+Trainer 别名不得维护第二份签名或装配逻辑。
 
 ## 4) Slot Kernel 桥接
 

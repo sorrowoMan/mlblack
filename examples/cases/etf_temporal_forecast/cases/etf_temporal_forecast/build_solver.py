@@ -1,76 +1,33 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-if __package__ in {None, ""}:
-    import sys
+from nsgablack.core import BudgetController
 
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from config import (  # type: ignore
-        EtfCaseComponentSpec,
-        EtfFeatureBuilder,
-        EtfObservabilityPlugin,
-        EtfReportPlugin,
-        EtfTemporalProblem,
-    )
-    from pipeline.main import build_pipeline  # type: ignore
-else:
-    # Import from case-local components (standard scaffold layer)
-    from .config import EtfCaseComponentSpec, EtfFeatureBuilder, EtfObservabilityPlugin, EtfReportPlugin, EtfTemporalProblem
-    from .pipeline.main import build_pipeline
-
-# Still use integration entry for execution (backward compatible)
+from mlblack.integrations import build_learning_solver, build_optimization_adapter
 from mlblack.integrations.etf_temporal_forecast import (
     DEFAULT_DATASET_URL,
-    EtfTemporalForecastConfig,
     WalkForwardSpec,
-    run_etf_temporal_forecast_multi_seed,
 )
 
-
-@dataclass
-class EtfTemporalForecastRunner:
-    """
-    Canonical runner: orchestrates problem, pipeline, and plugins.
-    
-    New scaffold: case-local components expose cleaner interfaces.
-    Backward compatible: still uses integration entry for execution.
-    """
-
-    problem: EtfTemporalProblem
-    feature_builder: EtfFeatureBuilder
-    cfg: EtfTemporalForecastConfig
-    walkforward: WalkForwardSpec
-    plugins: tuple[object, ...] = ()
-    seeds: tuple[int, ...] = (42,)
-    suite_id: str = "etf_temporal_forecast"
-    output_dir: Path = Path("runs/etf_temporal_forecast")
-    resource_context: Mapping[str, object] | None = None
-
-    def set_resource_context(self, context):
-        self.resource_context = dict(context or {})
-        return self
-
-    def run(self):
-        """Execute via problem.evaluate() which delegates to integration entry."""
-        result = self.problem.evaluate(
-            seeds=self.seeds,
-            context={"output_dir": str(self.output_dir), "max_folds": self.walkforward.max_folds},
-        )
-
-        for plugin in self.plugins:
-            on_fit_end = getattr(plugin, "on_fit_end", None)
-            if callable(on_fit_end):
-                on_fit_end(self, {"output_dir": str(self.output_dir), "suite_id": self.suite_id}, result)
-
-        return result
+try:
+    from .pipeline import EtfTemporalRepresentation, FeatureBuildSpec, build_pipeline
+    from .plugins import EtfObservabilityPlugin, EtfReportPlugin
+    from .problem import EtfTemporalForecastSpec, EtfTemporalProblem
+except ImportError:  # direct canonical CLI execution
+    from pipeline import (  # type: ignore
+        EtfTemporalRepresentation,
+        FeatureBuildSpec,
+        build_pipeline,
+    )
+    from plugins import EtfObservabilityPlugin, EtfReportPlugin  # type: ignore
+    from problem import EtfTemporalForecastSpec, EtfTemporalProblem  # type: ignore
 
 
 def build_solver(
-    *,
     config=None,
+    *,
     dataset_url: str = str(DEFAULT_DATASET_URL),
     dataset_label: str = "multi_etf_returns_momodel_kaggle",
     models: Sequence[str] = ("ridge", "hist_gradient_boosting"),
@@ -78,45 +35,75 @@ def build_solver(
     suite_id: str = "etf_temporal_forecast",
     output_dir: str | Path = "runs/etf_temporal_forecast",
     walkforward: WalkForwardSpec | Mapping[str, Any] | None = None,
-    resource_context: Mapping[str, object] | None = None,
-    component_overrides: Mapping[str, object] | None = None,
+    target_horizon: int = 1,
+    transaction_cost: float = 0.0005,
+    resource_context: Mapping[str, Any] | None = None,
+    component_overrides: Mapping[str, Any] | None = None,
 ):
-    """Canonical Case assembly entry: orchestrates standard scaffold components."""
+    """Build one canonical LearningSolver for the ETF evaluation procedure."""
 
-    del config
+    payload = dict(config or {}) if isinstance(config, Mapping) else {}
+    overrides = dict(component_overrides or {})
+    dataset_url = str(payload.get("dataset_url", dataset_url))
+    dataset_label = str(payload.get("dataset_label", dataset_label))
+    models = tuple(str(item) for item in payload.get("models", models))
+    seeds = tuple(int(item) for item in payload.get("seeds", seeds))
+    suite_id = str(payload.get("suite_id", suite_id))
+    output_dir = Path(payload.get("output_dir", output_dir))
+    target_horizon = int(payload.get("target_horizon", target_horizon))
+    transaction_cost = float(payload.get("transaction_cost", transaction_cost))
 
-    # Assemble case-local components
-    spec = EtfCaseComponentSpec(
-        dataset_url=str(dataset_url),
-        dataset_label=str(dataset_label),
-        models=tuple(str(m) for m in models),
+    feature_builder = overrides.pop("feature_builder", None)
+    if feature_builder is None:
+        feature_builder = build_pipeline(
+            spec=FeatureBuildSpec(target_horizon=target_horizon),
+            resource_context=resource_context,
+            component_overrides=overrides.pop("pipeline", None),
+        )
+    candidate = overrides.pop("candidate", None)
+    representation = overrides.pop("representation", None) or EtfTemporalRepresentation(
+        candidate
     )
-
-    problem = EtfTemporalProblem(spec)
-    feature_builder = build_pipeline(
-        resource_context=resource_context,
-        component_overrides=component_overrides,
-    )
-    plugins = (
-        EtfReportPlugin(output_dir=output_dir, run_id=str(suite_id)),
-        EtfObservabilityPlugin(output_dir=output_dir, run_id=str(suite_id)),
-    )
-
-    # Create runner with standard scaffold structure
-    runner = EtfTemporalForecastRunner(
-        problem=problem,
-        feature_builder=feature_builder,
-        cfg=EtfTemporalForecastConfig(
-            dataset_url=str(dataset_url),
-            dataset_label=str(dataset_label),
-            models=tuple(str(item) for item in models),
+    problem = overrides.pop("problem", None) or EtfTemporalProblem(
+        EtfTemporalForecastSpec(
+            dataset_url=dataset_url,
+            dataset_label=dataset_label,
+            models=models,
+            target_horizon=target_horizon,
+            transaction_cost=transaction_cost,
         ),
-        walkforward=WalkForwardSpec(**dict(walkforward)) if isinstance(walkforward, Mapping) else (walkforward or WalkForwardSpec()),
-        plugins=plugins,
-        seeds=tuple(int(seed) for seed in seeds),
-        suite_id=str(suite_id),
-        output_dir=Path(output_dir),
+        walkforward=walkforward,
+        seeds=seeds,
+        suite_id=suite_id,
+        output_dir=str(output_dir),
+        feature_builder=feature_builder,
     )
-    if resource_context is not None:
-        runner.set_resource_context(resource_context)
-    return runner
+    adapter = overrides.pop("adapter", None) or build_optimization_adapter(
+        "evaluation.fixed"
+    )
+    plugin_values = overrides.pop(
+        "plugins",
+        (
+            EtfReportPlugin(output_dir=output_dir, run_id=suite_id),
+            EtfObservabilityPlugin(output_dir=output_dir, run_id=suite_id),
+        ),
+    )
+    if overrides:
+        raise ValueError(f"unsupported ETF component overrides: {sorted(overrides)}")
+
+    solver = build_learning_solver(
+        problem=problem,
+        representation=representation,
+        adapter=adapter,
+        run_name=suite_id,
+        resource_context=resource_context,
+    )
+    for plugin in tuple(plugin_values or ()):
+        solver.add_capability(plugin)
+    solver.register_controller(
+        BudgetController(max_generations=1, name=f"{suite_id}.one_evaluation")
+    )
+    return solver
+
+
+__all__ = ["build_solver"]

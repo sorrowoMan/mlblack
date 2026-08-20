@@ -47,6 +47,7 @@ from .nsgablack_symbolic_backend import (
     MlblackSymbolicConsensusBackendConfig,
 )
 from .nsgablack_gradient import build_gradient_trainer
+from .nsgablack_diagnostic import build_diagnostic_solver
 from .nsgablack_control import (
     LearningSolver,
     MLLearningProblemBridge,
@@ -87,6 +88,7 @@ __all__ = [
     "MlblackSymbolicConsensusBackend",
     "MlblackSymbolicConsensusBackendConfig",
     "build_gradient_trainer",
+    "build_diagnostic_solver",
     "LearningSolver",
     "MLLearningProblemBridge",
     "MLRepresentationBridge",

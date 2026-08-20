@@ -85,7 +85,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         max_train_panel_rows=int(args.wf_max_train_panel_rows),
         max_test_panel_rows=int(args.wf_max_test_panel_rows),
     )
-    runner = build_solver(
+    solver = build_solver(
         dataset_url=str(args.dataset_url),
         dataset_label=str(args.dataset_label),
         models=_parse_models(str(args.models)),
@@ -93,15 +93,21 @@ def main(argv: Sequence[str] | None = None) -> None:
         suite_id=str(args.suite_id),
         output_dir=str(args.output_dir),
         walkforward=wf,
+        target_horizon=int(args.target_horizon),
+        transaction_cost=float(args.transaction_cost),
     )
     if bool(args.check):
-        print_case_check(runner)
+        print_case_check(solver)
         return
-    result = dict(runner.run() or {})
-    summary = dict(result.get("summary", {}) or {})
+    solver.fit(max_steps=1)
+    problem = solver.semantic_problem
+    outcome = getattr(problem, "last_result", None)
+    if outcome is None:
+        raise RuntimeError("ETF LearningProblem completed without a semantic result")
+    summary = dict(outcome.summary)
     agg = dict(summary.get("aggregate", {}) or {})
     data = dict(summary.get("dataset", {}) or {})
-    print(f"[etf-temporal] output_dir={result.get('output_dir', args.output_dir)}")
+    print(f"[etf-temporal] output_dir={outcome.output_dir}")
     print(
         "[etf-temporal] dataset="
         f"{data.get('rows')}x{data.get('assets')} {data.get('start')}..{data.get('end')}"

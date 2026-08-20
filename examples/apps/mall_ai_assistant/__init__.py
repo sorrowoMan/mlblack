@@ -1,0 +1,1 @@
+"""Mall assistant application example."""

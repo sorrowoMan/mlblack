@@ -32,6 +32,8 @@ def build_stage1_solver(
     *,
     suite_id: str,
     data: NumericDataView | None = None,
+    resource_context=None,
+    component_overrides=None,
 ) -> EvolutionSolver:
     config = cfg or SymbolicOrthogonalNestedCaseConfig()
     output_dir = config.output_root(suite_id) / "stage1"
@@ -40,7 +42,11 @@ def build_stage1_solver(
         valid_fraction=float(config.valid_fraction),
         seed=int(config.seed),
     )
-    problem = build_stage1_problem(config, data_view, output_dir=output_dir)
+    overrides = dict(component_overrides or {})
+    problem = overrides.pop(
+        "problem",
+        build_stage1_problem(config, data_view, output_dir=output_dir),
+    )
     return _build_solver(
         problem=problem,
         cfg=config,
@@ -50,6 +56,8 @@ def build_stage1_solver(
         name="symbolic_orthogonal_stage1_nsga2",
         output_dir=output_dir,
         data=data_view,
+        resource_context=resource_context,
+        component_overrides=overrides,
     )
 
 
@@ -59,6 +67,8 @@ def build_stage2_solver(
     suite_id: str,
     basis_artifact: OrthogonalBasisSetArtifact,
     data: NumericDataView | None = None,
+    resource_context=None,
+    component_overrides=None,
 ) -> EvolutionSolver:
     config = cfg or SymbolicOrthogonalNestedCaseConfig()
     output_dir = config.output_root(suite_id) / "stage2"
@@ -67,7 +77,16 @@ def build_stage2_solver(
         valid_fraction=float(config.valid_fraction),
         seed=int(config.seed),
     )
-    problem = build_stage2_problem(config, data_view, basis_artifact=basis_artifact, output_dir=output_dir)
+    overrides = dict(component_overrides or {})
+    problem = overrides.pop(
+        "problem",
+        build_stage2_problem(
+            config,
+            data_view,
+            basis_artifact=basis_artifact,
+            output_dir=output_dir,
+        ),
+    )
     return _build_solver(
         problem=problem,
         cfg=config,
@@ -77,6 +96,8 @@ def build_stage2_solver(
         name="symbolic_orthogonal_stage2_nsga2",
         output_dir=output_dir,
         data=data_view,
+        resource_context=resource_context,
+        component_overrides=overrides,
     )
 
 
@@ -90,18 +111,38 @@ def _build_solver(
     name: str,
     output_dir: Path,
     data: NumericDataView,
+    resource_context=None,
+    component_overrides=None,
 ) -> EvolutionSolver:
-    pipeline = build_representation_pipeline(problem, mutation_sigma=float(cfg.mutation_sigma))
-    adapter = NSGA2Adapter(
-        NSGA2Config(
-            population_size=max(4, int(pop_size)),
-            offspring_size=max(2, int(offspring_size)),
-            crossover_rate=float(cfg.crossover_rate),
-            objective_aggregation="sum",
-        ),
-        name=name,
+    overrides = dict(component_overrides or {})
+    pipeline_override = overrides.pop("pipeline", None)
+    pipeline = (
+        build_representation_pipeline(
+            problem,
+            mutation_sigma=float(cfg.mutation_sigma),
+        )
+        if pipeline_override is None
+        else pipeline_override(problem, mutation_sigma=float(cfg.mutation_sigma))
+        if callable(pipeline_override)
+        else pipeline_override
     )
-    solver = EvolutionSolver(
+    adapter_override = overrides.pop("adapter", None)
+    adapter = adapter_override or NSGA2Adapter(
+            NSGA2Config(
+                population_size=max(4, int(pop_size)),
+                offspring_size=max(2, int(offspring_size)),
+                crossover_rate=float(cfg.crossover_rate),
+                objective_aggregation="sum",
+            ),
+            name=name,
+        )
+    solver_factory = overrides.pop("solver", EvolutionSolver)
+    if overrides:
+        raise ValueError(
+            "unsupported symbolic_orthogonal_nested component overrides: "
+            f"{sorted(overrides)}"
+        )
+    solver = solver_factory(
         problem=problem,
         adapter=adapter,
         representation_pipeline=pipeline,
@@ -112,6 +153,7 @@ def _build_solver(
         random_seed=int(cfg.seed),
         enable_progress_log=False,
         enable_parallel_evaluation=False,
+        resource_context=resource_context,
     )
     solver.symbolic_orthogonal_nested_output_dir = output_dir
     solver.symbolic_orthogonal_nested_data = data
@@ -130,12 +172,24 @@ def build_solver(
 ) -> EvolutionSolver:
     """Canonical unified scaffold entry for the nested symbolic case."""
 
-    del resource_context, component_overrides
     if int(stage) == 1:
-        return build_stage1_solver(cfg, suite_id=suite_id, data=data)
+        return build_stage1_solver(
+            cfg,
+            suite_id=suite_id,
+            data=data,
+            resource_context=resource_context,
+            component_overrides=component_overrides,
+        )
     if basis_artifact is None:
         raise ValueError("stage=2 requires basis_artifact")
-    return build_stage2_solver(cfg, suite_id=suite_id, basis_artifact=basis_artifact, data=data)
+    return build_stage2_solver(
+        cfg,
+        suite_id=suite_id,
+        basis_artifact=basis_artifact,
+        data=data,
+        resource_context=resource_context,
+        component_overrides=component_overrides,
+    )
 
 
 __all__ = [

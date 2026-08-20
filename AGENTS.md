@@ -18,6 +18,9 @@ Current first principle:
 - `mlblack` is the machine-learning semantic layer.
 - Adapter-driven ML uses `nsgablack.ComposableSolver` as the only optimization
   control plane. `LearningSolver.fit()` is an ML result facade, not another loop.
+- Semantic model identity remains in the Solver-owned CandidateBatch population;
+  numeric Adapters select rows by candidate token and may not reconstruct ML
+  metadata from equal parameter vectors.
 - `mlblack` has no private Trainer control class or optimization Adapter hierarchy.
   Closed-form and third-party `estimator.fit()` routes belong in ML Problem/Provider
   components and execute through `LearningSolver` + `nsgablack.ComposableSolver`.

@@ -1,2 +1,2 @@
-﻿name = cross_framework
-kind = trainer
+name = cross_framework
+kind = solver

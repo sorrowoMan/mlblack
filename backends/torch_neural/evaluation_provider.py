@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from threading import RLock
 from typing import Any, Mapping, Sequence
 from uuid import uuid4
@@ -109,12 +109,18 @@ class TorchEvaluationProvider:
             compute_backend="torch",
             modes=("train", "evaluate", "validate"),
             priority=int(self.config.priority),
-            state_kinds=("model_parameters",),
+            state_kinds=(
+                "model_parameters",
+                "optimizer_slot.m",
+                "optimizer_slot.v",
+            ),
             materialization_targets=("unknown_state",),
             transition_methods=(
                 StateTransitionMethodSpec(
                     method_id="gradient.sgd",
                     required_operands=("gradient",),
+                    operand_state_kinds={"gradient": ("gradient",)},
+                    inline_operands=("gradient",),
                     required_parameters=("learning_rate",),
                     optional_parameters=(
                         "min_learning_rate",
@@ -126,6 +132,8 @@ class TorchEvaluationProvider:
                     method_id="gradient.adam",
                     required_operands=("gradient",),
                     optional_operands=("first_moment", "second_moment"),
+                    operand_state_kinds={"gradient": ("gradient",)},
+                    inline_operands=("gradient", "first_moment", "second_moment"),
                     required_parameters=("learning_rate",),
                     optional_parameters=(
                         "min_learning_rate",
@@ -137,11 +145,21 @@ class TorchEvaluationProvider:
                     ),
                     optional_slots=("m", "v"),
                     result_slots=("m", "v"),
+                    slot_state_kinds={
+                        "m": ("optimizer_slot.m",),
+                        "v": ("optimizer_slot.v",),
+                    },
+                    result_slot_state_kinds={
+                        "m": ("optimizer_slot.m",),
+                        "v": ("optimizer_slot.v",),
+                    },
                 ),
                 StateTransitionMethodSpec(
                     method_id="gradient.adamw",
                     required_operands=("gradient",),
                     optional_operands=("first_moment", "second_moment"),
+                    operand_state_kinds={"gradient": ("gradient",)},
+                    inline_operands=("gradient", "first_moment", "second_moment"),
                     required_parameters=("learning_rate",),
                     optional_parameters=(
                         "min_learning_rate",
@@ -153,6 +171,14 @@ class TorchEvaluationProvider:
                     ),
                     optional_slots=("m", "v"),
                     result_slots=("m", "v"),
+                    slot_state_kinds={
+                        "m": ("optimizer_slot.m",),
+                        "v": ("optimizer_slot.v",),
+                    },
+                    result_slot_state_kinds={
+                        "m": ("optimizer_slot.m",),
+                        "v": ("optimizer_slot.v",),
+                    },
                 ),
             ),
             metadata={
@@ -252,6 +278,31 @@ class TorchEvaluationProvider:
                 if self.data_schedule is None
                 else dict(self.data_schedule.get_state())
             ),
+        }
+
+    def checkpoint_identity(self) -> Mapping[str, Any]:
+        schedule = self.data_schedule
+        schedule_identity = None
+        if schedule is not None:
+            schedule_identity = {
+                "class": (
+                    f"{type(schedule).__module__}.{type(schedule).__qualname__}"
+                ),
+                "n_train": int(schedule.data.X_train.shape[0]),
+                "config": {
+                    "batch_size": int(schedule.config.batch_size),
+                    "shuffle": bool(schedule.config.shuffle),
+                    "drop_last": bool(schedule.config.drop_last),
+                    "seed": int(schedule.config.seed),
+                },
+            }
+        return {
+            "provider_id": self.spec.provider_id,
+            "problem_id": self.problem_id,
+            "representation_id": self.representation_id,
+            "route": self.route,
+            "config": asdict(self.config),
+            "data_schedule": schedule_identity,
         }
 
     def set_state(self, state: Mapping[str, Any]) -> None:
@@ -431,14 +482,17 @@ class TorchEvaluationProvider:
         )
 
     def materialize_state(self, state_ref: StateRef) -> UnknownState:
-        """Explicitly export a process-local parameter state to ML semantics."""
+        """Explicitly export one numeric process-local state."""
 
         with self._lock:
-            record = self._require_record(state_ref, "model_parameters")
+            record = self._require_record(state_ref, state_ref.state_kind)
             values = record.tensor.detach().cpu().numpy().astype(float, copy=True)
         return UnknownState(
             values=values,
-            metadata=dict(record.semantic_metadata),
+            metadata={
+                **dict(record.semantic_metadata),
+                "provider_state_kind": record.state_kind,
+            },
         )
 
     def materialize(
@@ -459,10 +513,16 @@ class TorchEvaluationProvider:
         # would allow a concurrent transition to be deleted after an older
         # value had already been copied.
         with self._lock:
-            record = self._require_record(request.state_ref, "model_parameters")
+            record = self._require_record(
+                request.state_ref,
+                request.state_ref.state_kind,
+            )
             value = UnknownState(
                 values=record.tensor.detach().cpu().numpy().astype(float, copy=True),
-                metadata=dict(record.semantic_metadata),
+                metadata={
+                    **dict(record.semantic_metadata),
+                    "provider_state_kind": record.state_kind,
+                },
             )
             result = StateMaterializationResult(
                 request_id=request.request_id,

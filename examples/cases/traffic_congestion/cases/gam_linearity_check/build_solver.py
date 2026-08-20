@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.preprocessing import SplineTransformer
 from sklearn.linear_model import RidgeCV
 
-from mlblack.core import build_diagnostic_solver
+from mlblack.integrations import build_diagnostic_solver
 from mlblack.project.scaffold import print_case_check
 
 try:

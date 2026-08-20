@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from typing import Mapping
 import numpy as np
 
-from mlblack.core import build_diagnostic_solver
+from mlblack.integrations import build_diagnostic_solver
 from mlblack.project.scaffold import print_case_check
 
 try:

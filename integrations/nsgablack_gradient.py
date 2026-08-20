@@ -72,15 +72,6 @@ def build_gradient_trainer(
         effective_provider_config = provider_config or TorchEvaluationProviderConfig(
             publish_state_refs=True,
         )
-        if (
-            effective_provider_config.publish_state_refs
-            and not effective_provider_config.inline_gradients
-        ):
-            raise ValueError(
-                "the unified gradient Trainer currently requires inline_gradients=True "
-                "when publish_state_refs=True so its checkpoint contains an exact "
-                "optimizer-state shadow"
-            )
         provider = TorchEvaluationProvider(
             problem,
             representation,
