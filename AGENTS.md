@@ -29,6 +29,8 @@ Current first principle:
 - A `mlblack` Case can be outer or inner. It must not create a private project runner, scheduler, or resource allocator.
 - LearningSolver restore requests are queued and applied after Solver/Adapter setup;
   ML components must not restore directly before setup or maintain private resume-order flags.
+- A running LearningSolver may only apply state while the shared post-setup restore
+  transaction lock is active; public runtime mutation must fail closed.
 
 ## 1. Project Positioning
 

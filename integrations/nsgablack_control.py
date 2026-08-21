@@ -353,6 +353,7 @@ class LearningSolver(ComposableSolver):
         self.last_evaluated_population: tuple[UnknownState, ...] = ()
         self.last_evaluated_feedback: tuple[Feedback, ...] = ()
         self.feedback: tuple[Feedback, ...] = ()
+        self.history: list[dict[str, Any]] = []
         self._step_ml_evaluations: list[_MLEvaluationRecord] = []
         self._completion_policy: Any | None = None
         self._last_state_release: StateReleaseResult | None = None
@@ -627,10 +628,12 @@ class LearningSolver(ComposableSolver):
             components["completion_policy"] = self._completion_policy
         return components
 
-    def step(self) -> None:
+    def step(self):
         self._step_ml_evaluations = []
-        super().step()
-        self._synchronize_ml_projection(record_history=True)
+        outcome = super().step()
+        if bool(getattr(outcome, "committed", True)):
+            self._synchronize_ml_projection(record_history=True)
+        return outcome
 
     def should_execute_step(self, step_index: int) -> bool:
         if not super().should_execute_step(step_index):
@@ -1017,11 +1020,18 @@ class LearningSolver(ComposableSolver):
 
     def set_state(self, state: Mapping[str, Any]) -> "LearningSolver":
         payload = self._migrate_learning_state(state)
-        if not bool(getattr(self, "_runtime_setup_complete", False)):
+        restore_lock = getattr(self, "_restore_transaction_lock", None)
+        if restore_lock is None:
+            raise RuntimeError("LearningSolver restore transaction lock is unavailable")
+        with restore_lock:
             if bool(getattr(self, "running", False)):
-                raise RuntimeError(
-                    "LearningSolver state cannot be restored while setup is incomplete"
-                )
+                if not bool(getattr(self, "_restore_apply_active", False)):
+                    raise RuntimeError(
+                        "LearningSolver state cannot mutate a running Solver; "
+                        "queue a restore envelope for the post-setup restore phase"
+                    )
+                return self._apply_state_now(payload)
+        if not bool(getattr(self, "_runtime_setup_complete", False)):
             generation = max(0, int(payload.get("generation", 0) or 0))
             self._resume_cursor = generation
             self.queue_restore_envelope(

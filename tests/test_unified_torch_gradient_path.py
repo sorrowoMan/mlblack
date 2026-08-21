@@ -211,6 +211,59 @@ def test_provider_request_retention_is_partitioned_by_scope_and_trajectory() -> 
     }
 
 
+def test_provider_materializes_predecessor_before_advancing_retention() -> None:
+    pytest.importorskip("torch")
+    trainer = build_gradient_trainer(
+        problem=TabularNeuralRegressionProblem(_data()),
+        representation=_representation(23),
+        method="gradient.sgd",
+        provider_config=TorchEvaluationProviderConfig(
+            publish_state_refs=True,
+            max_live_evaluation_requests=1,
+        ),
+        run_name="retention_transaction",
+    )
+    state = trainer.model_representation.init({})
+    context = {
+        "trajectory_id": "trajectory-a",
+        "run_name": "retention_transaction",
+        "resource_context": trainer.resource_context.as_dict(),
+        "resource.context": trainer.resource_context.as_dict(),
+    }
+    decoded = trainer.model_representation.decode(state, context)
+    model = trainer.semantic_problem.prepare_model_for_evaluation(
+        decoded,
+        state,
+        context,
+    )
+    first = trainer.semantic_problem.evaluate(model, state, context)
+    first_ref = first.info["evaluation_state_ref"]
+    second = trainer.semantic_problem.evaluate(model, first_ref, context)
+
+    assert isinstance(second.info["evaluation_state_ref"], StateRef)
+    assert second.info["evaluation_state_ref"].state_id != first_ref.state_id
+    with pytest.raises(StateVersionConflict):
+        trainer.evaluation_provider.materialize_state(first_ref)
+
+
+def test_learning_solver_rejects_public_state_mutation_while_running() -> None:
+    trainer = build_gradient_trainer(
+        problem=TabularNeuralRegressionProblem(_data()),
+        representation=_representation(29),
+        method="gradient.sgd",
+        run_name="running_restore_rejection",
+    )
+    checkpoint = trainer.get_state()
+    trainer.running = True
+    trainer._runtime_setup_complete = True
+    try:
+        with pytest.raises(RuntimeError, match="cannot mutate a running Solver"):
+            trainer.set_state(checkpoint)
+    finally:
+        trainer.running = False
+        trainer._runtime_setup_complete = False
+
+
 def test_mlp_preset_uses_nsg_adapter_and_torch_provider() -> None:
     pytest.importorskip("torch")
     trainer = build_mlp_regression_trainer(

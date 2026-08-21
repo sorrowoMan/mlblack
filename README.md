@@ -2,7 +2,7 @@
 
 `mlblack` 是统一框架栈中的机器学习语义扩展包。它把数据、模型结构、参数状态、输出语义、训练问题、求值 Provider 和模型 Artifact 映射到 `nsgablack` 的统一 Solver 控制面，而不是维护第二套 Trainer 循环或 Adapter 体系。
 
-当前版本：`0.4.7`，依赖 `blackbase>=0.3.8,<0.4.0` 与 `nsgablack>=0.3.10,<0.4.0`。
+当前版本：`0.4.8`，依赖 `blackbase>=0.3.9,<0.4.0` 与 `nsgablack>=0.3.11,<0.4.0`。
 
 ## 统一视图
 
@@ -29,7 +29,7 @@ DataView / DatasetSchema
 
 闭式拟合和第三方 `estimator.fit()` 仍然属于 Provider 的求值机制；它们不会产生第二套控制平面。
 
-`CompletionPolicy` 消费 nsgablack 的可恢复 `RunProgressState`：checkpoint 恢复后继续同一次逻辑训练运行的累计 step、elapsed/deadline 和自定义 policy state，不会从零重新计数。Torch Provider 的活状态保留按 `(scope_id, trajectory_id)` 分区，交错训练不会相互淘汰尚待 transition 的 `StateRef`。
+`CompletionPolicy` 消费 nsgablack 的可恢复 `RunProgressState`：checkpoint 恢复后继续同一次逻辑训练运行的累计 step、elapsed/deadline 和自定义 policy state，不会从零重新计数。`LearningSolver.set_state()` 只能在 post-setup restore transaction 中修改运行态。Torch Provider 的活状态保留按 `(scope_id, trajectory_id)` 分区；输入 `StateRef` 会先物化，随后 retention 与整批新引用在一个可回滚事务中发布。
 
 ## 资源与 backend
 

@@ -211,21 +211,16 @@ class TorchEvaluationProvider:
                 "TorchEvaluationProvider received a binding owned by another provider"
             )
 
-        if bool(self.config.publish_state_refs):
-            trajectory_id = str(
-                request.payload.get("trajectory_id", request.request_id)
-            )
-            scope_id = str(
-                binding.resource_context.namespace or self._provider_scope_id
-            )
-            self._begin_evaluation_request(
-                request.request_id,
-                scope_id=scope_id,
-                trajectory_id=trajectory_id,
-            )
+        publish_state_refs = bool(self.config.publish_state_refs)
+        trajectory_id = str(
+            request.payload.get("trajectory_id", request.request_id)
+        )
+        scope_id = str(
+            binding.resource_context.namespace or self._provider_scope_id
+        )
         batch = self._next_batch()
         feedback: list[Feedback] = []
-        result_states: list[UnknownState | StateRef] = []
+        normalized_states: list[UnknownState] = []
         for index, state in enumerate(request.states):
             if isinstance(state, StateRef):
                 state = self.materialize_state(state)
@@ -239,18 +234,50 @@ class TorchEvaluationProvider:
                 item = self._evaluate_neural_graph(state, context, session, batch)
             finally:
                 session.close()
-            if bool(self.config.publish_state_refs):
-                item, state_ref = self._publish_evaluation_refs(
-                    state,
-                    item,
-                    binding,
-                    candidate_index=index,
-                    trajectory_id=trajectory_id,
-                )
-                result_states.append(state_ref)
-            else:
-                result_states.append(state)
+            normalized_states.append(state)
             feedback.append(item)
+
+        result_states: list[UnknownState | StateRef]
+        if publish_state_refs:
+            published_feedback: list[Feedback] = []
+            published_states: list[StateRef] = []
+            # Materialization and compute complete before retention can evict an
+            # input StateRef.  Queue advance + every new ref are then committed
+            # as one rollback-safe Provider transaction.
+            with self._lock:
+                previous_states = dict(self._states)
+                previous_released = dict(self._released_versions)
+                previous_order = {
+                    key: list(queue)
+                    for key, queue in self._evaluation_request_order.items()
+                }
+                try:
+                    self._begin_evaluation_request(
+                        request.request_id,
+                        scope_id=scope_id,
+                        trajectory_id=trajectory_id,
+                    )
+                    for index, (state, item) in enumerate(
+                        zip(normalized_states, feedback)
+                    ):
+                        published_item, state_ref = self._publish_evaluation_refs(
+                            state,
+                            item,
+                            binding,
+                            candidate_index=index,
+                            trajectory_id=trajectory_id,
+                        )
+                        published_feedback.append(published_item)
+                        published_states.append(state_ref)
+                except Exception:
+                    self._states = previous_states
+                    self._released_versions = previous_released
+                    self._evaluation_request_order = previous_order
+                    raise
+            feedback = published_feedback
+            result_states = published_states
+        else:
+            result_states = list(normalized_states)
 
         with self._lock:
             self._evaluation_count += len(feedback)
