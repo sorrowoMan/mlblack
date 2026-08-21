@@ -1,4 +1,4 @@
-import sys; from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent))
+from pathlib import Path
 import time
 from types import SimpleNamespace
 from typing import Mapping
@@ -9,10 +9,7 @@ from sklearn.inspection import permutation_importance
 from mlblack.integrations import build_diagnostic_solver
 from mlblack.project.scaffold import print_case_check
 
-try:
-    from .pipeline import build_pipeline
-except ImportError:
-    from pipeline import build_pipeline
+from .pipeline import build_pipeline
 
 DATA_DIR = Path(__file__).resolve().parents[2]
 CSV_PATH = DATA_DIR / "data" / "ci_interval_opt_table_no_flow_speed_occ_lag.csv"
@@ -40,12 +37,15 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
 
     payload = dict(config or {}) if isinstance(config, Mapping) else {}
     overrides = dict(component_overrides or {})
+    payload.update(dict(overrides.pop("config", {}) or {}))
     def run_diagnostic(context):
         del context
         exit_code = _run_analysis(payload)
         return {"status": "ok", "exit_code": int(exit_code or 0)}
 
-    runner = overrides.get("diagnostic_runner") or run_diagnostic
+    runner = overrides.pop("diagnostic_runner", None) or run_diagnostic
+    if overrides:
+        raise ValueError("unsupported SHAP diagnostic overrides: " + str(sorted(overrides)))
     return build_diagnostic_solver(
         runner,
         name="traffic_shap_contribution_check",
@@ -70,6 +70,10 @@ def _run_analysis(config=None):
     feature_cols = list(data.feature_names)
     X_scaled = np.asarray(data.X_train, dtype=float)
     y = np.asarray(data.y_train, dtype=float)
+    max_rows = int(payload.get("max_rows", 0))
+    if max_rows > 0 and len(y) > max_rows:
+        X_scaled = X_scaled[-max_rows:]
+        y = y[-max_rows:]
 
     print("=" * 60)
     print("SHAP Contribution Consistency Check: Traffic CI")
@@ -170,7 +174,3 @@ def _run_analysis(config=None):
             print("  Linear attribution may not generalize. Consider nonlinear models.")
 
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit("Use run_solver.py as the canonical CLI entry.")

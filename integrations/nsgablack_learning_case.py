@@ -110,10 +110,7 @@ class NsgablackLearningCaseEvaluator:
                 metadata={"bridge": "nsgablack->mlblack.complete_learning_case"},
             )
         )
-        if not result.ok:
-            raise RuntimeError(
-                f"inner ML Case '{self.case_name}' failed: {result.error}"
-            )
+        result.raise_for_failure(f"inner ML Case '{self.case_name}' failed")
         payload: Any = result.output
         if self.result_key:
             payload = result.output.get(self.result_key)

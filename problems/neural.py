@@ -226,6 +226,7 @@ class TinyTransformerLanguageModelProblem(LearningProblem):
             head_artifact={"head": self.head_name, "task": "language_modeling"},
             data=self.data,
             context=dict(context or {}),
+            audit_sequence_trim_right=1,
         )
 
     def describe(self) -> Mapping[str, Any]:
@@ -354,6 +355,7 @@ class TinyTransformerDPOPreferenceProblem(LearningProblem):
             head_artifact={"head": self.head_name, "task": "preference_dpo", "beta": float(self.beta)},
             data=pseudo_data,
             context=dict(context or {}),
+            audit_sequence_trim_right=1,
         )
 
     def describe(self) -> Mapping[str, Any]:
@@ -1496,12 +1498,17 @@ def _build_neural_graph_artifact(
     head_artifact: Mapping[str, Any],
     data: NumericDataView,
     context: Mapping[str, Any],
+    audit_sequence_trim_right: int = 0,
 ) -> NeuralGraphArtifact:
     backend = _backend(context, ("parameters.summary", "artifact.neural_graph.audit"))
     describe = model.describe() if hasattr(model, "describe") else {"model_type": type(model).__name__}
     graph_spec = dict(getattr(model, "graph_spec", {}) or {})
     parameter_layout = backend.autograd.parameter_layout_summary(model)
-    audit_artifact = backend.artifacts.audit_summary(model, data)
+    audit_artifact = backend.artifacts.audit_summary(
+        model,
+        data,
+        sequence_trim_right=int(audit_sequence_trim_right),
+    )
     return NeuralGraphArtifact(
         name=name,
         model=model,

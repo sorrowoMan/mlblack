@@ -1,5 +1,9 @@
 name: test
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUTF8: "1"
+
 on:
   push:
     branches: [main]
@@ -25,7 +29,7 @@ jobs:
       - name: Smoke import
         run: python -c "import mlblack; print('mlblack', mlblack.__version__ if hasattr(mlblack, '__version__') else 'imported')"
       - name: Run core tests
-        run: python -m pytest tests/ -v --tb=short -k "not (torch or cnn or gnn or transformer or contrastive or dpo or lm or qlora or nsgablack_neural or formal_case or streamlit or jax or tensorflow)" || exit 0
+        run: python -m pytest tests/ -v --tb=short -k "not (torch or cnn or gnn or transformer or contrastive or dpo or lm or qlora or nsgablack_neural or formal_case or streamlit or jax or tensorflow)"
 
   full:
     runs-on: ubuntu-latest

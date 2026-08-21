@@ -14,14 +14,18 @@ except ImportError:  # direct script execution
 
 
 def build_solver(config=None, *, resource_context=None, component_overrides=None):
-    payload = dict(config or {}) if isinstance(config, Mapping) else {}
     overrides = dict(component_overrides or {})
+    payload = dict(config or {}) if isinstance(config, Mapping) else {}
+    payload.update(dict(overrides.pop("config", {}) or {}))
+    max_steps = overrides.pop("max_steps", None)
     grant = coerce_resource_context(resource_context)
-    data = overrides.get("data")
+    data = overrides.pop("data", None)
     if data is None:
-        data = build_pipeline(config=payload, resource_context=grant, component_overrides=overrides)
-    builder = overrides.get("trainer_builder") or build_temporal_tft_forecast_trainer
-    trainer_kwargs = dict(overrides.get("trainer_kwargs", {}) or {})
+        data = build_pipeline(config=payload, resource_context=grant, component_overrides={})
+    builder = overrides.pop("trainer_builder", None) or build_temporal_tft_forecast_trainer
+    trainer_kwargs = dict(overrides.pop("trainer_kwargs", {}) or {})
+    if overrides:
+        raise ValueError("unsupported temporal_tft overrides: " + str(sorted(overrides)))
     trainer_kwargs.setdefault("input_dim", 1)
     trainer_kwargs.setdefault("sequence_length", int(payload.get("sequence_length", 12)))
     trainer_kwargs.setdefault("output_dim", 1)
@@ -29,4 +33,7 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
     trainer_kwargs.setdefault("random_seed", int(payload.get("random_seed", 42)))
     trainer_kwargs.setdefault("run_name", "temporal_tft_compare")
     trainer_kwargs.setdefault("resource_context", grant)
-    return builder(data, **trainer_kwargs)
+    trainer = builder(data, **trainer_kwargs)
+    if max_steps is not None:
+        trainer.set_max_steps(max(1, int(max_steps)))
+    return trainer

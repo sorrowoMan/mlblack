@@ -57,13 +57,15 @@ class SolverCaseInvocationResult:
 
     def require_solver_result(self) -> SolverResult:
         if self.solver_result is None:
+            if not self.case_result.ok:
+                self.case_result.raise_for_failure("inner Solver Case failed")
             raise SolverCaseInvocationError(self)
         return self.solver_result
 
     def require_projection(self) -> SolverCaseProjection:
         if self.projection is None:
             if not self.case_result.ok:
-                raise SolverCaseInvocationError(self)
+                self.case_result.raise_for_failure("inner Solver Case failed")
             if self.solver_result is None:
                 raise SolverCaseInvocationError(
                     self,

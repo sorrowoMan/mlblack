@@ -7,14 +7,14 @@
 - 数据：40 个 ETF、2668 个交易日、2007-04-12 到 2017-11-10、无缺失。
 - mlblack 负责 feature/target construction、walk-forward split、model evaluation 和 metric aggregation。
 - 默认 quickstart 使用 `ridge + hist_gradient_boosting`，不是把 MLP 当主力模型。
-- 后续 nsgablack 的 `etf_lane_outer_search` 会调用这个标准 case 做内层评估。
+- nsgablack 的 `etf_lane_outer_search` 已通过正式子 Case 协议调用这套评估语义。
 
 详细结构、指标和面试叙事见 `README.md`。
 
 ## 2) Check
 
 ```powershell
-cd C:\Users\hp\Desktop\mlblack
+# 先进入 mlblack 仓库根目录
 python examples\cases\etf_temporal_forecast\run_project.py --check --build-check
 ```
 

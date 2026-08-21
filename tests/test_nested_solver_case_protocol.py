@@ -7,6 +7,7 @@ import pytest
 
 from blackbase.project import (
     CaseFailure,
+    CaseInvocationError,
     CaseRunRequest,
     CaseRunResult,
     ExecutionControl,
@@ -174,8 +175,8 @@ GROUPS = {"default": {"stages": ["outer"]}}
     assert project_result.ok
     parent_result = project_result.case_results[0]
     assert parent_result.output["protocol_type"] == "blackbase.trainer_result"
-    assert parent_result.output["best_state"]["values"] == [1.0, 2.0]
-    assert parent_result.output["best_objectives"] == [0.2, 0.8]
+    assert parent_result.output["best_state"]["values"] == (1.0, 2.0)
+    assert parent_result.output["best_objectives"] == (0.2, 0.8)
     assert parent_result.output["report"]["inner_policy"] == "best_solution"
     assert parent_result.output["report"]["pareto_size"] == 2
     child_payload = parent_result.metadata["runtime_audit"]["child_invocations"]["results"][0]
@@ -183,7 +184,7 @@ GROUPS = {"default": {"stages": ["outer"]}}
     assert child_result.ok
     assert child_result.identity.parent_case_run_id == parent_result.identity.case_run_id
     assert child_result.output["protocol_type"] == "blackbase.solver_result"
-    assert child_result.output["best_objectives"] == [0.2, 0.8]
+    assert child_result.output["best_objectives"] == (0.2, 0.8)
     assert child_result.output["solve_status"] == "feasible"
     assert child_result.output["termination_reason"] == "iteration_limit"
     assert child_result.output["quality"]["approximate"] is True
@@ -325,9 +326,10 @@ def test_invoker_preserves_structured_child_case_failure() -> None:
     assert invocation.solver_result is None
     assert invocation.projection is None
 
-    with pytest.raises(SolverCaseInvocationError, match="BackendUnavailable") as exc_info:
+    with pytest.raises(CaseInvocationError, match="BackendUnavailable") as exc_info:
         invocation.require_projection()
-    assert getattr(exc_info.value, "failure", None) is failure
+    assert exc_info.value.result is child
+    assert exc_info.value.result.failure is failure
 
 
 def test_invoker_builds_timeout_at_each_invocation_and_forwards_control() -> None:

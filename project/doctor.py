@@ -331,7 +331,12 @@ def _check_project_root(project_root: Path, diags: list[DoctorDiagnostic]) -> No
 
     if cases_dir.is_dir():
         for child in sorted(cases_dir.iterdir()):
-            if child.is_dir() and child.name != "__pycache__" and not (child / "__init__.py").is_file():
+            if (
+                child.is_dir()
+                and child.name != "__pycache__"
+                and _has_python_source(child)
+                and not (child / "__init__.py").is_file()
+            ):
                 diags.append(
                     DoctorDiagnostic(
                         "error",
@@ -355,8 +360,18 @@ def _iter_case_roots(examples_cases: Path) -> Iterable[Path]:
         child_dirs = {path.name for path in directory.iterdir() if path.is_dir()}
         if {"project_config.py", "run_project.py"}.issubset(child_files) and "cases" in child_dirs:
             continue
+        if not _has_python_source(directory):
+            continue
         if child_files & _CASE_MARKER_FILES or child_dirs & _CASE_MARKER_DIRS:
             yield directory
+
+
+def _has_python_source(directory: Path) -> bool:
+    return any(
+        "__pycache__" not in path.parts
+        for path in directory.rglob("*.py")
+        if path.is_file()
+    )
 
 
 def _check_case_root_scaffold(case_root: Path, diags: list[DoctorDiagnostic]) -> None:

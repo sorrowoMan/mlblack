@@ -180,11 +180,10 @@ class ArtifactBuilder:
 
     def build(self, trainer: Any, result: Any) -> ArtifactBundle:
         best_model = getattr(result, "best_model", None)
-        problem = getattr(trainer, "problem", None)
-        materialize = getattr(problem, "build_model_artifact", None)
-        if best_model is not None and callable(materialize):
-            context = trainer.build_context() if hasattr(trainer, "build_context") else {}
-            best_model = materialize(best_model, context)
+        if best_model is not None:
+            from .artifact_provider import materialize_model_artifact
+
+            best_model = materialize_model_artifact(trainer, best_model)
         report = dict(getattr(result, "report", {}) or {})
         representation = report.get("representation") or {}
         problem = report.get("problem") or {}

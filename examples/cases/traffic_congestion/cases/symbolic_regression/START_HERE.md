@@ -16,7 +16,7 @@ Linear regression baseline on real traffic CI data. Uses stable `gradient.sgd` +
 ## Quick Start
 
 ```powershell
-cd C:\Users\hp\Desktop\mlblack
+# 先进入 mlblack 仓库根目录
 python examples\cases\traffic_congestion\run_project.py --check
 ```
 

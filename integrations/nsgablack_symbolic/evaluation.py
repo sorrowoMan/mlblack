@@ -362,7 +362,7 @@ def _branch_refit_metrics(
                 mutation_scale=float(config.branch_refit_mutation_scale),
                 random_seed=17,
             )
-            adapter.set_population((UnknownState(values=artifact.fitted_state),))
+            adapter.set_current_candidates((UnknownState(values=artifact.fitted_state),))
         elif task == "classification" or str(artifact.head_kind) in {"binary_logistic", "softmax", "probability_calibration"}:
             problem = SupervisedClassificationProblem(data, use_valid_objective=False)
             adapter = build_optimization_adapter(
@@ -371,7 +371,7 @@ def _branch_refit_metrics(
                 mutation_scale=float(config.branch_refit_mutation_scale),
                 random_seed=23,
             )
-            adapter.set_population((UnknownState(values=artifact.fitted_state),))
+            adapter.set_current_candidates((UnknownState(values=artifact.fitted_state),))
         else:
             problem = FixedSymbolicRegressionProblem(data, use_valid_objective=False)
             adapter = build_optimization_adapter(
@@ -379,7 +379,7 @@ def _branch_refit_metrics(
                 learning_rate=float(config.branch_refit_learning_rate),
                 max_gradient_norm=1e3,
             )
-            adapter.set_population((UnknownState(values=artifact.fitted_state),))
+            adapter.set_current_candidates((UnknownState(values=artifact.fitted_state),))
         trainer = build_learning_solver(
             problem=problem,
             representation=representation,

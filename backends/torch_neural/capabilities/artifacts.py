@@ -13,7 +13,9 @@ class TorchArtifactsCapability:
         capability="artifacts",
         provides=("artifact.neural_graph.audit", "artifact.parameters.summary", "artifact.torch_model.describe"),
         methods={
-            "artifact.neural_graph.audit": "audit_summary(model, data, max_rows) -> dict",
+            "artifact.neural_graph.audit": (
+                "audit_summary(model, data, max_rows, sequence_trim_right) -> dict"
+            ),
             "artifact.parameters.summary": "parameter_layout_summary(model) -> dict",
         },
         model_kinds=("torch.nn.Module",),
@@ -24,13 +26,27 @@ class TorchArtifactsCapability:
         self.tensor = tensor
         self.autograd = autograd
 
-    def audit_summary(self, model: Any, data: Any, *, max_rows: int = 4) -> dict[str, Any]:
+    def audit_summary(
+        self,
+        model: Any,
+        data: Any,
+        *,
+        max_rows: int = 4,
+        sequence_trim_right: int = 0,
+    ) -> dict[str, Any]:
         torch = self.tensor.torch()
         try:
             device = next(model.parameters()).device
         except StopIteration:
             device = torch.device("cpu")
         tokens = self.tensor.token_ids(data.X_train[: max(1, min(int(max_rows), int(data.X_train.shape[0])))], device=device)
+        trim_right = int(sequence_trim_right)
+        if trim_right < 0:
+            raise ValueError("sequence_trim_right must be >= 0")
+        if trim_right:
+            if int(tokens.shape[1]) <= trim_right:
+                raise ValueError("artifact audit sequence would be empty after right trimming")
+            tokens = tokens[:, :-trim_right]
         was_training = bool(getattr(model, "training", False))
         self.autograd.eval(model)
         with torch.no_grad():
@@ -43,6 +59,7 @@ class TorchArtifactsCapability:
         return {
             "schema": "mlblack.neural_graph.audit.v1",
             "sample_shape": tuple(int(v) for v in tokens.shape),
+            "sequence_trim_right": trim_right,
             "attention": attention,
             "ffn": ffn,
         }

@@ -9,6 +9,7 @@ from blackbase.call_binding import (
 )
 
 from mlblack.core.backend_session import get_compute_backend_from_context
+from mlblack.core.artifacts import EstimatorStateArtifact
 from blackbase.contracts import ComponentContract
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback, UnknownState
@@ -272,6 +273,20 @@ class SupervisedEstimatorFitRegressionProblem(SupervisedRegressionProblem):
             raise TypeError(
                 "cannot publish an unfitted EstimatorSpecModel; publish the "
                 "FittedEstimatorModel produced during evaluation"
+            )
+        if isinstance(model, FittedEstimatorModel):
+            return EstimatorStateArtifact(
+                name=self.name,
+                model=model,
+                family=str(model.family),
+                head="regression",
+                representation={
+                    "route": str(model.route),
+                    "params": dict(model.params),
+                },
+                metadata={"fitted_model": model.describe()},
+                artifact_type=str(model.route or "fitted_estimator"),
+                estimator_state=model.fitted_state_summary(),
             )
         return model
 

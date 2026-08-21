@@ -19,7 +19,6 @@ STAGES = [
         "name": "main",
         "cases": ['symbolic_orthogonal_nested'],
         "resource_requests": {"symbolic_orthogonal_nested": {"threads": 1, "device": "cpu", "backend": "local"}},
-        "case_modes": {"symbolic_orthogonal_nested": "cli"},
     },
 ]
 

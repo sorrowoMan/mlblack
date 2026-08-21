@@ -7,14 +7,22 @@ lifecycle, incumbent, snapshots, budgets, cancellation, and Adapter execution.
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
+from uuid import uuid4
 
 import numpy as np
 
 from blackbase.resources import DataRef, ResourceContext, coerce_resource_context
-from blackbase.types import Feedback, TrainerResult, UnknownState, decode_shared_value
+from blackbase.types import (
+    Feedback,
+    TrainerResult,
+    UnknownState,
+    decode_shared_value,
+    encode_shared_value,
+)
 from blackbase.context.context_keys import KEY_INDIVIDUAL_ID
 from blackbase.evaluation import StateReleaseRequest, StateReleaseResult
 from mlblack.core.artifact_provider import (
@@ -280,13 +288,14 @@ class LearningSolver(ComposableSolver):
         resource_context: Mapping[str, Any] | ResourceContext | None = None,
         compute_backend: str | Mapping[str, Any] | ComputeBackendSpec | ComputeBackendSession | None = None,
         artifact_provider: ArtifactProvider | None = None,
+        result_inline_limit_bytes: int = 64 * 1024,
         **solver_kwargs: Any,
     ) -> None:
         self.semantic_problem = problem
         self.model_representation = representation
         self.run_name = str(run_name)
         self._resource_context_explicit = resource_context is not None
-        resource = coerce_resource_context(resource_context)
+        resource = _resource_context_with_namespace(resource_context, self.run_name)
         self._compute_backend_request = (
             compute_backend.spec
             if isinstance(compute_backend, ComputeBackendSession)
@@ -325,9 +334,10 @@ class LearningSolver(ComposableSolver):
             problem_bridge,
             adapter=adapter,
             representation_pipeline=representation_bridge,
-            resource_context=resource_context,
+            resource_context=resource,
             **solver_kwargs,
         )
+        self._resource_context_explicit = resource_context is not None
         representation_bridge.bind(self)
         problem_bridge.bind(self)
 
@@ -348,6 +358,12 @@ class LearningSolver(ComposableSolver):
         self._fit_started_at: float | None = None
         self._fit_policy_step = 0
         self._last_state_release: StateReleaseResult | None = None
+        self.result_inline_limit_bytes = max(1024, int(result_inline_limit_bytes))
+        self._finalized_report: dict[str, Any] | None = None
+        self._finalized_trainer_result: TrainerResult | None = None
+        self._best_state_ref: DataRef | None = None
+        self._history_ref: DataRef | None = None
+        self._report_ref: DataRef | None = None
 
     @property
     def step_index(self) -> int:
@@ -521,6 +537,25 @@ class LearningSolver(ComposableSolver):
             setup(self, self.build_context())
         super().setup()
 
+    def prepare_fresh_run(self) -> None:
+        super().prepare_fresh_run()
+        self.best_state = None
+        self.best_model = None
+        self.best_feedback = None
+        self.best_score = None
+        self.best_model_ref = None
+        self.result_artifact_refs = {}
+        self.last_evaluated_population = ()
+        self.last_evaluated_feedback = ()
+        self.feedback = ()
+        self._step_ml_evaluations = []
+        self._last_state_release = None
+        self._finalized_report = None
+        self._finalized_trainer_result = None
+        self._best_state_ref = None
+        self._history_ref = None
+        self._report_ref = None
+
     def require_compute_backend(
         self,
         requirements: Sequence[str],
@@ -600,21 +635,130 @@ class LearningSolver(ComposableSolver):
             return False
         return True
 
-    def fit(self, max_steps: int = 100) -> TrainerResult:
-        requested_steps = max(0, int(max_steps))
+    def fit(self, max_steps: int | None = None) -> TrainerResult:
+        """Run the unified Solver lifecycle for the configured step budget.
+
+        An explicit argument is a per-call override.  A no-argument Case run
+        follows the Solver-owned ``max_steps`` value instead of introducing a
+        second ML-only default budget.
+        """
+
+        requested_steps = max(
+            0,
+            int(self.max_steps if max_steps is None else max_steps),
+        )
         run_limit = requested_steps
         if bool(getattr(self, "_resume_loaded", False)):
             run_limit += int(getattr(self, "_resume_cursor", 0) or 0)
         self._fit_started_at = time.monotonic()
         self._fit_policy_step = 0
         try:
-            raw_result = ComposableSolver.run(self, max_steps=run_limit)
+            ComposableSolver.run(self, max_steps=run_limit)
         finally:
             self._fit_started_at = None
+        if self._finalized_trainer_result is None:
+            raise RuntimeError("ML run completed without a finalized TrainerResult")
+        return self._finalized_trainer_result
+
+    def finalize_run_result(self, raw_result: Mapping[str, Any]) -> dict[str, Any]:
+        """Build ML semantics while Provider/session/artifact authority are live."""
+
         self._synchronize_ml_projection(record_history=False)
-        report = self.build_report(raw_result)
         self.publish_best_model_artifact()
-        return self._build_trainer_result(report)
+        report = self.build_report(raw_result)
+        self._finalized_report = report
+        self._externalize_large_result_fields(report)
+        self._finalized_trainer_result = self._build_trainer_result(report)
+        # Plugin finish hooks consume the full semantic report here.  The Case
+        # output remains the cached TrainerResult returned by fit() after the
+        # shared lifecycle has completed teardown.
+        return {
+            "status": str(raw_result.get("status", "ok")),
+            "termination_reason": str(raw_result.get("termination_reason", "")),
+            "report": report,
+            "trainer_result_ready": True,
+            "artifact_refs": {
+                name: ref for name, ref in self.result_artifact_refs.items()
+            },
+        }
+
+    def finalize_after_teardown(self, raw_result: Mapping[str, Any]) -> Mapping[str, Any]:
+        """Attach cleanup evidence without rerunning semantic finalization."""
+
+        if self._finalized_report is not None:
+            report = dict(self._finalized_report)
+            report["provider_state_release"] = (
+                None
+                if self._last_state_release is None
+                else self._last_state_release.as_dict()
+            )
+            self._finalized_report = report
+            self._externalize_report(report)
+            self._finalized_trainer_result = self._build_trainer_result(report)
+        result = dict(raw_result)
+        if self._finalized_report is not None:
+            result["report"] = dict(self._finalized_report)
+        return result
+
+    def _externalize_large_result_fields(self, report: Mapping[str, Any]) -> None:
+        self._best_state_ref = self._publish_large_result_field(
+            "trainer_best_state",
+            self.best_state,
+            kind="trainer_state",
+            path="trainer_result.best_state",
+        )
+        self._history_ref = self._publish_large_result_field(
+            "trainer_history",
+            tuple(self.history),
+            kind="trainer_history",
+            path="trainer_result.history",
+        )
+
+    def _externalize_report(self, report: Mapping[str, Any]) -> None:
+        self._report_ref = self._publish_large_result_field(
+            "trainer_report",
+            dict(report),
+            kind="trainer_report",
+            path="trainer_result.report",
+        )
+
+    def _publish_large_result_field(
+        self,
+        name: str,
+        value: Any,
+        *,
+        kind: str,
+        path: str,
+    ) -> DataRef | None:
+        if value is None:
+            return None
+        encoded = encode_shared_value(value, path=path)
+        size = len(
+            json.dumps(
+                encoded,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        if size <= self.result_inline_limit_bytes:
+            return None
+        publish = getattr(self.artifact_provider, "publish_payload", None)
+        if not callable(publish):
+            raise TypeError(
+                "artifact provider must implement publish_payload(...) for "
+                "bounded TrainerResult fields"
+            )
+        self.checkpoint_case_runtime()
+        ref = publish(self, name, value, kind=kind)
+        if ref is None:
+            # Standalone fits have no Case artifact authority.  They return the
+            # in-process TrainerResult object and therefore keep the field
+            # inline; a Case execution never fabricates an unresolved ref.
+            return None
+        self.register_result_artifact(name, ref)
+        self.checkpoint_case_runtime()
+        return ref
 
     def _build_trainer_result(self, report: Mapping[str, Any]) -> TrainerResult:
         return TrainerResult(
@@ -629,10 +773,13 @@ class LearningSolver(ComposableSolver):
             history=tuple(self.history),
             report=report,
             best_model_ref=self.best_model_ref,
+            best_state_ref=self._best_state_ref,
+            history_ref=self._history_ref,
+            report_ref=self._report_ref,
             artifact_refs=self.result_artifact_refs,
         )
 
-    def run(self, max_steps: int = 100) -> TrainerResult:
+    def run(self, max_steps: int | None = None) -> TrainerResult:
         return self.fit(max_steps=max_steps)
 
     def export_case_result(self, raw_output: Any) -> TrainerResult:
@@ -710,6 +857,8 @@ class LearningSolver(ComposableSolver):
     def set_artifact_provider(self, provider: ArtifactProvider) -> "LearningSolver":
         if not callable(getattr(provider, "publish_best_model", None)):
             raise TypeError("artifact provider must implement publish_best_model(control)")
+        if not callable(getattr(provider, "publish_payload", None)):
+            raise TypeError("artifact provider must implement publish_payload(control, ...)")
         self.artifact_provider = provider
         return self
 
@@ -718,12 +867,14 @@ class LearningSolver(ComposableSolver):
         context: Mapping[str, Any] | ResourceContext | None,
     ) -> "LearningSolver":
         previous = getattr(self, "compute_backend_session", None)
-        super().set_resource_context(context)
-        self._resource_context_explicit = context is not None
+        explicit = context is not None
+        resource = _resource_context_with_namespace(context, self.run_name)
+        super().set_resource_context(resource)
+        self._resource_context_explicit = explicit
         self.compute_backend_session = _build_compute_backend_session(
             self._compute_backend_request,
             self.resource_context,
-            explicit=context is not None,
+            explicit=explicit,
         )
         if previous is not None and previous is not self.compute_backend_session:
             previous.close()
@@ -942,10 +1093,10 @@ class LearningSolver(ComposableSolver):
                 item
                 for item in evaluations
                 if (
-                    incumbent.candidate_token is not None
-                    and item.candidate_token == incumbent.candidate_token
+                    item.candidate_token == incumbent.candidate_token
+                    if incumbent.candidate_token is not None
+                    else self.model_representation.equivalent(item.state, state)
                 )
-                or self.model_representation.equivalent(item.state, state)
             ),
             None,
         )
@@ -1016,6 +1167,25 @@ def _problem_objective_count(problem: Any) -> int:
     if count <= 0:
         raise ValueError("ML LearningProblem must declare a positive objective count")
     return count
+
+
+def _resource_context_with_namespace(
+    value: Mapping[str, Any] | ResourceContext | None,
+    run_name: str,
+) -> ResourceContext:
+    """Every stateful Provider trajectory has an owned, non-empty scope."""
+
+    resource = coerce_resource_context(value)
+    if resource.namespace:
+        return resource
+    payload = resource.as_dict()
+    payload["namespace"] = (
+        f"mlblack.{str(run_name or 'run')}.{uuid4().hex}"
+    )
+    metadata = dict(payload.get("metadata", {}) or {})
+    metadata["namespace_source"] = "mlblack.standalone_scope"
+    payload["metadata"] = metadata
+    return ResourceContext.from_mapping(payload)
 
 
 def _build_compute_backend_session(

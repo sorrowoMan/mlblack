@@ -148,18 +148,19 @@ class ExperimentTrackerCapability(Capability):
         store: InMemoryExperimentStore | SQLiteExperimentStore | None = None,
         config: ExperimentTrackerConfig | None = None,
     ) -> None:
+        super().__init__(name=self.name)
         self.store = store or InMemoryExperimentStore()
-        self.config = config or ExperimentTrackerConfig()
+        self.tracker_config = config or ExperimentTrackerConfig()
 
     def on_fit_start(self, trainer: Any, context: Mapping[str, Any]) -> None:
         self._write(trainer, "fit_start", context)
 
     def on_step_end(self, trainer: Any, context: Mapping[str, Any], row: Mapping[str, Any]) -> None:
-        if self.config.record_steps:
+        if self.tracker_config.record_steps:
             self._write(trainer, "step_end", {**dict(context), "row": dict(row)}, step=int(row.get("step", 0)))
 
-    def on_evaluate_end(self, trainer: Any, candidate: Any, feedback: Any, context: Mapping[str, Any]) -> None:
-        if not self.config.record_evaluations:
+    def on_evaluate_end_ml(self, trainer: Any, candidate: Any, feedback: Any, context: Mapping[str, Any]) -> None:
+        if not self.tracker_config.record_evaluations:
             return
         metrics = dict(getattr(feedback, "metrics", {}) or {})
         self._write(trainer, "evaluate_end", {"metrics": metrics, "context": dict(context)}, step=int(context.get("step", 0)))
@@ -168,7 +169,7 @@ class ExperimentTrackerCapability(Capability):
         self._write(trainer, "fit_end", {"context": dict(context), "report": dict(report)})
         trainer.context_store["experiment.record_count"] = len(self.store.list(run_name=str(getattr(trainer, "run_name", ""))))
 
-    def on_error(self, trainer: Any, error: BaseException, context: Mapping[str, Any]) -> None:
+    def on_error_ml(self, trainer: Any, error: BaseException, context: Mapping[str, Any]) -> None:
         self._write(trainer, "error", {"error": repr(error), "context": dict(context)}, step=int(context.get("step", 0)))
 
     def _write(self, trainer: Any, event: str, payload: Mapping[str, Any], step: int | None = None) -> None:

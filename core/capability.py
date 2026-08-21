@@ -39,7 +39,8 @@ class Capability(PluginBase):
     """ML semantic Plugin with fit-oriented hook names."""
 
     def __init__(self, name: Optional[str] = None, priority: int = 0, **kwargs):
-        super().__init__(name=name or "capability", priority=priority, **kwargs)
+        default_name = str(getattr(type(self), "name", "capability") or "capability")
+        super().__init__(name=name or default_name, priority=priority, **kwargs)
 
     def on_fit_start(self, trainer, context):
         return None
@@ -85,7 +86,14 @@ class Capability(PluginBase):
         )
 
     def on_solver_finish(self, result):
-        report = result.get("report", {}) if isinstance(result, Mapping) else result
+        finalized_report = getattr(self.solver, "_finalized_report", None)
+        report = (
+            finalized_report
+            if isinstance(finalized_report, Mapping)
+            else result.get("report", {})
+            if isinstance(result, Mapping)
+            else result
+        )
         if not isinstance(report, Mapping):
             report = {"result": report}
         self.on_fit_end(self.solver, _trainer_context(self.solver), dict(report))

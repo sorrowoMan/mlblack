@@ -31,12 +31,28 @@ STAGES = [
             "shap_contribution_check": {"threads": 1, "device": "cpu", "backend": "local"},
             "xgboost_baseline": {"threads": 1, "device": "cpu", "backend": "local"},
         },
-        "case_modes": {
-            "arimax_factor_attribution": "cli",
-            "gam_linearity_check": "cli",
-            "granger_causality_check": "cli",
-            "shap_contribution_check": "cli",
-            "xgboost_baseline": "cli",
+        "component_overrides": {
+            "arimax_factor_attribution": {
+                "config": {
+                    "ar_order": 1,
+                    "ma_order": 0,
+                    "diff": 0,
+                    "max_rows": 120,
+                    "max_factor_groups": 2,
+                }
+            },
+            "gam_linearity_check": {
+                "config": {"n_knots": 4, "degree": 2, "top_k": 4, "max_rows": 160}
+            },
+            "granger_causality_check": {
+                "config": {"maxlag": 2, "alpha": 0.05, "max_rows": 160, "max_factors": 3}
+            },
+            "shap_contribution_check": {
+                "config": {"n_estimators": 20, "top_k": 5, "max_rows": 160}
+            },
+            "xgboost_baseline": {
+                "config": {"population_size": 4, "mutation_scale": 0.2}
+            },
         },
     },
     {
@@ -45,8 +61,11 @@ STAGES = [
         "resource_requests": {
             "symbolic_regression": {"threads": 1, "device": "cpu", "backend": "local"},
         },
-        "case_modes": {
-            "symbolic_regression": "cli",
+        "component_overrides": {
+            "symbolic_regression": {
+                "config": {"learning_rate": 0.01},
+                "max_steps": 2,
+            },
         },
     },
 ]

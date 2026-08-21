@@ -3,15 +3,9 @@
 
 from __future__ import annotations
 
-import argparse
-from pathlib import Path
-
 from mlblack.presets import build_orthogonal_linear_point_trainer
 
 from pipeline.main import build_pipeline
-
-_HERE = Path(__file__).resolve().parent
-
 
 def build_solver(
     *,
@@ -60,49 +54,6 @@ def build_solver(
         energy_threshold=energy_threshold,
         run_name="demo_orthogonal_linear_point",
     )
-    if resource_context:
+    if resource_context is not None:
         trainer.set_resource_context(dict(resource_context))
     return trainer
-
-
-def _build_parser():
-    parser = argparse.ArgumentParser(
-        description="Build and run the orthogonal point demo scaffold.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Build and validate assembly only; do not run fit().",
-    )
-    parser.add_argument(
-        "--max-steps",
-        type=int,
-        default=300,
-        help="Training steps used when running the demo.",
-    )
-    return parser
-
-
-def main(argv=None):
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-    trainer = build_solver()
-    if bool(args.check):
-        problem = getattr(trainer, "problem", None)
-        rep = getattr(trainer, "representation", None)
-        adapter = getattr(trainer, "adapter", None)
-        print(
-            "[check] assembly ok | "
-            f"problem={type(problem).__name__ if problem else 'None'} | "
-            f"representation={type(rep).__name__ if rep else 'None'} | "
-            f"adapter={type(adapter).__name__ if adapter else 'None'}"
-        )
-        return
-    result = trainer.fit(max_steps=int(args.max_steps))
-    print(trainer.build_report())
-    print(result.report)
-
-
-if __name__ == "__main__":
-    main()

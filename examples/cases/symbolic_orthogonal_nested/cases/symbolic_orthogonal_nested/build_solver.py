@@ -1,25 +1,8 @@
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-if __package__ in {None, ""}:
-    _THIS_DIR = Path(__file__).resolve().parent
-    from _bootstrap import ensure_case_importable  # noqa: E402
-    ensure_case_importable(Path(__file__))
-    _this_dir_str = str(_THIS_DIR)
-    if _this_dir_str in sys.path:
-        sys.path.remove(_this_dir_str)
-    sys.path.insert(0, _this_dir_str)
-    from config import SymbolicOrthogonalNestedCaseConfig  # noqa: E402
-    from pipeline import build_representation_pipeline  # noqa: E402
-    from problem import build_stage1_problem, build_stage2_problem, build_symbolic_regression_data  # noqa: E402
-else:
-    from ._bootstrap import ensure_case_importable  # noqa: E402
-    ensure_case_importable(Path(__file__))
-    from .config import SymbolicOrthogonalNestedCaseConfig  # noqa: E402
-    from .pipeline import build_representation_pipeline  # noqa: E402
-    from .problem import build_stage1_problem, build_stage2_problem, build_symbolic_regression_data  # noqa: E402
+from .config import SymbolicOrthogonalNestedCaseConfig
+from .pipeline import build_representation_pipeline
+from .problem import build_stage1_problem, build_stage2_problem, build_symbolic_regression_data
 
 from mlblack.integrations.nsgablack_symbolic import OrthogonalBasisSetArtifact  # noqa: E402
 from mlblack.pipeline.data_views import NumericDataView  # noqa: E402

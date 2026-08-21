@@ -2,8 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from blackbase.project import CaseRunResult, execute_project
+import numpy as np
+import pytest
+
+from blackbase.project import (
+    CaseFailure,
+    CaseInvocationError,
+    CaseRunRequest,
+    CaseRunResult,
+    execute_project,
+)
 from blackbase.project.scaffold import add_case, create_project
+from mlblack.integrations.nsgablack_learning_case import NsgablackLearningCaseEvaluator
 
 
 def test_complete_trainer_case_bridge_returns_learning_solver_result(tmp_path) -> None:
@@ -145,7 +155,7 @@ GROUPS = {"default": {"stages": ["outer"]}}
 
     assert project_result.ok
     parent_result = project_result.case_results[0]
-    assert parent_result.output["objectives"] == [9.0]
+    assert parent_result.output["objectives"] == (9.0,)
     assert parent_result.output["violation"] == 0.0
     child_payload = parent_result.metadata["runtime_audit"]["child_invocations"]["results"][0]
     child_result = CaseRunResult.from_dict(child_payload)
@@ -161,3 +171,42 @@ GROUPS = {"default": {"stages": ["outer"]}}
     assert model_ref["metadata"]["serializer"] == "json"
     assert child_result.artifact_refs["best_model"].kind == "model"
     assert child_result.output["best_feedback"]["protocol_type"] == "blackbase.feedback"
+
+
+def test_complete_trainer_case_bridge_preserves_child_failure() -> None:
+    parent_request = CaseRunRequest(
+        project_name="trainer_case_project",
+        stage_name="outer",
+        case_name="outer_solver",
+    )
+    child_failure = CaseFailure(
+        kind="ProviderUnavailable",
+        message="training provider is offline",
+        retryable=True,
+    )
+
+    class _Runtime:
+        request = parent_request
+
+        def invoke(self, request):
+            return CaseRunResult(
+                request=request,
+                status="failed",
+                exit_code=1,
+                failure=child_failure,
+            )
+
+    class _Solver:
+        generation = 2
+        case_runtime = _Runtime()
+
+    evaluator = NsgablackLearningCaseEvaluator("inner_trainer")
+
+    with pytest.raises(CaseInvocationError) as caught:
+        evaluator.evaluate(
+            solver=_Solver(),
+            x=np.asarray([1.0]),
+            individual_id=3,
+        )
+
+    assert caught.value.result.failure is child_failure

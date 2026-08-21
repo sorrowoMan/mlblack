@@ -1,4 +1,4 @@
-import sys; from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent))
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Mapping
 import numpy as np
@@ -6,10 +6,7 @@ import numpy as np
 from mlblack.integrations import build_diagnostic_solver
 from mlblack.project.scaffold import print_case_check
 
-try:
-    from .pipeline import build_pipeline
-except ImportError:
-    from pipeline import build_pipeline
+from .pipeline import build_pipeline
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 CSV_PATH = DATA_DIR / "ci_interval_opt_table_no_flow_speed_occ_lag.csv"
@@ -28,12 +25,15 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
 
     payload = dict(config or {}) if isinstance(config, Mapping) else {}
     overrides = dict(component_overrides or {})
+    payload.update(dict(overrides.pop("config", {}) or {}))
     def run_diagnostic(context):
         del context
         exit_code = _run_analysis(payload)
         return {"status": "ok", "exit_code": int(exit_code or 0)}
 
-    runner = overrides.get("diagnostic_runner") or run_diagnostic
+    runner = overrides.pop("diagnostic_runner", None) or run_diagnostic
+    if overrides:
+        raise ValueError("unsupported Granger diagnostic overrides: " + str(sorted(overrides)))
     return build_diagnostic_solver(
         runner,
         name="traffic_granger_causality_check",
@@ -50,6 +50,9 @@ def _run_analysis(config=None):
 
     pipeline_data = build_pipeline(CSV_PATH)
     df = pipeline_data.frame
+    max_rows = int(payload.get("max_rows", 0))
+    if max_rows > 0 and len(df) > max_rows:
+        df = df.tail(max_rows).reset_index(drop=True)
 
     print("=" * 60)
     print("Granger Causality Check: Traffic CI")
@@ -57,6 +60,9 @@ def _run_analysis(config=None):
     print()
 
     factor_cols = list(pipeline_data.factor_columns)
+    max_factors = int(payload.get("max_factors", 0))
+    if max_factors > 0:
+        factor_cols = factor_cols[:max_factors]
 
     try:
         from statsmodels.tsa.stattools import grangercausalitytests, adfuller

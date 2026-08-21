@@ -29,6 +29,7 @@ def build_solver(
         resource_context=resource_context,
     )
     if max_steps is not None:
+        trainer.set_max_steps(max(1, int(max_steps)))
         trainer.register_controller(
             BudgetController(
                 max_generations=max(1, int(max_steps)),

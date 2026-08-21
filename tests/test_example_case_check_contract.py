@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from blackbase.project import CaseRunResult, execute_project
+from blackbase.project.runtime import path_declares_check_argument
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,7 +17,7 @@ RUN_ENTRIES = tuple(sorted((ROOT / "examples" / "cases").glob("*/cases/*/run_sol
 
 def test_every_standard_case_cli_declares_build_check_contract() -> None:
     assert RUN_ENTRIES
-    missing = [path for path in RUN_ENTRIES if "--check" not in path.read_text(encoding="utf-8")]
+    missing = [path for path in RUN_ENTRIES if not path_declares_check_argument(path)]
     assert missing == []
 
 
@@ -129,5 +131,10 @@ def test_benchmark_project_runs_independent_trainers_in_parallel_envelopes() -> 
         assert item.request.component_overrides == {"max_steps": 2}
         assert item.request.resource_context["grant"]["threads"] == 1
         assert item.output["protocol_type"] == "blackbase.trainer_result"
-        runtime = item.output["report"]["optimization_runtime"]
+        report = item.output["report"]
+        if item.output["report_ref"] is not None:
+            report = json.loads(
+                Path(item.output["report_ref"]["uri"]).read_text(encoding="utf-8")
+            )
+        runtime = report["optimization_runtime"]
         assert runtime["steps_executed"] == 2

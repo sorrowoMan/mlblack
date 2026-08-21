@@ -74,7 +74,9 @@ def test_estimator_search_returns_the_fitted_model_that_was_evaluated() -> None:
 
     assert isinstance(result.best_model, FittedEstimatorModel)
     assert hasattr(result.best_model.estimator, "estimators_")
-    assert trainer.semantic_problem.build_model_artifact(result.best_model) is result.best_model
+    artifact = trainer.semantic_problem.build_model_artifact(result.best_model)
+    assert artifact.model is result.best_model
+    assert artifact.estimator_state["num_estimators"] == 3
 
 
 def test_ml_vocabulary_resolves_without_exposing_adapter_repository() -> None:

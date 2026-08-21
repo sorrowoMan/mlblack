@@ -1,6 +1,6 @@
 from .assembly import BiasSpec, InnerTrainingAssemblySpec, TrainerAssemblySpec, build_pipeline, build_trainer
 
-__version__ = "0.4.4"
+__version__ = "0.4.6"
 
 from .bias import (
     BranchPolicyBias,

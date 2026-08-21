@@ -93,6 +93,59 @@ class OrthogonalFeatureMap:
     selected_energy: float
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        mean = np.array(self.mean, dtype=float, copy=True).reshape(-1)
+        components = np.array(self.components, dtype=float, copy=True)
+        if components.ndim != 2:
+            raise ValueError("orthogonal components must be a 2D matrix")
+        if components.shape[1] != mean.shape[0]:
+            raise ValueError("orthogonal component width must match the expanded mean")
+        raw_names = tuple(str(name) for name in self.raw_feature_names)
+        expanded_names = tuple(str(name) for name in self.expanded_feature_names)
+        if expanded_names and len(expanded_names) != mean.shape[0]:
+            raise ValueError("expanded feature names must match the expanded mean")
+        if not np.all(np.isfinite(mean)) or not np.all(np.isfinite(components)):
+            raise ValueError("orthogonal feature map arrays must contain only finite values")
+        if not np.isfinite(float(self.selected_energy)):
+            raise ValueError("selected_energy must be finite")
+        mean.setflags(write=False)
+        components.setflags(write=False)
+        object.__setattr__(self, "mean", mean)
+        object.__setattr__(self, "components", components)
+        object.__setattr__(self, "raw_feature_names", raw_names)
+        object.__setattr__(self, "expanded_feature_names", expanded_names)
+        object.__setattr__(self, "selected_energy", float(self.selected_energy))
+        object.__setattr__(self, "metadata", dict(self.metadata or {}))
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "mlblack.orthogonal_feature_map.v1",
+            "mean": np.asarray(self.mean, dtype=float).tolist(),
+            "components": np.asarray(self.components, dtype=float).tolist(),
+            "raw_feature_names": list(self.raw_feature_names),
+            "expanded_feature_names": list(self.expanded_feature_names),
+            "selected_energy": float(self.selected_energy),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "OrthogonalFeatureMap":
+        if str(payload.get("schema", "")) != "mlblack.orthogonal_feature_map.v1":
+            raise ValueError(
+                "unsupported orthogonal feature map schema; expected "
+                "mlblack.orthogonal_feature_map.v1"
+            )
+        return cls(
+            mean=np.asarray(payload["mean"], dtype=float),
+            components=np.asarray(payload["components"], dtype=float),
+            raw_feature_names=tuple(str(name) for name in payload.get("raw_feature_names", ())),
+            expanded_feature_names=tuple(
+                str(name) for name in payload.get("expanded_feature_names", ())
+            ),
+            selected_energy=float(payload["selected_energy"]),
+            metadata=dict(payload.get("metadata", {}) or {}),
+        )
+
     @classmethod
     def fit(
         cls,
@@ -183,6 +236,40 @@ class OrthogonalLinearPointModel:
     intercept: float
     weights: np.ndarray
     metadata: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        weights = np.array(self.weights, dtype=float, copy=True).reshape(-1)
+        if weights.shape[0] != self.feature_map.output_dim:
+            raise ValueError("orthogonal model weights must match the feature-map output")
+        if not np.all(np.isfinite(weights)) or not np.isfinite(float(self.intercept)):
+            raise ValueError("orthogonal linear model parameters must be finite")
+        weights.setflags(write=False)
+        object.__setattr__(self, "intercept", float(self.intercept))
+        object.__setattr__(self, "weights", weights)
+        object.__setattr__(self, "metadata", dict(self.metadata or {}))
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "mlblack.orthogonal_linear_point_model.v1",
+            "feature_map": self.feature_map.as_dict(),
+            "intercept": float(self.intercept),
+            "weights": np.asarray(self.weights, dtype=float).tolist(),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "OrthogonalLinearPointModel":
+        if str(payload.get("schema", "")) != "mlblack.orthogonal_linear_point_model.v1":
+            raise ValueError(
+                "unsupported orthogonal model schema; expected "
+                "mlblack.orthogonal_linear_point_model.v1"
+            )
+        return cls(
+            feature_map=OrthogonalFeatureMap.from_dict(payload["feature_map"]),
+            intercept=float(payload["intercept"]),
+            weights=np.asarray(payload["weights"], dtype=float),
+            metadata=dict(payload.get("metadata", {}) or {}),
+        )
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         Q = self.feature_map.transform(np.asarray(X, dtype=float))

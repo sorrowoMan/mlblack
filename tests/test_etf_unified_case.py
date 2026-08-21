@@ -9,6 +9,7 @@ from nsgablack.adapters import FixedCandidateAdapter
 
 
 def test_etf_case_executes_as_one_learning_solver_evaluation(monkeypatch, tmp_path) -> None:
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1]))
     problem_module = importlib.import_module(
         "examples.cases.etf_temporal_forecast.cases.etf_temporal_forecast."
         "problem.etf_temporal_problem"

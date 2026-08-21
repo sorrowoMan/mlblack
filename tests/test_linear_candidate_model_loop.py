@@ -4,7 +4,7 @@ import numpy as np
 
 from mlblack.core import ArtifactBuilder, UnknownState
 from mlblack.core.artifact_provider import select_model_serializer
-from mlblack.models import LinearPointModel
+from mlblack.models import LinearPointModel, OrthogonalFeatureMap, OrthogonalLinearPointModel
 from mlblack.pipeline.data_views import NumericDataView
 from mlblack.presets import build_linear_point_trainer
 
@@ -78,3 +78,39 @@ def test_linear_candidate_optimization_produces_reusable_model_artifact() -> Non
         restored_model.predict(_linear_data().X_train),
         artifact.model.predict(_linear_data().X_train),
     )
+
+
+def test_no_argument_fit_uses_the_solver_owned_step_budget() -> None:
+    trainer = build_linear_point_trainer(
+        _linear_data(),
+        method="gradient.adam",
+        learning_rate=0.05,
+        random_seed=3,
+    )
+    trainer.set_max_steps(2)
+
+    result = trainer.fit()
+
+    assert len(result.history) == 2
+    assert result.report["optimization_runtime"]["steps_executed"] == 2
+
+
+def test_orthogonal_linear_model_artifact_round_trip_is_safe_and_detached() -> None:
+    data = _linear_data()
+    feature_map = OrthogonalFeatureMap.fit(
+        data.X_train,
+        feature_names=data.feature_names,
+    )
+    model = OrthogonalLinearPointModel(
+        feature_map=feature_map,
+        intercept=1.5,
+        weights=np.full(feature_map.output_dim, 0.25, dtype=float),
+        metadata={"source": "test"},
+    )
+
+    assert select_model_serializer(model) == "auto"
+    restored = OrthogonalLinearPointModel.from_dict(model.as_dict())
+    assert np.allclose(restored.predict(data.X_train), model.predict(data.X_train))
+    assert not restored.weights.flags.writeable
+    assert not restored.feature_map.mean.flags.writeable
+    assert not restored.feature_map.components.flags.writeable

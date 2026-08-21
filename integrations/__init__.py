@@ -42,10 +42,6 @@ from .nsgablack_solver_case import (
     SolverComponentOverrideBuilder,
     SolverFeedbackMapper,
 )
-from .nsgablack_symbolic_backend import (
-    MlblackSymbolicConsensusBackend,
-    MlblackSymbolicConsensusBackendConfig,
-)
 from .nsgablack_gradient import build_gradient_trainer
 from .nsgablack_diagnostic import build_diagnostic_solver
 from .nsgablack_control import (
@@ -85,8 +81,6 @@ __all__ = [
     "SolverCaseResultProjector",
     "SolverComponentOverrideBuilder",
     "SolverFeedbackMapper",
-    "MlblackSymbolicConsensusBackend",
-    "MlblackSymbolicConsensusBackendConfig",
     "build_gradient_trainer",
     "build_diagnostic_solver",
     "LearningSolver",

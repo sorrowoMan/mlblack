@@ -16,7 +16,11 @@ python examples\cases\symbolic_orthogonal_nested\run_project.py --check --build-
 Run a small smoke:
 
 ```powershell
-python examples\cases\symbolic_orthogonal_nested\run_project.py -- --stage1-generations 1 --stage2-generations 1 --stage1-pop-size 4 --stage2-pop-size 4 --stage1-inner-steps 2 --stage2-inner-steps 2
+python examples\cases\symbolic_orthogonal_nested\run_project.py
 ```
+
+Project 配置已经提供可执行的 smoke profile；需要扩大规模时，在
+`project_config.py` 的正式 component overrides 中调整配置，而不是向 build-mode Case
+转发旧 CLI 参数。
 
 The case writes `summary.json`, Stage 1 records, Stage 2 records, and typed symbolic artifacts under `runs/<suite_id>/`.

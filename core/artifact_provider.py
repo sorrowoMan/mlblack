@@ -9,6 +9,7 @@ from typing import Any, Callable, Mapping, Protocol
 
 import numpy as np
 
+from blackbase import CallCandidate, invoke_bound_once
 from blackbase.resources import ArtifactSerializer, DataRef
 
 
@@ -16,6 +17,15 @@ class ArtifactProvider(Protocol):
     """Publish a fitted model and return its durable reference."""
 
     def publish_best_model(self, trainer: Any) -> DataRef | None: ...
+
+    def publish_payload(
+        self,
+        trainer: Any,
+        name: str,
+        value: Any,
+        *,
+        kind: str,
+    ) -> DataRef | None: ...
 
 
 SerializerSelector = Callable[[Any], str | ArtifactSerializer]
@@ -46,11 +56,13 @@ class CaseRuntimeArtifactProvider:
         if isinstance(existing, Mapping) and self.artifact_name in existing:
             ref = existing[self.artifact_name]
             return ref if isinstance(ref, DataRef) else DataRef.from_dict(ref)
+        artifact = materialize_model_artifact(trainer, model)
+        publish_value, semantic_metadata = artifact_storage_payload(artifact)
         selector = self.serializer_selector or select_model_serializer
-        serializer = selector(model)
+        serializer = selector(publish_value)
         return publish(
             self.artifact_name,
-            model,
+            publish_value,
             serializer=serializer,
             kind="model",
             metadata={
@@ -58,6 +70,42 @@ class CaseRuntimeArtifactProvider:
                 "run_name": str(getattr(trainer, "run_name", "")),
                 "model_type": type(model).__name__,
                 "model_module": type(model).__module__,
+                "artifact_type": type(artifact).__name__,
+                "artifact_module": type(artifact).__module__,
+                **semantic_metadata,
+            },
+        )
+
+    def publish_payload(
+        self,
+        trainer: Any,
+        name: str,
+        value: Any,
+        *,
+        kind: str,
+    ) -> DataRef | None:
+        """Publish a transport-native result field through Case authority."""
+
+        runtime = getattr(trainer, "case_runtime", None)
+        publish = getattr(runtime, "publish_artifact", None)
+        if not callable(publish):
+            return None
+        artifact_name = str(name or "").strip()
+        if not artifact_name:
+            raise ValueError("result artifact name must be non-empty")
+        existing = getattr(runtime, "artifact_refs", {})
+        if isinstance(existing, Mapping) and artifact_name in existing:
+            ref = existing[artifact_name]
+            return ref if isinstance(ref, DataRef) else DataRef.from_dict(ref)
+        return publish(
+            artifact_name,
+            value,
+            serializer="auto",
+            kind=str(kind or "trainer_result"),
+            metadata={
+                "framework": "mlblack",
+                "run_name": str(getattr(trainer, "run_name", "")),
+                "result_field": artifact_name,
             },
         )
 
@@ -89,6 +137,55 @@ def select_model_serializer(model: Any) -> str | ArtifactSerializer:
         dump=_dump_pickle,
         unsafe=True,
     )
+
+
+def materialize_model_artifact(trainer: Any, model: Any) -> Any:
+    """Project a fitted model through the Problem-owned artifact boundary.
+
+    The optimization candidate is an in-process representation.  A semantic
+    Problem may expose a different, backend-neutral payload for persistence.
+    Invocation is bound before execution so an exception raised inside the
+    builder is never mistaken for an alternate call signature.
+    """
+
+    problem = getattr(trainer, "problem", None)
+    materialize = getattr(problem, "build_model_artifact", None)
+    if not callable(materialize):
+        return model
+    build_context = getattr(trainer, "build_context", None)
+    context = build_context() if callable(build_context) else {}
+    return invoke_bound_once(
+        materialize,
+        (
+            CallCandidate(args=(model, context), label="model-and-context"),
+            CallCandidate(args=(model,), label="model-only"),
+        ),
+    )
+
+
+def artifact_storage_payload(artifact: Any) -> tuple[Any, dict[str, Any]]:
+    """Separate a semantic artifact envelope from its serializer payload.
+
+    Typed ML artifacts carry audit metadata around an executable model.  The
+    executable payload is serialized by its backend codec (for example torch
+    state to NPZ), while the bounded semantic description travels in DataRef
+    metadata.  This avoids pickling the wrapper merely because it contains a
+    backend model.
+    """
+
+    from .artifacts import ModelArtifact
+    from mlblack.models import FittedEstimatorModel
+
+    if not isinstance(artifact, ModelArtifact):
+        return artifact, {}
+    publish_value = artifact.model
+    semantic_metadata: dict[str, Any] = {
+        "semantic_artifact": artifact.describe()
+    }
+    if isinstance(publish_value, FittedEstimatorModel):
+        semantic_metadata["fitted_estimator_model"] = publish_value.describe()
+        publish_value = publish_value.estimator
+    return publish_value, semantic_metadata
 
 
 def _is_torch_module(model: Any) -> bool:
@@ -134,5 +231,7 @@ __all__ = [
     "ArtifactProvider",
     "CaseRuntimeArtifactProvider",
     "SerializerSelector",
+    "artifact_storage_payload",
+    "materialize_model_artifact",
     "select_model_serializer",
 ]

@@ -270,7 +270,7 @@ def test_torch_provider_executes_version_fenced_gradient_transition() -> None:
         parameters={"learning_rate": 0.05},
         step_index=0,
     )
-    adapter_state = trainer.adapter.get_population()[0]
+    adapter_state = trainer.adapter.get_current_candidates()[0]
     expected_values = (
         trainer.last_evaluated_population[0].as_array()
         - (0.05 * np.asarray(feedback.gradients, dtype=float))
@@ -336,13 +336,13 @@ def test_provider_transition_checkpoint_resumes_from_materialized_shadow() -> No
     original = build("provider_checkpoint_original")
     original.fit(max_steps=1)
     checkpoint = original.get_state()
-    expected_start = original.adapter.get_population()[0].as_array().copy()
+    expected_start = original.adapter.get_current_candidates()[0].as_array().copy()
 
     restored = build("provider_checkpoint_restored")
     restored.set_state(checkpoint)
     restored.fit(max_steps=1)
     runtime = restored.adapter.get_state()["provider_transition"]
-    resumed = restored.adapter.get_population()[0].as_array()
+    resumed = restored.adapter.get_current_candidates()[0].as_array()
 
     assert runtime["count"] == 2
     assert runtime["state_ref"] is None

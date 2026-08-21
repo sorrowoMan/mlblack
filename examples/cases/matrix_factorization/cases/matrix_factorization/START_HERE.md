@@ -10,7 +10,7 @@
 
 ## 2) 运行
 ```powershell
-Set-Location "C:\Users\hp\Desktop\mlblack"
+# 先进入 mlblack 仓库根目录
 python examples\cases\matrix_factorization\run_project.py --check --build-check
 python examples\cases\matrix_factorization\cases\matrix_factorization\run_solver.py
 ```

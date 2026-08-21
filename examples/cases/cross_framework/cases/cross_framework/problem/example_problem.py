@@ -74,9 +74,7 @@ class NestedTrainerProblem(BlackBoxProblem):
                 },
             )
         )
-        if not child.ok:
-            failure = None if child.failure is None else child.failure.as_dict()
-            raise RuntimeError(f"inner Trainer Case failed: {failure}")
+        child.raise_for_failure("inner Trainer Case failed")
         payload = dict(child.output or {})
         if str(payload.get("protocol_type", "")) != "blackbase.trainer_result":
             raise TypeError("inner Case did not return a TrainerResult envelope")

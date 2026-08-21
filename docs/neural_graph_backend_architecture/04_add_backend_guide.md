@@ -277,6 +277,6 @@ python -c "from mlblack.project import run_project_doctor, format_doctor_report;
 
 ```powershell
 python examples\cases\tiny_transformer_smoke\run_project.py --check --build-check
-python examples\cases\tiny_transformer_smoke\run_project.py -- --steps 1
-python examples\cases\benchmarks\run_project.py -- --steps 1 --repeats 1
+python examples\cases\tiny_transformer_smoke\run_project.py
+python examples\cases\benchmarks\run_project.py
 ```

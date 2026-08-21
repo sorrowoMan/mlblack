@@ -71,7 +71,7 @@
 ## 运行
 
 ```powershell
-cd C:\Users\hp\Desktop\mlblack
+# 先进入 mlblack 仓库根目录
 python examples\cases\etf_temporal_forecast\run_project.py --check --build-check
 python examples\cases\etf_temporal_forecast\cases\etf_temporal_forecast\run_solver.py --quickstart
 python examples\cases\etf_temporal_forecast\cases\etf_temporal_forecast\run_solver.py --serious

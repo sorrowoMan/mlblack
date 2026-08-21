@@ -39,15 +39,10 @@ STAGES = [
                 "backend": "local",
             },
         },
-        "case_modes": {
-            "tiny_transformer_classification": "cli",
-            "tiny_transformer_language_model": "cli",
-            "tiny_transformer_preference": "cli",
-        },
-        "case_args": {
-            "tiny_transformer_classification": ["--steps", "2"],
-            "tiny_transformer_language_model": ["--steps", "2"],
-            "tiny_transformer_preference": ["--steps", "1"],
+        "component_overrides": {
+            "tiny_transformer_classification": {"max_steps": 2},
+            "tiny_transformer_language_model": {"max_steps": 2},
+            "tiny_transformer_preference": {"max_steps": 1},
         },
     },
 ]

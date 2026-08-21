@@ -38,20 +38,17 @@ STAGES = [
                 "temporal_tft",
             )
         },
-        "case_modes": {
-            case_name: "cli"
-            for case_name in (
-                "temporal_lstm",
-                "temporal_tcn",
-                "temporal_transformer",
-                "temporal_nbeats",
-                "temporal_deepar",
-                "temporal_patchtst",
-                "temporal_tft",
-            )
-        },
-        "case_args": {
-            case_name: ["--steps", "50"]
+        "component_overrides": {
+            case_name: {
+                "config": {
+                    "n_train": 32,
+                    "n_valid": 8,
+                    "sequence_length": 12,
+                    "noise_std": 0.1,
+                    "random_seed": 42,
+                },
+                "max_steps": 2,
+            }
             for case_name in (
                 "temporal_lstm",
                 "temporal_tcn",

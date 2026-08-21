@@ -6,10 +6,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from mlblack.core.plugin import Plugin
+from mlblack.core.capability import Capability
 
 
-class ExampleCheckpointPlugin(Plugin):
+class ExampleCheckpointPlugin(Capability):
     """Save trainer state to disk periodically."""
 
     context_requires = ()
@@ -23,11 +23,13 @@ class ExampleCheckpointPlugin(Plugin):
         self.checkpoint_dir = Path(checkpoint_dir)
         self.interval = max(1, int(interval))
 
-    def on_fit_start(self, trainer):
+    def on_fit_start(self, trainer, context):
+        del trainer, context
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    def on_step_end(self, trainer):
-        step = trainer.context_store.get("step", 0)
+    def on_step_end(self, trainer, context, row):
+        del context
+        step = int(row.get("step", trainer.generation))
         if step % self.interval == 0:
             state = trainer.get_state()
             path = self.checkpoint_dir / f"step_{step:06d}.json"

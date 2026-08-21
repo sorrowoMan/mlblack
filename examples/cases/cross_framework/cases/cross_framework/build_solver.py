@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 from typing import Any, Mapping
 
 from nsgablack.adapters.gaussian_search import (
@@ -8,8 +7,6 @@ from nsgablack.adapters.gaussian_search import (
     GaussianSearchConfig,
 )
 from nsgablack.core.composable_solver import ComposableSolver
-
-from mlblack.project.scaffold import print_case_check
 
 from pipeline.main import build_pipeline
 from problem.example_problem import NestedTrainerProblem
@@ -67,22 +64,4 @@ def build_solver(
     if resource_context is not None:
         solver.set_resource_context(resource_context)
     return solver
-
-
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Run the formal nested cross-framework Case")
-    parser.add_argument("--check", action="store_true")
-    args = parser.parse_args(argv)
-    solver = build_solver()
-    if args.check:
-        print_case_check(solver)
-        return 0
-    print(solver.run())
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-
-
-__all__ = ["CrossFrameworkOuterSolver", "build_solver", "main"]
+__all__ = ["CrossFrameworkOuterSolver", "build_solver"]

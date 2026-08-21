@@ -15,6 +15,7 @@ def build_solver(
 ):
     del config
     overrides = dict(component_overrides or {})
+    max_steps = overrides.pop("max_steps", None)
     data_builder = overrides.pop("pipeline", build_data)
     trainer_builder = overrides.pop("trainer", build_tiny_transformer_lm_trainer)
     if overrides:
@@ -23,7 +24,7 @@ def build_solver(
             f"{sorted(overrides)}"
         )
     data = data_builder() if callable(data_builder) else data_builder
-    return trainer_builder(
+    trainer = trainer_builder(
         data,
         vocab_size=12,
         max_length=5,
@@ -38,6 +39,9 @@ def build_solver(
         run_name="tiny_transformer_lm_case",
         resource_context=resource_context,
     )
+    if max_steps is not None:
+        trainer.set_max_steps(max(1, int(max_steps)))
+    return trainer
 
 
 __all__ = ["build_solver"]

@@ -1,4 +1,4 @@
-import sys; from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent))
+from pathlib import Path
 from typing import Mapping
 import numpy as np
 from mlblack.integrations.nsgablack_control import build_learning_solver
@@ -6,12 +6,8 @@ from mlblack.integrations.nsgablack_optimization import build_optimization_adapt
 from mlblack.core.problem import LearningProblem
 from mlblack.core.types import Feedback
 
-try:
-    from .pipeline import add_intercept as _add_intercept
-    from .pipeline import build_pipeline, build_representation
-except ImportError:
-    from pipeline import add_intercept as _add_intercept
-    from pipeline import build_pipeline, build_representation
+from .pipeline import add_intercept as _add_intercept
+from .pipeline import build_pipeline, build_representation
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 CSV_PATH = DATA_DIR / "ci_interval_opt_table_no_flow_speed_occ_lag.csv"
@@ -50,14 +46,18 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
 
     payload = dict(config or {}) if isinstance(config, Mapping) else {}
     overrides = dict(component_overrides or {})
-    data = overrides.get("data") or build_pipeline(CSV_PATH)
-    problem = overrides.get("problem") or CIDirectRegressionProblem(data)
-    representation = overrides.get("representation") or build_representation(data)
-    adapter = overrides.get("adapter") or build_optimization_adapter(
+    payload.update(dict(overrides.pop("config", {}) or {}))
+    max_steps = overrides.pop("max_steps", None)
+    data = overrides.pop("data", None) or build_pipeline(CSV_PATH)
+    problem = overrides.pop("problem", None) or CIDirectRegressionProblem(data)
+    representation = overrides.pop("representation", None) or build_representation(data)
+    adapter = overrides.pop("adapter", None) or build_optimization_adapter(
         "gradient.sgd",
         learning_rate=float(payload.get("learning_rate", 0.01)),
         max_gradient_norm=1e3,
     )
+    if overrides:
+        raise ValueError("unsupported traffic symbolic overrides: " + str(sorted(overrides)))
     trainer = build_learning_solver(
         problem=problem,
         adapter=adapter,
@@ -65,5 +65,7 @@ def build_solver(config=None, *, resource_context=None, component_overrides=None
         run_name="traffic_symbolic_regression",
         resource_context=resource_context,
     )
+    if max_steps is not None:
+        trainer.set_max_steps(max(1, int(max_steps)))
     trainer.traffic_data = data
     return trainer

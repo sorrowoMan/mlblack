@@ -7,8 +7,8 @@ is responsible for optimization/search semantics; `mlblack` is responsible for
 ML semantics: representations, codecs, heads, problems, inner fitting, artifacts,
 reports, and the symbolic engine.
 
-Shared substrate baseline: `blackbase>=0.3.6,<0.4.0`; optimization methods are
-resolved from `nsgablack>=0.3.7,<0.4.0`, while ML semantics and compute Providers
+Shared substrate baseline: `blackbase>=0.3.8,<0.4.0`; optimization methods are
+resolved from `nsgablack>=0.3.9,<0.4.0`, while ML semantics and compute Providers
 remain in mlblack.
 MLBlack imports Case orchestration, L0 grants, call binding, Context/Snapshot,
 Catalog primitives and runtime projection envelopes directly from BlackBase;
@@ -79,7 +79,7 @@ Current formal cross-framework example:
 
 ```powershell
 python examples\cases\symbolic_orthogonal_nested\run_project.py --check --build-check
-python examples\cases\symbolic_orthogonal_nested\run_project.py -- --stage1-generations 1 --stage2-generations 1 --stage1-pop-size 4 --stage2-pop-size 4 --stage1-inner-steps 2 --stage2-inner-steps 2
+python examples\cases\symbolic_orthogonal_nested\run_project.py
 ```
 
 `examples/cases/cross_framework` is a real outer Solver Case. Its Problem invokes

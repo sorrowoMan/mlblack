@@ -53,7 +53,7 @@ def build_plugin(registry: PluginRegistry, key: str) -> object:
 
 
 def _register_builtin_plugins() -> None:
-    from plugins.example_plugin import ExampleCheckpointPlugin
+    from .example_capability import ExampleCheckpointPlugin
     def _ckpt_builder(params: Dict[str, Any]) -> object:
         interval = int(params.get("interval", 10))
         return ExampleCheckpointPlugin(interval=interval)
