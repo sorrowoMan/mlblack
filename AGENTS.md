@@ -18,6 +18,8 @@ Current first principle:
 - `mlblack` is the machine-learning semantic layer.
 - Adapter-driven ML uses `nsgablack.ComposableSolver` as the only optimization
   control plane. `LearningSolver.fit()` is an ML result facade, not another loop.
+- CompletionPolicy consumes the Solver-owned, checkpointable `RunProgressState`;
+  it must not keep a second private step/time counter or manufacture empty steps.
 - Semantic model identity remains in the Solver-owned CandidateBatch population;
   numeric Adapters select rows by candidate token and may not reconstruct ML
   metadata from equal parameter vectors.
@@ -25,6 +27,8 @@ Current first principle:
   Closed-form and third-party `estimator.fit()` routes belong in ML Problem/Provider
   components and execute through `LearningSolver` + `nsgablack.ComposableSolver`.
 - A `mlblack` Case can be outer or inner. It must not create a private project runner, scheduler, or resource allocator.
+- LearningSolver restore requests are queued and applied after Solver/Adapter setup;
+  ML components must not restore directly before setup or maintain private resume-order flags.
 
 ## 1. Project Positioning
 

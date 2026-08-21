@@ -1,141 +1,110 @@
-# mlblack
+# MLBlack
 
-`mlblack` is an optimization-first machine learning layer aligned with `nsgablack`.
-Both frameworks share one Project / Case / Scaffold / L0 substrate. Orchestration
-belongs to that substrate, not to either semantic layer privately. `nsgablack`
-is responsible for optimization/search semantics; `mlblack` is responsible for
-ML semantics: representations, codecs, heads, problems, inner fitting, artifacts,
-reports, and the symbolic engine.
+`mlblack` 是统一框架栈中的机器学习语义扩展包。它把数据、模型结构、参数状态、输出语义、训练问题、求值 Provider 和模型 Artifact 映射到 `nsgablack` 的统一 Solver 控制面，而不是维护第二套 Trainer 循环或 Adapter 体系。
 
-Shared substrate baseline: `blackbase>=0.3.8,<0.4.0`; optimization methods are
-resolved from `nsgablack>=0.3.9,<0.4.0`, while ML semantics and compute Providers
-remain in mlblack.
-MLBlack imports Case orchestration, L0 grants, call binding, Context/Snapshot,
-Catalog primitives and runtime projection envelopes directly from BlackBase;
-the former `mlblack.core.resources`, Context and store forwarding modules no
-longer exist.
+当前版本：`0.4.7`，依赖 `blackbase>=0.3.8,<0.4.0` 与 `nsgablack>=0.3.10,<0.4.0`。
+
+## 统一视图
 
 ```text
-UnknownState
-  -> ModelRepresentation / Codec / Head
-  -> decoded model, function, estimator spec, or symbolic expression
-  -> LearningProblem.evaluate(...)
-  -> Feedback(objectives, constraints, gradients, residuals)
-  -> nsgablack AlgorithmAdapter.update(...)
+DataView / DatasetSchema
+    -> ModelRepresentation + Codec
+    -> UnknownState / StateRef
+    -> LearningProblem
+    -> Evaluation Provider
+    -> OptimizationFeedbackBatch
+    -> nsgablack Adapter
+    -> LearningSolver
+    -> Typed Model Artifact
 ```
 
-## Core Boundaries
+在这个视图中：
 
-| Layer | Responsibility | Not responsible for |
-| --- | --- | --- |
-| `LearningSolver` / Trainer facade | ML-friendly `fit` / artifact / report projection | owning another optimization lifecycle |
-| `nsgablack.ComposableSolver` | the single Adapter lifecycle, incumbent, budget, cancellation and snapshot control plane | ML data/model/backend semantics |
-| `nsgablack AlgorithmAdapter` | propose/update strategy | reading business data directly |
-| `Representation + Codec + Head` | decode unknown state into model/output semantics | computing objectives |
-| `LearningProblem` | consume data and return feedback | scheduling resources |
-| `Capability` | checkpoint/tracking/audit/report side effects | changing optimization semantics |
-| `ResourceContext` | project-level L0 grant consumed by a case | resource allocation or global leases |
+- “模型训练”是对模型语义状态的求解。
+- `Codec` 定义候选状态怎样编码为算法可处理的数值视图，以及怎样重建模型。
+- `LearningProblem` 定义 loss、metric、constraint、数据切分和输出语义。
+- `Evaluation Provider` 实现 NumPy、Torch、JAX、TensorFlow、sklearn 或第三方 estimator 的实际求值/状态转移。
+- `nsgablack Adapter` 决定 Adam、梯度法、进化、多目标、嵌套或组合搜索策略。
+- `LearningSolver` 是面向 ML 用户的 facade，底层仍使用同一个 Solver 生命周期。
 
-## Quick Start: One ML View, One Optimization Control Plane
+闭式拟合和第三方 `estimator.fit()` 仍然属于 Provider 的求值机制；它们不会产生第二套控制平面。
+
+`CompletionPolicy` 消费 nsgablack 的可恢复 `RunProgressState`：checkpoint 恢复后继续同一次逻辑训练运行的累计 step、elapsed/deadline 和自定义 policy state，不会从零重新计数。Torch Provider 的活状态保留按 `(scope_id, trajectory_id)` 分区，交错训练不会相互淘汰尚待 transition 的 `StateRef`。
+
+## 资源与 backend
+
+GPU、CPU、线程、显存和设备 token 由 Project L0 授权。Provider 声明 required / preferred capability，并在注入的 `ResourceContext` 内选择可用 backend。
+
+Adapter 不拥有 GPU，backend 也不自行申请全局资源：
+
+```text
+Project L0 grant
+    -> ResourceContext
+    -> LearningProblem request
+    -> EvaluationProviderSpec capability match
+    -> backend session
+```
+
+## 稳定装配
+
+用户可以继续使用 ML 词汇：
 
 ```python
-import numpy as np
-
-from mlblack.assembly import build_trainer
-from mlblack.pipeline.data_views import train_valid_split
-
-X = np.linspace(-1, 1, 64).reshape(-1, 1)
-y = 1.5 + 2.0 * X[:, 0]
-data = train_valid_split(X, y, feature_names=("x0",))
+from mlblack import build_trainer
 
 trainer = build_trainer(
-    {
-        "preset": "orthogonal_linear_point",
-        "run_name": "linear_demo",
-        "params": {"learning_rate": 0.05},
-    },
-    data=data,
+    problem=problem,
+    model=model,
+    method="gradient.adam",
 )
-result = trainer.fit(max_steps=50)
-print(result.report["best_score"])
 ```
 
-Gradient and neural presets now return an ML-friendly `LearningSolver`. Its
-`fit()` method returns `TrainerResult`, but propose/evaluate/update, incumbent,
-lifecycle, cancellation, budget and snapshot execution happens once inside
-`nsgablack.ComposableSolver`. Closed-form and third-party `estimator.fit()`
-routes are ML Problem/Provider implementations inside that same lifecycle;
-MLBlack contains no private Trainer loop or optimization Adapter hierarchy.
-Feedback is immutable evidence. ML Problems/Providers publish an explicit loss
-or an explicitly named objective projection; outer ML/optimization composition
-does not fall back to BlackBase objective averaging or a fixed constraint penalty.
+`build_trainer` 是语义装配 facade：Catalog 把稳定方法标识解析为 nsgablack Adapter、mlblack Provider、数据调度和共享 runtime。它不是私有 Trainer 基类的工厂。
 
-## Complex Orchestration
+标准 Case 仍使用统一入口：
 
-Use the shared Project/Case substrate for complex orchestration. A `mlblack` case
-can be outer or inner; it should not recreate a private orchestration or L0 stack.
+- `build_solver.py`：唯一规范装配入口。
+- `run_solver.py`：唯一规范运行入口。
+- `.case kind=trainer`：只表达语义与 Catalog 分类。
+- `build_trainer.py` / `run_trainer.py`：可选薄别名。
 
-Current formal cross-framework example:
+每个 Project 和 Case 只维护一个 `README.md`。
+
+## 核心公共面
+
+- `LearningSolver` / `build_learning_solver`
+- `TrainerAssemblySpec` / `build_trainer`
+- `ModelRepresentation`、Codec 与 Head
+- `TrainingTask` / `TrainingContract`
+- Evaluation Provider 与 backend session
+- `ArtifactBuilder`、`TypedModelArtifact` 与 `TrainerResult`
+
+## 快速开始
 
 ```powershell
-python examples\cases\symbolic_orthogonal_nested\run_project.py --check --build-check
-python examples\cases\symbolic_orthogonal_nested\run_project.py
+python -m pip install -e .[all]
+python -m pytest -q
+python -m mlblack catalog list
 ```
 
-`examples/cases/cross_framework` is a real outer Solver Case. Its Problem invokes
-the independent `inner_training` Trainer Case through `CaseRunRequest`; lineage,
-child grants, cancellation and the versioned `TrainerResult` envelope all travel
-through the shared BlackBase substrate.
-
-## Symbolic Nested Learning
-
-Symbolic learning is represented as nested optimization, not as an isolated
-symbolic training stack with private orchestration.
-
-```text
-Stage 1: outer symbolic basis search Case
-  -> mlblack inner parameter fitting
-  -> orthogonality, stability, complexity, rank metrics
-
-Stage 2: outer basis-conditioned task expression search Case
-  -> mlblack inner parameter fitting
-  -> RMSE / interval / probability / classification metrics
-```
-
-When these stages need optimization/search semantics, the outer Case is usually
-implemented with `nsgablack`. The symbolic integration surface lives under
-`mlblack.integrations.nsgablack_symbolic`; the core package remains nsgablack-free.
-
-## Implemented Surface
-
-- linear / orthogonal linear
-- point / interval / probability / piecewise heads
-- supervised regression, interval regression, classification metrics
-- tree / xgboost estimator specs and estimator search
-- 统一梯度路径：MLP、Transformer、CNN、GNN、时序 NeuralGraph 与 TabNet 共用 nsgablack SGD/Adam/AdamW Adapter + 唯一 ComposableSolver 控制面 + mlblack Torch Evaluation Provider
-- 标准 MLP 路径：`NeuralGraphSpec.mlp` 唯一定义结构，`NeuralGraphCodec` 唯一定义参数布局，各 backend 只负责 lowering。
-- 解析梯度路径：线性/符号 Problem 直接产出梯度，但仍通过同一个 nsgablack `gradient.*` Adapter；无需伪造 Backend Provider
-- 统一黑盒路径：区间、分类、时序和 estimator spec 预设共用 nsgablack `search.random_gaussian`，模型解码与拟合仍归 mlblack
-- BlackBase `StateRef` 版本栅栏更新与显式 materialization；设备参数/梯度/optimizer slot 不冒充 Artifact 或 checkpoint 状态
-- numericizer, feature-space, conditional primitives/composer
-- nsgablack-style context contracts and doctor validation
-- Project L0 `ResourceContext` consumption and audit; no private L0 allocator
-- catalog, experiment query, dashboard export, artifact HTML viewer
-- symbolic expression model, codec, multi-symbol head, symbolic gradients
-- function pool, grammar, dynamic pool, graph cache, path memory
-- Stage 1 orthogonal symbolic basis outer problem
-- Stage 2 basis-conditioned symbolic task outer problem
-- complete Trainer-to-Solver Case invocation returning the full child Case envelope
-- explicit best/Pareto projection with solve-status validation; no implicit default projection
-- optional objective-to-Feedback mapping, separated from solution selection
-- per-invocation timeout or `ExecutionControl`, bounded by the parent control lineage
-- symbolic artifact schema with canonical expression, family recovery, phase-equivalence recovery
-
-## Checks
+标准跨框架项目由 nsgablack CLI 创建：
 
 ```powershell
-python -m compileall -q project core catalog examples
-python -m pytest -q tests\test_symbolic_nsgablack_integration.py
-python -c "from mlblack.project import run_project_doctor, format_doctor_report; print(format_doctor_report(run_project_doctor('.', strict=True)))"
-python examples\cases\orthogonal_point_demo\run_project.py --check --build-check
+python -m nsgablack project new demo_project
+Set-Location demo_project
+python -m nsgablack project add-case fit_model --type trainer --framework mlblack
+python -m nsgablack project doctor --path . --build --strict
 ```
+
+## 文档
+
+- [文档入口](docs/README.md)
+- [统一优化视图](docs/architecture/UNIFIED_OPTIMIZATION_VIEW.md)
+- [线性模型完整切片](docs/architecture/LINEAR_MODEL_OPTIMIZATION_SLICE_CN.md)
+- [统一梯度路径](docs/architecture/UNIFIED_GRADIENT_PATH.md)
+- [神经网络 Provider / backend 边界](docs/neural_graph_backend_architecture/README.md)
+- [标准脚手架教程](docs/standard_scaffold_tutorial/README.md)
+- [学习材料](docs/learning/ML_TERMINOLOGY_MAP_CN.md)
+- [示例项目](examples/cases/README.md)
+
+历史实现总结和旧的 ML Adapter/Trainer 控制面已删除；需要考古时使用 Git 历史。

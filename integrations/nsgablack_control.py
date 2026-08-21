@@ -7,8 +7,8 @@ lifecycle, incumbent, snapshots, budgets, cancellation, and Adapter execution.
 
 from __future__ import annotations
 
+import copy
 import json
-import time
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 from uuid import uuid4
@@ -355,8 +355,6 @@ class LearningSolver(ComposableSolver):
         self.feedback: tuple[Feedback, ...] = ()
         self._step_ml_evaluations: list[_MLEvaluationRecord] = []
         self._completion_policy: Any | None = None
-        self._fit_started_at: float | None = None
-        self._fit_policy_step = 0
         self._last_state_release: StateReleaseResult | None = None
         self.result_inline_limit_bytes = max(1024, int(result_inline_limit_bytes))
         self._finalized_report: dict[str, Any] | None = None
@@ -461,10 +459,15 @@ class LearningSolver(ComposableSolver):
         candidate: Any,
         context: Mapping[str, Any] | None = None,
     ) -> UnknownState:
-        bridge = self.representation_pipeline
-        if not isinstance(bridge, MLRepresentationBridge):
-            raise TypeError("LearningSolver representation bridge is unavailable")
-        return bridge.repair(candidate, self.enrich_ml_context(context))
+        repaired = super().repair_candidate(
+            candidate,
+            self.enrich_ml_context(context),
+        )
+        if not isinstance(repaired, UnknownState):
+            raise TypeError(
+                "ML representation repair must preserve UnknownState semantics"
+            )
+        return repaired
 
     def encode_candidate(
         self,
@@ -539,6 +542,9 @@ class LearningSolver(ComposableSolver):
 
     def prepare_fresh_run(self) -> None:
         super().prepare_fresh_run()
+        reset_policy = getattr(self._completion_policy, "reset", None)
+        if callable(reset_policy):
+            reset_policy()
         self.best_state = None
         self.best_model = None
         self.best_feedback = None
@@ -615,20 +621,23 @@ class LearningSolver(ComposableSolver):
         semantic_restore = getattr(self.semantic_problem, "set_state", None)
         if callable(semantic_state) and callable(semantic_restore):
             components["learning_problem"] = self.semantic_problem
+        policy_state = getattr(self._completion_policy, "get_state", None)
+        policy_restore = getattr(self._completion_policy, "set_state", None)
+        if callable(policy_state) and callable(policy_restore):
+            components["completion_policy"] = self._completion_policy
         return components
 
     def step(self) -> None:
         self._step_ml_evaluations = []
         super().step()
         self._synchronize_ml_projection(record_history=True)
-        self._fit_policy_step += 1
 
     def should_execute_step(self, step_index: int) -> bool:
         if not super().should_execute_step(step_index):
             return False
         if self._completion_policy is not None and self._completion_policy.is_complete(
-            step=int(self._fit_policy_step),
-            elapsed=float(time.monotonic() - (self._fit_started_at or time.monotonic())),
+            step=int(self.run_progress_steps),
+            elapsed=float(self.run_progress_elapsed_seconds),
             ctx={"trainer": self, "run_name": self.run_name},
         ):
             self.request_stop("completion_policy")
@@ -648,14 +657,11 @@ class LearningSolver(ComposableSolver):
             int(self.max_steps if max_steps is None else max_steps),
         )
         run_limit = requested_steps
-        if bool(getattr(self, "_resume_loaded", False)):
+        if bool(getattr(self, "_resume_loaded", False)) or bool(
+            getattr(self, "_pending_restore_envelopes", ())
+        ):
             run_limit += int(getattr(self, "_resume_cursor", 0) or 0)
-        self._fit_started_at = time.monotonic()
-        self._fit_policy_step = 0
-        try:
-            ComposableSolver.run(self, max_steps=run_limit)
-        finally:
-            self._fit_started_at = None
+        ComposableSolver.run(self, max_steps=run_limit)
         if self._finalized_trainer_result is None:
             raise RuntimeError("ML run completed without a finalized TrainerResult")
         return self._finalized_trainer_result
@@ -851,6 +857,13 @@ class LearningSolver(ComposableSolver):
     def set_completion_policy(self, policy: Any) -> "LearningSolver":
         if policy is not None and not callable(getattr(policy, "is_complete", None)):
             raise TypeError("completion policy must provide is_complete(...)")
+        if policy is not None:
+            has_get_state = callable(getattr(policy, "get_state", None))
+            has_set_state = callable(getattr(policy, "set_state", None))
+            if has_get_state != has_set_state:
+                raise TypeError(
+                    "stateful completion policy must provide both get_state() and set_state()"
+                )
         self._completion_policy = policy
         return self
 
@@ -962,7 +975,7 @@ class LearningSolver(ComposableSolver):
         provider = getattr(self, "evaluation_provider", None)
         provider_state = getattr(provider, "get_state", None)
         return {
-            "state_version": 3,
+            "state_version": 4,
             "control_plane": self.control_plane,
             "run_name": self.run_name,
             "generation": int(self.generation),
@@ -976,6 +989,18 @@ class LearningSolver(ComposableSolver):
                 "state": dict(self.adapter.get_state()),
             },
             "provider": None if not callable(provider_state) else dict(provider_state()),
+            "run_progress": self.export_run_progress_state(),
+            "completion_policy": (
+                None
+                if not callable(getattr(self._completion_policy, "get_state", None))
+                else {
+                    "class": (
+                        f"{type(self._completion_policy).__module__}."
+                        f"{type(self._completion_policy).__qualname__}"
+                    ),
+                    "state": dict(self._completion_policy.get_state()),
+                }
+            ),
             "best_feedback": (
                 None if self.best_feedback is None else self.best_feedback.as_dict()
             ),
@@ -991,6 +1016,50 @@ class LearningSolver(ComposableSolver):
         }
 
     def set_state(self, state: Mapping[str, Any]) -> "LearningSolver":
+        payload = self._migrate_learning_state(state)
+        if not bool(getattr(self, "_runtime_setup_complete", False)):
+            if bool(getattr(self, "running", False)):
+                raise RuntimeError(
+                    "LearningSolver state cannot be restored while setup is incomplete"
+                )
+            generation = max(0, int(payload.get("generation", 0) or 0))
+            self._resume_cursor = generation
+            self.queue_restore_envelope(
+                lambda: self._apply_state_now(payload),
+                source="LearningSolver.set_state",
+            )
+            return self
+        return self._apply_state_now(payload)
+
+    @staticmethod
+    def _migrate_learning_state(state: Mapping[str, Any]) -> dict[str, Any]:
+        payload = copy.deepcopy(dict(state or {}))
+        version = int(payload.get("state_version", 3) or 3)
+        if version == 4:
+            return payload
+        if version != 3:
+            raise ValueError(
+                f"unsupported LearningSolver state version: {version}"
+            )
+        payload.setdefault(
+            "run_progress",
+            {
+                "schema": "nsgablack.run_progress/v1",
+                "steps_completed": max(
+                    0,
+                    int(payload.get("generation", 0) or 0),
+                ),
+                "elapsed_seconds": 0.0,
+                "deadline_remaining_seconds": None,
+                "run_id": payload.get("active_run_id"),
+            },
+        )
+        payload.setdefault("completion_policy", None)
+        payload["state_version"] = 4
+        payload["migrated_from_state_version"] = 3
+        return payload
+
+    def _apply_state_now(self, state: Mapping[str, Any]) -> "LearningSolver":
         if str(state.get("control_plane", self.control_plane)) != self.control_plane:
             raise ValueError("trainer state belongs to another control plane")
         self.run_name = str(state.get("run_name", self.run_name))
@@ -1019,6 +1088,25 @@ class LearningSolver(ComposableSolver):
         active_run_id = state.get("active_run_id")
         if active_run_id:
             self._active_run_id = str(active_run_id)
+        self.restore_run_progress_state(state.get("run_progress"))
+        policy_payload = state.get("completion_policy")
+        if isinstance(policy_payload, Mapping):
+            if self._completion_policy is None:
+                raise ValueError(
+                    "trainer state requires a configured completion policy"
+                )
+            expected_class = (
+                f"{type(self._completion_policy).__module__}."
+                f"{type(self._completion_policy).__qualname__}"
+            )
+            if str(policy_payload.get("class", expected_class)) != expected_class:
+                raise ValueError("completion policy checkpoint identity mismatch")
+            policy_setter = getattr(self._completion_policy, "set_state", None)
+            if not callable(policy_setter):
+                raise ValueError(
+                    "configured completion policy cannot restore checkpoint state"
+                )
+            policy_setter(dict(policy_payload.get("state", {}) or {}))
         raw_feedback = state.get("best_feedback")
         self.best_feedback = (
             Feedback.from_dict(raw_feedback)

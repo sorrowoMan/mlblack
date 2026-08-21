@@ -507,9 +507,9 @@ variance 是搜索空间和参数自由度过大导致的泛化风险。
 ```text
 NeuralGraphSpec
   -> NeuralGraphCodec
-  -> torch module
   -> LearningProblem
-  -> BackpropAdapter
+  -> Torch Evaluation Provider
+  -> nsgablack GradientOptimizer
 ```
 
 每一层是一个数学映射：

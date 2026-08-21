@@ -5,7 +5,7 @@ kind = "example"
 import_path = "mlblack.integrations.etf_temporal_forecast:run_etf_temporal_forecast_multi_seed"
 tags = ["example", "etf", "forecast", "walk-forward", "rank-ic", "portfolio", "scaffold"]
 summary = "ETF walk-forward temporal forecast case with ridge/boosting baselines and rank-IC, hit-rate, Sharpe, drawdown and turnover metrics."
-metadata = { "dataset" = "runs/etf_temporal_forecast/cache/multi_etf_returns_momodel_kaggle.parquet", "example_entry" = "examples/cases/etf_temporal_forecast/START_HERE.md" }
+metadata = { "dataset" = "runs/etf_temporal_forecast/cache/multi_etf_returns_momodel_kaggle.parquet", "example_entry" = "examples/cases/etf_temporal_forecast/README.md" }
 
 [[entry]]
 key = "example.traffic_arimax_attribution"
@@ -14,7 +14,7 @@ kind = "example"
 import_path = "examples.cases.traffic_congestion.arimax_factor_attribution:run_trainer"
 tags = ["example", "traffic", "arimax", "attribution", "time-series"]
 summary = "ARIMAX(2,0,1) factor group attribution decomposing CI variation into Weather/AQI/Holiday/CI_Lags/Time_Cyclic groups."
-metadata = { "example_entry" = "examples/cases/traffic_congestion/arimax_factor_attribution/START_HERE.md" }
+metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/arimax_factor_attribution/README.md" }
 
 [[entry]]
 key = "example.traffic_gam_linearity"
@@ -23,7 +23,7 @@ kind = "example"
 import_path = "examples.cases.traffic_congestion.gam_linearity_check:run_trainer"
 tags = ["example", "traffic", "gam", "nonlinear", "diagnostic"]
 summary = "B-spline GAM vs linear regression comparison diagnosing whether linear assumptions hold for traffic CI prediction."
-metadata = { "example_entry" = "examples/cases/traffic_congestion/gam_linearity_check/START_HERE.md" }
+metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/gam_linearity_check/README.md" }
 
 [[entry]]
 key = "example.traffic_granger_causality"
@@ -32,7 +32,7 @@ kind = "example"
 import_path = "examples.cases.traffic_congestion.granger_causality_check:run_trainer"
 tags = ["example", "traffic", "granger", "causal", "diagnostic"]
 summary = "Pairwise Granger causality tests between CI and external factors (weather, AQI, holidays) on real traffic data."
-metadata = { "example_entry" = "examples/cases/traffic_congestion/granger_causality_check/START_HERE.md" }
+metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/granger_causality_check/README.md" }
 
 [[entry]]
 key = "example.traffic_shap_consistency"
@@ -41,7 +41,7 @@ kind = "example"
 import_path = "examples.cases.traffic_congestion.shap_contribution_check:run_trainer"
 tags = ["example", "traffic", "shap", "xgboost", "attribution", "diagnostic"]
 summary = "Cross-paradigm feature importance comparison: Linear coefficients vs XGBoost gain vs SHAP vs Permutation on traffic CI."
-metadata = { "example_entry" = "examples/cases/traffic_congestion/shap_contribution_check/START_HERE.md" }
+metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/shap_contribution_check/README.md" }
 
 [[entry]]
 key = "example.traffic_symbolic_regression"
@@ -50,7 +50,7 @@ kind = "example"
 import_path = "examples.cases.traffic_congestion.symbolic_regression:run_trainer"
 tags = ["example", "traffic", "symbolic", "regression", "linear", "gradient_descent"]
 summary = "Gradient-descent linear regression on traffic CI mechanism reconstruction (same-day features), baseline for symbolic approach."
-metadata = { "example_entry" = "examples/cases/traffic_congestion/symbolic_regression/START_HERE.md" }
+metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/symbolic_regression/README.md" }
 
 [[entry]]
 key = "example.traffic_xgboost_baseline"
@@ -59,4 +59,4 @@ kind = "example"
 import_path = "examples.cases.traffic_congestion.xgboost_baseline:run_trainer"
 tags = ["example", "traffic", "xgboost", "tree", "prediction"]
 summary = "XGBoost baseline on traffic CI forward prediction (lag-only features), using mlblack tree_boosting preset."
-metadata = { "example_entry" = "examples/cases/traffic_congestion/xgboost_baseline/START_HERE.md" }
+metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/xgboost_baseline/README.md" }

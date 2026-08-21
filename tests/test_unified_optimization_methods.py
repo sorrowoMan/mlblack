@@ -117,6 +117,77 @@ def test_ml_bias_and_completion_policy_project_into_nsg_control() -> None:
     assert result.report["optimization_runtime"]["termination_reason"] == "completion_policy"
 
 
+def test_completion_policy_continues_one_logical_run_after_state_restore() -> None:
+    class _ThreeStepPolicy:
+        def __init__(self) -> None:
+            self.check_count = 0
+
+        def reset(self) -> None:
+            self.check_count = 0
+
+        def is_complete(self, *, step, elapsed, ctx):
+            del elapsed, ctx
+            self.check_count += 1
+            return int(step) >= 3
+
+        def get_state(self):
+            return {"check_count": int(self.check_count)}
+
+        def set_state(self, state):
+            self.check_count = int(state["check_count"])
+
+    source_policy = _ThreeStepPolicy()
+    source = build_orthogonal_linear_point_trainer(
+        _regression_data(),
+        learning_rate=0.05,
+    )
+    source.set_completion_policy(source_policy)
+    source.fit(max_steps=1)
+    checkpoint = source.get_state()
+
+    assert checkpoint["state_version"] == 4
+    assert checkpoint["run_progress"]["steps_completed"] == 1
+    assert checkpoint["run_progress"]["elapsed_seconds"] >= 0.0
+    assert checkpoint["completion_policy"]["state"]["check_count"] == 1
+
+    restored_policy = _ThreeStepPolicy()
+    restored = build_orthogonal_linear_point_trainer(
+        _regression_data(),
+        learning_rate=0.05,
+    )
+    restored.set_completion_policy(restored_policy)
+    restored.set_state(checkpoint)
+    result = restored.fit(max_steps=3)
+
+    runtime = result.report["optimization_runtime"]
+    assert runtime["termination_reason"] == "completion_policy"
+    assert runtime["logical_run_steps"] == 3
+    assert runtime["steps"] == 3
+    assert len(result.history) == 3
+    assert restored_policy.check_count == 4
+
+
+def test_learning_solver_state_v3_migrates_run_progress_explicitly() -> None:
+    source = build_orthogonal_linear_point_trainer(
+        _regression_data(),
+        learning_rate=0.05,
+    )
+    source.fit(max_steps=1)
+    legacy = dict(source.get_state())
+    legacy["state_version"] = 3
+    legacy.pop("run_progress", None)
+    legacy.pop("completion_policy", None)
+
+    restored = build_orthogonal_linear_point_trainer(
+        _regression_data(),
+        learning_rate=0.05,
+    )
+    restored.set_state(legacy)
+    restored.fit(max_steps=0)
+
+    assert restored.run_progress_steps == int(legacy["generation"])
+
+
 def test_unknown_state_metadata_survives_the_numeric_control_plane() -> None:
     class _Representation(ModelRepresentation):
         def init(self, context):

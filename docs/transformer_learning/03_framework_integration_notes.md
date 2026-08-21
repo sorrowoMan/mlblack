@@ -152,15 +152,16 @@ TransformerRepresentation
 
 只做小模型，不做 LLM 预训练。
 
-### Step 4: LoRA / QLoRA adapter
+### Step 4: LoRA / QLoRA 参数高效路径
 
 冻结 base model，只训练低秩 delta。
 
 ```text
 base_model_ref
   + LoRADeltaRepresentation
-  + LoRAAdapter
-  + task problem
+  + task LearningProblem
+  + Torch Evaluation Provider
+  + gradient.adam
 ```
 
 这是有 GPU 后的训练路线。
@@ -283,11 +284,11 @@ TransformerPromptProblem
 | adapter | 作用 | 需要资源 |
 | --- | --- | --- |
 | `FrozenTransformerEvalAdapter` | 不训练，只评估候选配置 | CPU/API/local inference |
-| `TorchTransformerBackpropAdapter` | 小模型 backprop | GPU 可选 |
-| `LoRAAdapter` | 只训练 LoRA delta | GPU 推荐 |
-| `PromptSearchAdapter` | 可作为 nsgablack outer adapter，不放 mlblack 主干 | 无需梯度 |
+| `gradient.adam` + Torch Provider | 小模型 backprop | GPU 可选 |
+| `gradient.adam` + LoRA Codec/Provider | 只训练 LoRA delta | GPU 推荐 |
+| nsgablack Prompt Search Adapter | 外层搜索 prompt / RAG 配置 | 无需梯度 |
 
-注意：Prompt/RAG/agent policy 搜索更像 `nsgablack` outer adapter/problem，不是 `mlblack` inner adapter。
+注意：这些名称描述稳定装配方法，不是 mlblack 私有 Adapter 类。Prompt/RAG/agent policy 搜索属于 `nsgablack` outer Adapter/Problem。
 
 ## 11. Artifact 设计草图
 

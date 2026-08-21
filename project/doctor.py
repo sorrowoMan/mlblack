@@ -213,7 +213,15 @@ _NON_CASE_DIR_NAMES = {
     "docs",
 }
 _PROJECT_REQUIRED_FILES = ("README.md", "project_config.py", "run_project.py")
-_LEGACY_CASE_DOCS = ("BUILD_SOLVER_REGISTRATION.md", "COMPONENT_REGISTRATION.md")
+_LEGACY_CASE_DOCS = (
+    "START_HERE.md",
+    "BUILD_SOLVER_REGISTRATION.md",
+    "COMPONENT_REGISTRATION.md",
+)
+_LEGACY_CASE_DOC_PATHS = (
+    ("docs", "contracts", "COMPONENT_CONTRACT_TEMPLATE.md"),
+    ("tests", "templates", "README.md"),
+)
 _LEGACY_CASE_DIRS_WARN = ("assembly", "case_scaffold")
 
 
@@ -379,6 +387,17 @@ def _check_case_root_scaffold(case_root: Path, diags: list[DoctorDiagnostic]) ->
     build_trainer = case_root / "build_trainer.py"
     run_solver = case_root / "run_solver.py"
     run_trainer = case_root / "run_trainer.py"
+    readme = case_root / "README.md"
+
+    if not readme.is_file():
+        diags.append(
+            DoctorDiagnostic(
+                "warn",
+                "missing-case-readme",
+                "Case documentation belongs in one README.md.",
+                str(readme),
+            )
+        )
 
     build_solver_text = ""
     if not build_solver.is_file():
@@ -517,6 +536,18 @@ def _check_case_root_scaffold(case_root: Path, diags: list[DoctorDiagnostic]) ->
                     "warn",
                     "case-legacy-registration-doc",
                     f"{filename} is legacy registration guidance; prefer the Case README and project-level scaffold docs.",
+                    str(doc_path),
+                )
+            )
+
+    for relative_parts in _LEGACY_CASE_DOC_PATHS:
+        doc_path = case_root.joinpath(*relative_parts)
+        if doc_path.is_file():
+            diags.append(
+                DoctorDiagnostic(
+                    "warn",
+                    "case-legacy-registration-doc",
+                    "Move useful content into the Case README and remove the duplicated legacy document.",
                     str(doc_path),
                 )
             )

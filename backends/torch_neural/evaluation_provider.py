@@ -193,7 +193,7 @@ class TorchEvaluationProvider:
         self._evaluation_count = 0
         self._states: dict[str, _TorchStateRecord] = {}
         self._released_versions: dict[str, int] = {}
-        self._evaluation_request_order: list[str] = []
+        self._evaluation_request_order: dict[tuple[str, str], list[str]] = {}
         self._provider_scope_id = f"provider:{self.spec.provider_id}:{uuid4().hex}"
 
     def evaluate(
@@ -212,7 +212,17 @@ class TorchEvaluationProvider:
             )
 
         if bool(self.config.publish_state_refs):
-            self._begin_evaluation_request(request.request_id)
+            trajectory_id = str(
+                request.payload.get("trajectory_id", request.request_id)
+            )
+            scope_id = str(
+                binding.resource_context.namespace or self._provider_scope_id
+            )
+            self._begin_evaluation_request(
+                request.request_id,
+                scope_id=scope_id,
+                trajectory_id=trajectory_id,
+            )
         batch = self._next_batch()
         feedback: list[Feedback] = []
         result_states: list[UnknownState | StateRef] = []
@@ -235,9 +245,7 @@ class TorchEvaluationProvider:
                     item,
                     binding,
                     candidate_index=index,
-                    trajectory_id=str(
-                        request.payload.get("trajectory_id", request.request_id)
-                    ),
+                    trajectory_id=trajectory_id,
                 )
                 result_states.append(state_ref)
             else:
@@ -264,6 +272,7 @@ class TorchEvaluationProvider:
             count = int(self._evaluation_count)
             live_state_count = int(len(self._states))
             released_state_count = int(len(self._released_versions))
+            live_trajectory_count = int(len(self._evaluation_request_order))
         return {
             "provider_id": self.spec.provider_id,
             "problem_id": self.problem_id,
@@ -272,6 +281,7 @@ class TorchEvaluationProvider:
             "evaluation_count": count,
             "live_state_count": live_state_count,
             "released_state_count": released_state_count,
+            "live_trajectory_count": live_trajectory_count,
             "publish_state_refs": bool(self.config.publish_state_refs),
             "data_schedule": (
                 None
@@ -566,6 +576,15 @@ class TorchEvaluationProvider:
             self._states = next_state_map
             for state_id, version in released:
                 self._remember_released(state_id, version)
+            active_keys = {
+                (record.scope_id, record.trajectory_id)
+                for record in self._states.values()
+            }
+            self._evaluation_request_order = {
+                key: queue
+                for key, queue in self._evaluation_request_order.items()
+                if key in active_keys
+            }
         return StateReleaseResult(
             request_id=request.request_id,
             provider_id=self.spec.provider_id,
@@ -705,17 +724,31 @@ class TorchEvaluationProvider:
             oldest = next(iter(self._released_versions))
             self._released_versions.pop(oldest, None)
 
-    def _begin_evaluation_request(self, request_id: str) -> None:
-        """Keep ephemeral parameter/gradient refs bounded by request count."""
+    def _begin_evaluation_request(
+        self,
+        request_id: str,
+        *,
+        scope_id: str,
+        trajectory_id: str,
+    ) -> None:
+        """Bound ephemeral refs independently per authorized trajectory."""
 
         with self._lock:
             normalized = str(request_id)
-            self._evaluation_request_order.append(normalized)
+            key = (str(scope_id), str(trajectory_id))
+            queue = self._evaluation_request_order.setdefault(key, [])
+            if normalized in queue:
+                queue.remove(normalized)
+            queue.append(normalized)
             limit = max(1, int(self.config.max_live_evaluation_requests))
-            while len(self._evaluation_request_order) > limit:
-                expired = self._evaluation_request_order.pop(0)
+            while len(queue) > limit:
+                expired = queue.pop(0)
                 for state_id, record in tuple(self._states.items()):
-                    if record.evaluation_request_id != expired:
+                    if (
+                        record.scope_id != key[0]
+                        or record.trajectory_id != key[1]
+                        or record.evaluation_request_id != expired
+                    ):
                         continue
                     self._states.pop(state_id, None)
                     self._remember_released(state_id, record.version)

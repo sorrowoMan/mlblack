@@ -16,7 +16,6 @@
 | [standard_scaffold_tutorial/](standard_scaffold_tutorial/README.md) | 标准 Project / Case / Scaffold 教程 |
 | [neural_graph_backend_architecture/](neural_graph_backend_architecture/README.md) | NeuralGraph、Codec、backend capability 边界 |
 | [model_composition_orchestration.md](model_composition_orchestration.md) | 共享 substrate 下的模型组合边界 |
-| [symbolic_learning_migration_inventory.md](symbolic_learning_migration_inventory.md) | 当前符号学习迁移地图 |
 | [transformer_learning/](transformer_learning/README.md) | Transformer 与模型族学习笔记 |
 | [ml_terminology_review/](ml_terminology_review/README.md) | ML 术语复盘 |
 

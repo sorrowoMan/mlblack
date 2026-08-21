@@ -28,20 +28,19 @@ Project stages, parallelism, and resource grants are handled by the shared Proje
 | parameter layout / decode | `NeuralGraphCodec` | state to model mapping |
 | classification / LM / embedding / preference | head spec / problem head | output semantics |
 | cross entropy / DPO / triplet | `LearningProblem` + backend loss | evaluation |
-| backward / optimizer step | adapter + backend capability | parameter update |
+| backward / state transition | nsgablack Adapter + Evaluation Provider capability | Adapter 选择更新机制，Provider 执行后端原语 |
 | attention map / activation / parameter summary | artifact/report | audit |
 
 ## Runtime Chain
 
 ```text
-LearningSolver.compute_backend_session
-  -> capability preflight
-  -> NeuralGraphRepresentation.setup
-  -> NeuralGraphCodec.parameter_layout(context)
-  -> NeuralGraphCodec.init_values(context)
-  -> NeuralGraphCodec.decode(values, context)
-  -> Problem.evaluate / backend loss
-  -> Adapter.update
+LearningSolver
+  -> NeuralGraphRepresentation / NeuralGraphCodec
+  -> LearningProblem builds EvaluationRequest
+  -> Evaluation Provider capability preflight
+  -> backend session executes loss / gradient / state transition
+  -> OptimizationFeedbackBatch
+  -> nsgablack Adapter.update
   -> ArtifactBuilder
 ```
 
@@ -50,7 +49,7 @@ LearningSolver.compute_backend_session
 | Layer | Responsibility |
 | --- | --- |
 | Codec | defines how unknown state becomes a model |
-| Backend | defines tensor, lowering, loss, autograd, optimizer, artifact execution |
+| Backend / Provider | defines tensor lowering and executable loss, gradient, state-transition and artifact primitives |
 | LearningSolver | projects ML semantics onto the canonical NSGABlack lifecycle |
 | Project L0 | grants resources and records effective runtime |
 

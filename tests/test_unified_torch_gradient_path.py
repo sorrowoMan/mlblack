@@ -157,6 +157,60 @@ def test_provider_default_identity_includes_representation_semantics() -> None:
     assert first.spec.provider_id != second.spec.provider_id
 
 
+def test_provider_request_retention_is_partitioned_by_scope_and_trajectory() -> None:
+    from mlblack.backends.torch_neural.evaluation_provider import _TorchStateRecord
+
+    provider = TorchEvaluationProvider(
+        TabularNeuralRegressionProblem(_data()),
+        _representation(5),
+        config=TorchEvaluationProviderConfig(
+            publish_state_refs=True,
+            max_live_evaluation_requests=1,
+        ),
+    )
+    provider._states = {
+        "a-old": _TorchStateRecord(
+            tensor=object(),
+            state_kind="model_parameters",
+            scope_id="scope",
+            trajectory_id="trajectory-a",
+            device="cpu",
+            evaluation_request_id="request-a-1",
+        ),
+        "b-live": _TorchStateRecord(
+            tensor=object(),
+            state_kind="model_parameters",
+            scope_id="scope",
+            trajectory_id="trajectory-b",
+            device="cpu",
+            evaluation_request_id="request-b-1",
+        ),
+    }
+
+    provider._begin_evaluation_request(
+        "request-a-1",
+        scope_id="scope",
+        trajectory_id="trajectory-a",
+    )
+    provider._begin_evaluation_request(
+        "request-b-1",
+        scope_id="scope",
+        trajectory_id="trajectory-b",
+    )
+    provider._begin_evaluation_request(
+        "request-a-2",
+        scope_id="scope",
+        trajectory_id="trajectory-a",
+    )
+
+    assert "a-old" not in provider._states
+    assert "b-live" in provider._states
+    assert provider._evaluation_request_order == {
+        ("scope", "trajectory-a"): ["request-a-2"],
+        ("scope", "trajectory-b"): ["request-b-1"],
+    }
+
+
 def test_mlp_preset_uses_nsg_adapter_and_torch_provider() -> None:
     pytest.importorskip("torch")
     trainer = build_mlp_regression_trainer(

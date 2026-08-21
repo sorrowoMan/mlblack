@@ -7,9 +7,9 @@ examples/cases/<project>/
   project_config.py
   run_project.py
   README.md
-  START_HERE.md
   cases/
     <case>/
+      README.md
       build_solver.py
       run_solver.py
       build_trainer.py    # alias only, when present
