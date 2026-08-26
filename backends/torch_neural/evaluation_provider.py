@@ -481,17 +481,29 @@ class TorchEvaluationProvider:
                     )
                 else:
                     previous = self._require_record(previous_ref, state_kind)
-                    next_state_map[previous_ref.state_id] = _TorchStateRecord(
+                    state_id = f"slot-{name}-{uuid4().hex}"
+                    successor_version = int(previous.version) + 1
+                    next_state_map[state_id] = _TorchStateRecord(
                         tensor=tensor.detach().clone(),
                         state_kind=previous.state_kind,
                         scope_id=previous.scope_id,
                         trajectory_id=previous.trajectory_id,
                         device=previous.device,
-                        version=int(previous.version) + 1,
+                        version=successor_version,
                         evaluation_request_id=previous.evaluation_request_id,
                         semantic_metadata=dict(previous.semantic_metadata),
                     )
-                    slot_refs[name] = previous_ref.next_version()
+                    slot_refs[name] = StateRef(
+                        provider_id=previous_ref.provider_id,
+                        state_id=state_id,
+                        state_kind=previous_ref.state_kind,
+                        scope_id=previous_ref.scope_id,
+                        trajectory_id=previous_ref.trajectory_id,
+                        device=previous_ref.device,
+                        version=successor_version,
+                        transport_scope=previous_ref.transport_scope,
+                        metadata=previous_ref.metadata,
+                    )
             released_gradient: tuple[str, int] | None = None
             if isinstance(request.operands.get("gradient"), StateRef):
                 gradient_ref = request.operands["gradient"]
@@ -588,10 +600,13 @@ class TorchEvaluationProvider:
                 "TorchEvaluationProvider received a release binding owned by another provider"
             )
         kinds = set(request.state_kinds)
+        state_ids = set(request.state_ids)
         with self._lock:
             released: list[tuple[str, int]] = []
             next_state_map = dict(self._states)
             for state_id, record in tuple(self._states.items()):
+                if state_ids and state_id not in state_ids:
+                    continue
                 if request.scope_id and record.scope_id != request.scope_id:
                     continue
                 if request.trajectory_id and record.trajectory_id != request.trajectory_id:
@@ -617,11 +632,14 @@ class TorchEvaluationProvider:
             provider_id=self.spec.provider_id,
             status="released" if released else "not_found",
             released_count=len(released),
-            released_state_ids=tuple(state_id for state_id, _ in released[:64]),
+            released_state_ids=tuple(state_id for state_id, _ in released),
+            not_found_state_ids=tuple(
+                sorted(state_ids.difference(state_id for state_id, _ in released))
+            ),
             metadata={
                 "scope_id": request.scope_id,
                 "trajectory_id": request.trajectory_id,
-                "released_state_id_sample_truncated": len(released) > 64,
+                "targeted_state_ids": sorted(state_ids),
             },
         )
 

@@ -50,6 +50,20 @@ class FunctionPoolPipeline(FunctionSpaceProvider):
     """
 
     name = "symbolic_function_pool_pipeline"
+    context_requires = ("data.X_train", "data.feature_names")
+    context_optional = (
+        "data.y_train",
+        "feedback.residuals",
+        "feedback.gradients",
+        "signal.pool",
+    )
+    context_provides = (
+        "symbolic.function_space",
+        "symbolic.function_pool",
+        "symbolic.primitive_registry",
+    )
+    context_mutates = ()
+    context_cache = ("symbolic.function_pool",)
 
     def __init__(
         self,

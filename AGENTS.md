@@ -31,6 +31,11 @@ Current first principle:
   ML components must not restore directly before setup or maintain private resume-order flags.
 - A running LearningSolver may only apply state while the shared post-setup restore
   transaction lock is active; public runtime mutation must fail closed.
+- Provider-backed Gradient Adapter owns exact optimizer-slot cleanup; LearningSolver
+  trajectory release is an idempotent final safety net, not the primary slot owner.
+- After Solver/Provider/backend teardown succeeds, transactional output first passes
+  strict `on_solver_finalization_prepare`, then commits atomically. Final TrainerResult
+  and save-on-finish checkpoint publication are observed through `on_solver_finalized`.
 
 ## 1. Project Positioning
 

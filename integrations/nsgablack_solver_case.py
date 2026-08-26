@@ -13,7 +13,7 @@ from blackbase.project import (
     CaseRunResult,
     ExecutionControl,
 )
-from blackbase.resources import DataRef
+from blackbase.resources import ArtifactBinding, DataRef
 from blackbase.types import Feedback, PopulationSnapshot, SolverResult, UnknownState
 
 
@@ -352,7 +352,9 @@ class NsgablackSolverCaseInvoker:
         *,
         trainer: Any,
         inputs: Mapping[str, Any] | None = None,
-        input_artifacts: Mapping[str, DataRef | Mapping[str, Any]] | None = None,
+        input_artifact_bindings: Mapping[
+            str, ArtifactBinding | Mapping[str, Any]
+        ] | None = None,
         context: Mapping[str, Any] | None = None,
         timeout_seconds: float | None = None,
         control: ExecutionControl | Mapping[str, Any] | None = None,
@@ -375,6 +377,14 @@ class NsgablackSolverCaseInvoker:
             timeout_seconds=timeout_seconds,
             control=control,
         )
+        bindings = {
+            str(name): (
+                value
+                if isinstance(value, ArtifactBinding)
+                else ArtifactBinding.from_dict(value)
+            )
+            for name, value in dict(input_artifact_bindings or {}).items()
+        }
         case_result = invoke(
             CaseRunRequest(
                 project_name=project_name,
@@ -384,7 +394,10 @@ class NsgablackSolverCaseInvoker:
                 resource_request=self.resource_request,
                 budget_request=self.budget_request,
                 component_overrides=dict(overrides or {}),
-                input_artifacts=dict(input_artifacts or {}),
+                input_artifacts={
+                    name: binding.ref for name, binding in bindings.items()
+                },
+                input_artifact_bindings=bindings,
                 inputs=dict(inputs or {}),
                 control=child_control,
                 metadata={"bridge": "mlblack->nsgablack.complete_case"},
@@ -489,9 +502,16 @@ def _coerce_child_control(
     if value is None:
         return None
     control = value if isinstance(value, ExecutionControl) else ExecutionControl.from_dict(value)
-    if control.ancestor_cancellations:
+    cancellation = control.cancellation
+    if (
+        control.ancestor_cancellations
+        or cancellation.parent_control_id is not None
+        or cancellation.lineage_depth != 0
+        or cancellation.root_control_id != cancellation.control_id
+    ):
         raise ValueError(
-            "child control cannot supply ancestor_cancellations; the parent Case owns lineage"
+            "child control cannot supply ancestor_cancellations or a prebuilt "
+            "parent lineage; the parent Case owns lineage"
         )
     return control
 

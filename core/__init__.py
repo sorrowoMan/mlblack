@@ -17,6 +17,7 @@ from .artifacts import (
 )
 from .artifact_viewer import render_artifact_html, save_artifact_html
 from .artifact_provider import (
+    ArtifactFinalizationSession,
     ArtifactProvider,
     CaseRuntimeArtifactProvider,
     SerializerSelector,
@@ -62,6 +63,7 @@ from .types import (
 __all__ = [
     "ArtifactBuilder",
     "ArtifactBundle",
+    "ArtifactFinalizationSession",
     "ArtifactProvider",
     "Capability",
     "CaseRuntimeArtifactProvider",

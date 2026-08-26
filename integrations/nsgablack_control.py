@@ -17,6 +17,7 @@ import numpy as np
 
 from blackbase.resources import DataRef, ResourceContext, coerce_resource_context
 from blackbase.types import (
+    CandidateBatch,
     Feedback,
     TrainerResult,
     UnknownState,
@@ -26,6 +27,7 @@ from blackbase.types import (
 from blackbase.context.context_keys import KEY_INDIVIDUAL_ID
 from blackbase.evaluation import StateReleaseRequest, StateReleaseResult
 from mlblack.core.artifact_provider import (
+    ArtifactFinalizationSession,
     ArtifactProvider,
     CaseRuntimeArtifactProvider,
 )
@@ -35,15 +37,28 @@ from mlblack.core.state import build_trainer_state
 
 from nsgablack.core.base import BlackBoxProblem
 from nsgablack.core.composable_solver import ComposableSolver
+from nsgablack.core.evaluation_feedback import OptimizationFeedbackBatch
 from nsgablack.core.state.incumbent import IncumbentState
+from nsgablack.core.state.run_progress import RunProgressState
+from nsgablack.core.state.step_outcome import StepOutcome
 
 
 @dataclass(frozen=True)
-class _MLEvaluationRecord:
-    state: UnknownState
-    feedback: Feedback
+class _MLModelHandle:
+    """Process-local model handle; never an authority for evaluation feedback."""
+
     model: Any
     candidate_token: str | None = None
+
+
+@dataclass
+class _PendingArtifactFinalization:
+    session: ArtifactFinalizationSession
+    report: dict[str, Any]
+    best_model_ref: DataRef | None
+    best_state_ref: DataRef | None
+    history_ref: DataRef | None
+    report_ref: DataRef | None
 
 
 class MLRepresentationBridge:
@@ -239,9 +254,7 @@ class MLLearningProblemBridge(BlackBoxProblem):
             (feedback,),
             ml_context,
         )[0]
-        control._record_ml_evaluation(
-            state,
-            feedback,
+        control._record_ml_model_handle(
             model,
             candidate_token=(None if provenance is None else provenance.candidate_token),
         )
@@ -341,7 +354,8 @@ class LearningSolver(ComposableSolver):
         representation_bridge.bind(self)
         problem_bridge.bind(self)
 
-        self.artifact_provider: ArtifactProvider = (
+        self.artifact_provider: ArtifactProvider
+        self.set_artifact_provider(
             artifact_provider or CaseRuntimeArtifactProvider()
         )
         self.best_state: UnknownState | None = None
@@ -354,15 +368,19 @@ class LearningSolver(ComposableSolver):
         self.last_evaluated_feedback: tuple[Feedback, ...] = ()
         self.feedback: tuple[Feedback, ...] = ()
         self.history: list[dict[str, Any]] = []
-        self._step_ml_evaluations: list[_MLEvaluationRecord] = []
+        self._step_ml_model_handles: list[_MLModelHandle] = []
+        self._best_feedback_binding: dict[str, Any] | None = None
         self._completion_policy: Any | None = None
         self._last_state_release: StateReleaseResult | None = None
         self.result_inline_limit_bytes = max(1024, int(result_inline_limit_bytes))
+        self._pending_finalization_report: dict[str, Any] | None = None
         self._finalized_report: dict[str, Any] | None = None
         self._finalized_trainer_result: TrainerResult | None = None
         self._best_state_ref: DataRef | None = None
         self._history_ref: DataRef | None = None
         self._report_ref: DataRef | None = None
+        self._post_teardown_finalization_active = False
+        self._pending_artifact_finalization: _PendingArtifactFinalization | None = None
 
     @property
     def step_index(self) -> int:
@@ -555,13 +573,17 @@ class LearningSolver(ComposableSolver):
         self.last_evaluated_population = ()
         self.last_evaluated_feedback = ()
         self.feedback = ()
-        self._step_ml_evaluations = []
+        self._step_ml_model_handles = []
+        self._best_feedback_binding = None
         self._last_state_release = None
+        self._pending_finalization_report = None
         self._finalized_report = None
         self._finalized_trainer_result = None
         self._best_state_ref = None
         self._history_ref = None
         self._report_ref = None
+        self._post_teardown_finalization_active = False
+        self._pending_artifact_finalization = None
 
     def require_compute_backend(
         self,
@@ -628,8 +650,8 @@ class LearningSolver(ComposableSolver):
             components["completion_policy"] = self._completion_policy
         return components
 
-    def step(self):
-        self._step_ml_evaluations = []
+    def step(self) -> StepOutcome:
+        self._step_ml_model_handles = []
         outcome = super().step()
         if bool(getattr(outcome, "committed", True)):
             self._synchronize_ml_projection(record_history=True)
@@ -670,69 +692,167 @@ class LearningSolver(ComposableSolver):
         return self._finalized_trainer_result
 
     def finalize_run_result(self, raw_result: Mapping[str, Any]) -> dict[str, Any]:
-        """Build ML semantics while Provider/session/artifact authority are live."""
+        """Prepare ML semantics without publishing successful Artifacts."""
 
         self._synchronize_ml_projection(record_history=False)
-        self.publish_best_model_artifact()
         report = self.build_report(raw_result)
-        self._finalized_report = report
-        self._externalize_large_result_fields(report)
-        self._finalized_trainer_result = self._build_trainer_result(report)
-        # Plugin finish hooks consume the full semantic report here.  The Case
-        # output remains the cached TrainerResult returned by fit() after the
-        # shared lifecycle has completed teardown.
+        self._pending_finalization_report = dict(report)
+        # on_solver_finish is a pre-teardown finishing notification.  It may
+        # inspect semantic output, but no durable success Artifact exists yet.
         return {
             "status": str(raw_result.get("status", "ok")),
             "termination_reason": str(raw_result.get("termination_reason", "")),
             "report": report,
-            "trainer_result_ready": True,
-            "artifact_refs": {
-                name: ref for name, ref in self.result_artifact_refs.items()
-            },
+            "trainer_result_ready": False,
+            "artifact_refs": {},
         }
 
-    def finalize_after_teardown(self, raw_result: Mapping[str, Any]) -> Mapping[str, Any]:
-        """Attach cleanup evidence without rerunning semantic finalization."""
-
-        if self._finalized_report is not None:
-            report = dict(self._finalized_report)
-            report["provider_state_release"] = (
-                None
-                if self._last_state_release is None
-                else self._last_state_release.as_dict()
-            )
-            self._finalized_report = report
-            self._externalize_report(report)
-            self._finalized_trainer_result = self._build_trainer_result(report)
-        result = dict(raw_result)
-        if self._finalized_report is not None:
-            result["report"] = dict(self._finalized_report)
-        return result
-
-    def _externalize_large_result_fields(self, report: Mapping[str, Any]) -> None:
-        self._best_state_ref = self._publish_large_result_field(
-            "trainer_best_state",
-            self.best_state,
-            kind="trainer_state",
-            path="trainer_result.best_state",
-        )
-        self._history_ref = self._publish_large_result_field(
-            "trainer_history",
-            tuple(self.history),
-            kind="trainer_history",
-            path="trainer_result.history",
-        )
-
-    def _externalize_report(self, report: Mapping[str, Any]) -> None:
-        self._report_ref = self._publish_large_result_field(
-            "trainer_report",
-            dict(report),
-            kind="trainer_report",
-            path="trainer_result.report",
-        )
-
-    def _publish_large_result_field(
+    def prepare_finalization_after_teardown(
         self,
+        raw_result: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        """Stage all success Artifacts after teardown without exposing refs."""
+
+        if not self._post_teardown_finalization_active:
+            raise RuntimeError(
+                "ML result finalization is owned by the Solver lifecycle"
+            )
+        if self._pending_finalization_report is None:
+            raise RuntimeError("ML finalization plan is unavailable after teardown")
+        if self._pending_artifact_finalization is not None:
+            raise RuntimeError("ML Artifact finalization is already active")
+        report = dict(self._pending_finalization_report)
+        report["provider_state_release"] = (
+            None
+            if self._last_state_release is None
+            else self._last_state_release.as_dict()
+        )
+        begin = getattr(self.artifact_provider, "begin_finalization", None)
+        if not callable(begin):
+            raise TypeError(
+                "artifact provider must implement begin_finalization(control, ...)"
+            )
+        session = begin(self, label="mlblack_result_finalization")
+        try:
+            best_model_ref = session.publish_best_model()
+            best_state_ref = self._stage_large_result_field(
+                session,
+                "trainer_best_state",
+                self.best_state,
+                kind="trainer_state",
+                path="trainer_result.best_state",
+            )
+            history_ref = self._stage_large_result_field(
+                session,
+                "trainer_history",
+                tuple(self.history),
+                kind="trainer_history",
+                path="trainer_result.history",
+            )
+            report_ref = self._stage_large_result_field(
+                session,
+                "trainer_report",
+                dict(report),
+                kind="trainer_report",
+                path="trainer_result.report",
+            )
+        except BaseException:
+            session.abort("staging_failed")
+            raise
+        self._pending_artifact_finalization = _PendingArtifactFinalization(
+            session=session,
+            report=report,
+            best_model_ref=best_model_ref,
+            best_state_ref=best_state_ref,
+            history_ref=history_ref,
+            report_ref=report_ref,
+        )
+        return {
+            "status": str(raw_result.get("status", "ok")),
+            "termination_reason": str(raw_result.get("termination_reason", "")),
+            "report": dict(report),
+            "trainer_result_ready": False,
+            "artifact_refs": {},
+        }
+
+    @staticmethod
+    def _prepared_ref(
+        provisional: DataRef | None,
+        prepared: Mapping[str, DataRef],
+    ) -> DataRef | None:
+        if provisional is None:
+            return None
+        for ref in prepared.values():
+            if ref.uri == provisional.uri:
+                return ref
+        raise RuntimeError(
+            "Artifact finalization prepare omitted one of its staged refs"
+        )
+
+    def freeze_finalization_after_prepare(
+        self,
+        raw_result: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        """Freeze staged refs after every strict prepare hook passes."""
+
+        if not self._post_teardown_finalization_active:
+            raise RuntimeError(
+                "ML result finalization is owned by the Solver lifecycle"
+            )
+        pending = self._pending_artifact_finalization
+        if pending is None:
+            raise RuntimeError("ML Artifact finalization was not prepared")
+        prepared = dict(pending.session.prepare())
+        best_model_ref = self._prepared_ref(pending.best_model_ref, prepared)
+        best_state_ref = self._prepared_ref(pending.best_state_ref, prepared)
+        history_ref = self._prepared_ref(pending.history_ref, prepared)
+        report_ref = self._prepared_ref(pending.report_ref, prepared)
+        result_refs = dict(prepared)
+        if best_model_ref is not None:
+            result_refs["best_model"] = best_model_ref
+        self.best_model_ref = best_model_ref
+        self._best_state_ref = best_state_ref
+        self._history_ref = history_ref
+        self._report_ref = report_ref
+        self.result_artifact_refs = result_refs
+        self._finalized_report = dict(pending.report)
+        self._finalized_trainer_result = self._build_trainer_result(
+            self._finalized_report
+        )
+        self._pending_finalization_report = None
+        self._pending_artifact_finalization = None
+        return {
+            "status": str(raw_result.get("status", "ok")),
+            "termination_reason": str(raw_result.get("termination_reason", "")),
+            "report": dict(self._finalized_report),
+            "trainer_result_ready": True,
+            "artifact_refs": dict(self.result_artifact_refs),
+        }
+
+    def abort_finalization_after_teardown(self, error: BaseException) -> None:
+        pending = self._pending_artifact_finalization
+        if pending is not None:
+            pending.session.abort(
+                f"{type(error).__name__}: {error}"
+            )
+        self._pending_artifact_finalization = None
+        self._finalized_report = None
+        self._finalized_trainer_result = None
+        self.best_model_ref = None
+        self._best_state_ref = None
+        self._history_ref = None
+        self._report_ref = None
+        self.result_artifact_refs = {}
+
+    def finalize_after_teardown(self, raw_result: Mapping[str, Any]) -> Mapping[str, Any]:
+        del raw_result
+        raise RuntimeError(
+            "direct ML Artifact publication is disabled; use the unified Solver lifecycle"
+        )
+
+    def _stage_large_result_field(
+        self,
+        session: ArtifactFinalizationSession,
         name: str,
         value: Any,
         *,
@@ -752,21 +872,12 @@ class LearningSolver(ComposableSolver):
         )
         if size <= self.result_inline_limit_bytes:
             return None
-        publish = getattr(self.artifact_provider, "publish_payload", None)
-        if not callable(publish):
-            raise TypeError(
-                "artifact provider must implement publish_payload(...) for "
-                "bounded TrainerResult fields"
-            )
-        self.checkpoint_case_runtime()
-        ref = publish(self, name, value, kind=kind)
+        ref = session.publish_payload(name, value, kind=kind)
         if ref is None:
             # Standalone fits have no Case artifact authority.  They return the
             # in-process TrainerResult object and therefore keep the field
             # inline; a Case execution never fabricates an unresolved ref.
             return None
-        self.register_result_artifact(name, ref)
-        self.checkpoint_case_runtime()
         return ref
 
     def _build_trainer_result(self, report: Mapping[str, Any]) -> TrainerResult:
@@ -871,6 +982,10 @@ class LearningSolver(ComposableSolver):
         return self
 
     def set_artifact_provider(self, provider: ArtifactProvider) -> "LearningSolver":
+        if not callable(getattr(provider, "begin_finalization", None)):
+            raise TypeError(
+                "artifact provider must implement begin_finalization(control, ...)"
+            )
         if not callable(getattr(provider, "publish_best_model", None)):
             raise TypeError("artifact provider must implement publish_best_model(control)")
         if not callable(getattr(provider, "publish_payload", None)):
@@ -923,14 +1038,10 @@ class LearningSolver(ComposableSolver):
         return self
 
     def publish_best_model_artifact(self) -> DataRef | None:
-        if self.best_model is None or self.best_model_ref is not None:
-            return self.best_model_ref
-        self.checkpoint_case_runtime()
-        ref = self.artifact_provider.publish_best_model(self)
-        if ref is not None:
-            self.set_best_model_ref(ref)
-        self.checkpoint_case_runtime()
-        return self.best_model_ref
+        raise RuntimeError(
+            "direct best-model publication is disabled; successful Artifacts "
+            "are committed by the unified Solver finalization transaction"
+        )
 
     def build_report(self, raw_result: Mapping[str, Any] | None = None) -> dict[str, Any]:
         adapter = self.adapter
@@ -978,7 +1089,7 @@ class LearningSolver(ComposableSolver):
         provider = getattr(self, "evaluation_provider", None)
         provider_state = getattr(provider, "get_state", None)
         return {
-            "state_version": 4,
+            "state_version": 6,
             "control_plane": self.control_plane,
             "run_name": self.run_name,
             "generation": int(self.generation),
@@ -1006,6 +1117,11 @@ class LearningSolver(ComposableSolver):
             ),
             "best_feedback": (
                 None if self.best_feedback is None else self.best_feedback.as_dict()
+            ),
+            "best_feedback_binding": (
+                None
+                if self._best_feedback_binding is None
+                else dict(self._best_feedback_binding)
             ),
             "history": tuple(dict(row) for row in self.history),
             "resource_context": self.resource_context.as_dict(),
@@ -1045,28 +1161,33 @@ class LearningSolver(ComposableSolver):
     def _migrate_learning_state(state: Mapping[str, Any]) -> dict[str, Any]:
         payload = copy.deepcopy(dict(state or {}))
         version = int(payload.get("state_version", 3) or 3)
-        if version == 4:
+        if version == 6:
             return payload
-        if version != 3:
+        if version not in {3, 4, 5}:
             raise ValueError(
                 f"unsupported LearningSolver state version: {version}"
             )
-        payload.setdefault(
-            "run_progress",
-            {
-                "schema": "nsgablack.run_progress/v1",
-                "steps_completed": max(
-                    0,
-                    int(payload.get("generation", 0) or 0),
-                ),
-                "elapsed_seconds": 0.0,
-                "deadline_remaining_seconds": None,
-                "run_id": payload.get("active_run_id"),
-            },
-        )
-        payload.setdefault("completion_policy", None)
-        payload["state_version"] = 4
-        payload["migrated_from_state_version"] = 3
+        if version == 3:
+            payload.setdefault(
+                "run_progress",
+                {
+                    "schema": "nsgablack.run_progress/v1",
+                    "steps_completed": max(
+                        0,
+                        int(payload.get("generation", 0) or 0),
+                    ),
+                    "elapsed_seconds": 0.0,
+                    "deadline_remaining_seconds": None,
+                    "run_id": payload.get("active_run_id"),
+                },
+            )
+            payload.setdefault("completion_policy", None)
+        payload["run_progress"] = RunProgressState.from_dict(
+            payload.get("run_progress", {})
+        ).as_dict()
+        payload.setdefault("best_feedback_binding", None)
+        payload["state_version"] = 6
+        payload["migrated_from_state_version"] = version
         return payload
 
     def _apply_state_now(self, state: Mapping[str, Any]) -> "LearningSolver":
@@ -1123,6 +1244,17 @@ class LearningSolver(ComposableSolver):
             if isinstance(raw_feedback, Mapping)
             else None
         )
+        raw_binding = state.get("best_feedback_binding")
+        self._best_feedback_binding = (
+            dict(raw_binding) if isinstance(raw_binding, Mapping) else None
+        )
+        incumbent = self.get_incumbent()
+        if self.best_feedback is not None and not self._feedback_binding_matches(incumbent):
+            self.best_feedback = None
+            self._best_feedback_binding = None
+            raise ValueError(
+                "restored best_feedback is not bound to the authoritative incumbent"
+            )
         self.history = [dict(row) for row in state.get("history", ())]
         self._resume_cursor = generation
         self._resume_loaded = True
@@ -1141,27 +1273,49 @@ class LearningSolver(ComposableSolver):
             self.result_artifact_refs.setdefault("best_model", self.best_model_ref)
         return self
 
-    def _record_ml_evaluation(
+    def _record_ml_model_handle(
         self,
-        state: UnknownState,
-        feedback: Feedback,
         model: Any,
         *,
         candidate_token: str | None = None,
     ) -> None:
-        self._step_ml_evaluations.append(
-            _MLEvaluationRecord(
-                state=state,
-                feedback=feedback,
+        self._step_ml_model_handles.append(
+            _MLModelHandle(
                 model=model,
                 candidate_token=candidate_token,
             )
         )
 
     def _synchronize_ml_projection(self, *, record_history: bool) -> None:
-        evaluations = tuple(self._step_ml_evaluations)
-        self.last_evaluated_population = tuple(item.state for item in evaluations)
-        self.last_evaluated_feedback = tuple(item.feedback for item in evaluations)
+        envelope = self.get_last_evaluation_event()
+        candidate_batch: CandidateBatch | None = None
+        feedback_batch: OptimizationFeedbackBatch | None = None
+        if envelope is not None:
+            if not envelope.semantic_complete:
+                raise RuntimeError(
+                    "ML projection requires a semantically complete evaluation event"
+                )
+            if envelope.candidate_codec != "blackbase.candidate_batch/v1":
+                raise RuntimeError(
+                    f"unsupported ML candidate event codec: {envelope.candidate_codec}"
+                )
+            if envelope.feedback_codec != "nsgablack.optimization_feedback_batch/v1":
+                raise RuntimeError(
+                    f"unsupported ML feedback event codec: {envelope.feedback_codec}"
+                )
+            candidate_batch = CandidateBatch.from_dict(envelope.candidate_payload)
+            feedback_batch = OptimizationFeedbackBatch.from_dict(
+                envelope.feedback_payload
+            )
+            if len(candidate_batch.semantic_states) != feedback_batch.candidate_count:
+                raise RuntimeError("canonical ML evaluation event is cardinality-inconsistent")
+
+        self.last_evaluated_population = (
+            () if candidate_batch is None else tuple(candidate_batch.semantic_states)
+        )
+        self.last_evaluated_feedback = (
+            () if feedback_batch is None else tuple(feedback_batch.items)
+        )
         self.feedback = self.last_evaluated_feedback
         incumbent = self.get_incumbent()
         if incumbent is None:
@@ -1172,13 +1326,25 @@ class LearningSolver(ComposableSolver):
             if isinstance(semantic_metadata, Mapping)
             else {}
         )
-        state = UnknownState(
-            values=np.asarray(incumbent.candidate, dtype=float).copy(),
-            metadata=(
-                dict(decoded_metadata)
-                if isinstance(decoded_metadata, Mapping)
-                else {}
-            ),
+        matching_index: int | None = None
+        if candidate_batch is not None and incumbent.candidate_token is not None:
+            try:
+                matching_index = candidate_batch.candidate_tokens.index(
+                    incumbent.candidate_token
+                )
+            except ValueError:
+                matching_index = None
+        state = (
+            candidate_batch.semantic_states[matching_index]
+            if candidate_batch is not None and matching_index is not None
+            else UnknownState(
+                values=np.asarray(incumbent.candidate, dtype=float).copy(),
+                metadata=(
+                    dict(decoded_metadata)
+                    if isinstance(decoded_metadata, Mapping)
+                    else {}
+                ),
+            )
         )
         changed = self.best_state is None or not self.model_representation.equivalent(
             self.best_state,
@@ -1186,21 +1352,16 @@ class LearningSolver(ComposableSolver):
         )
         self.best_state = state
         self.best_score = float(incumbent.score)
-        matching_evaluation = next(
+        matching_handle = next(
             (
-                item
-                for item in evaluations
-                if (
-                    item.candidate_token == incumbent.candidate_token
-                    if incumbent.candidate_token is not None
-                    else self.model_representation.equivalent(item.state, state)
-                )
+                item for item in self._step_ml_model_handles
+                if item.candidate_token == incumbent.candidate_token
             ),
             None,
         )
         if changed or self.best_model is None:
-            if matching_evaluation is not None:
-                self.best_model = matching_evaluation.model
+            if matching_handle is not None:
+                self.best_model = matching_handle.model
             else:
                 context = self.build_context()
                 decoded_model = self.model_representation.decode(state, context)
@@ -1210,21 +1371,47 @@ class LearningSolver(ComposableSolver):
                     context,
                 )
             self.set_best_model_ref(None)
-        if matching_evaluation is not None:
-            self.best_feedback = matching_evaluation.feedback
+        if matching_index is not None and feedback_batch is not None:
+            self.best_feedback = feedback_batch.items[matching_index]
+            self._best_feedback_binding = {
+                "candidate_token": incumbent.candidate_token,
+                "evaluation_id": incumbent.evaluation_id,
+                "event_id": None if envelope is None else envelope.event_id,
+            }
+        elif changed and not self._feedback_binding_matches(incumbent):
+            self.best_feedback = None
+            self._best_feedback_binding = None
+            raise RuntimeError(
+                "authoritative ML incumbent has no token-matched canonical feedback"
+            )
         if not record_history:
             return
         row = {
             "step": int(self.generation),
-            "num_candidates": len(evaluations),
+            "num_candidates": len(self.last_evaluated_population),
             "global_best_score": self.best_score,
             "metrics": (
-                {} if not evaluations else dict(evaluations[0].feedback.metrics)
+                {}
+                if not self.last_evaluated_feedback
+                else dict(self.last_evaluated_feedback[0].metrics)
             ),
             "control_plane": self.control_plane,
         }
         if not self.history or self.history[-1] != row:
             self.history.append(row)
+
+    def _feedback_binding_matches(self, incumbent: IncumbentState | None) -> bool:
+        if incumbent is None or self._best_feedback_binding is None:
+            return False
+        token = incumbent.candidate_token
+        if token is None or self._best_feedback_binding.get("candidate_token") != token:
+            return False
+        bound_evaluation = self._best_feedback_binding.get("evaluation_id")
+        return (
+            bound_evaluation is None
+            or incumbent.evaluation_id is None
+            or str(bound_evaluation) == str(incumbent.evaluation_id)
+        )
 
 
 def build_learning_solver(

@@ -4,10 +4,14 @@ import numpy as np
 import pytest
 
 from blackbase.evaluation import (
+    EvaluationGateway,
+    EvaluationProviderRegistry,
     StateMaterializationRequest,
+    StateReleaseRequest,
     StateTransitionRequest,
     StateVersionConflict,
 )
+from blackbase.resources import ResourceContext
 from blackbase.state_ref import StateRef
 from mlblack.assembly import build_trainer
 from mlblack.backends.torch_neural import (
@@ -209,6 +213,129 @@ def test_provider_request_retention_is_partitioned_by_scope_and_trajectory() -> 
         ("scope", "trajectory-a"): ["request-a-2"],
         ("scope", "trajectory-b"): ["request-b-1"],
     }
+
+
+def test_provider_release_can_target_aborted_optimizer_slot_ids() -> None:
+    from mlblack.backends.torch_neural.evaluation_provider import _TorchStateRecord
+
+    provider = TorchEvaluationProvider(
+        TabularNeuralRegressionProblem(_data()),
+        _representation(7),
+    )
+    provider._states = {
+        "slot-m": _TorchStateRecord(
+            tensor=object(),
+            state_kind="optimizer_slot.m",
+            scope_id="scope",
+            trajectory_id="fit-1",
+            device="cpu",
+        ),
+        "slot-v": _TorchStateRecord(
+            tensor=object(),
+            state_kind="optimizer_slot.v",
+            scope_id="scope",
+            trajectory_id="fit-1",
+            device="cpu",
+        ),
+        "unrelated": _TorchStateRecord(
+            tensor=object(),
+            state_kind="model_parameters",
+            scope_id="scope",
+            trajectory_id="fit-1",
+            device="cpu",
+        ),
+    }
+    registry = EvaluationProviderRegistry()
+    registry.register(provider)
+    result = EvaluationGateway(registry).release(
+        StateReleaseRequest(
+            provider_id=provider.spec.provider_id,
+            scope_id="scope",
+            trajectory_id="fit-1",
+            state_ids=("slot-m", "slot-v"),
+        ),
+        ResourceContext(
+            namespace="scope",
+            compute_backend="torch",
+            device="cpu",
+            grant={"threads": 1, "gpus": 0},
+        ),
+    )
+
+    assert result.released_state_ids == ("slot-m", "slot-v")
+    assert set(provider._states) == {"unrelated"}
+
+
+def test_torch_optimizer_slots_are_copy_on_write_until_caller_decides() -> None:
+    pytest.importorskip("torch")
+    trainer = build_gradient_trainer(
+        problem=TabularNeuralRegressionProblem(_data()),
+        representation=_representation(31),
+        method="gradient.adam",
+        provider_config=TorchEvaluationProviderConfig(publish_state_refs=True),
+        run_name="slot_copy_on_write",
+    )
+    context = {
+        "trajectory_id": "trajectory-cow",
+        "run_name": "slot_copy_on_write",
+        "resource_context": trainer.resource_context.as_dict(),
+        "resource.context": trainer.resource_context.as_dict(),
+    }
+
+    def evaluate_once():
+        state = trainer.model_representation.init({})
+        decoded = trainer.model_representation.decode(state, context)
+        model = trainer.semantic_problem.prepare_model_for_evaluation(
+            decoded,
+            state,
+            context,
+        )
+        return trainer.semantic_problem.evaluate(model, state, context)
+
+    def transition(feedback, slot_refs):
+        return trainer.problem.gateway.transition(
+            StateTransitionRequest(
+                state_ref=feedback.info["evaluation_state_ref"],
+                method_id="gradient.adam",
+                operands={"gradient": feedback.gradient_ref},
+                slot_refs=slot_refs,
+                parameters={
+                    "learning_rate": 1e-3,
+                    "beta1": 0.9,
+                    "beta2": 0.999,
+                    "epsilon": 1e-8,
+                },
+            ),
+            trainer.resource_context,
+        )
+
+    first = transition(evaluate_once(), {})
+    second = transition(evaluate_once(), first.slot_refs)
+    first_ids = {ref.state_id for ref in first.slot_refs.values()}
+    second_ids = {ref.state_id for ref in second.slot_refs.values()}
+
+    assert first_ids.isdisjoint(second_ids)
+    assert first_ids.issubset(trainer.evaluation_provider._states)
+    assert second_ids.issubset(trainer.evaluation_provider._states)
+    certifications = (
+        trainer.problem.gateway.registry.copy_on_write_certifications()
+    )
+    assert len(certifications) == 1
+    assert certifications[0].provider_id == trainer.evaluation_provider.spec.provider_id
+    assert certifications[0].method_id == "gradient.adam"
+    assert certifications[0].checked_slots == ("m", "v")
+
+    trainer.problem.gateway.release(
+        StateReleaseRequest(
+            provider_id=trainer.evaluation_provider.spec.provider_id,
+            scope_id=trainer.resource_context.namespace,
+            trajectory_id="trajectory-cow",
+            state_ids=tuple(second_ids),
+        ),
+        trainer.resource_context,
+    )
+    assert first_ids.issubset(trainer.evaluation_provider._states)
+    assert second_ids.isdisjoint(trainer.evaluation_provider._states)
 
 
 def test_provider_materializes_predecessor_before_advancing_retention() -> None:
@@ -419,8 +546,11 @@ def test_torch_provider_owns_and_versions_adam_slots() -> None:
     assert trainer.adapter.get_state()["first_moment"] is not None
     assert trainer.adapter.get_state()["second_moment"] is not None
     assert trainer.evaluation_provider.get_state()["live_state_count"] == 0
+    assert trainer.evaluation_provider.get_state()["released_state_count"] >= 2
     assert trainer._last_state_release is not None
-    assert trainer._last_state_release.released_count == 2
+    # The Gradient Adapter now releases its exact slot IDs.  The outer
+    # trajectory release remains an idempotent safety net and has nothing left.
+    assert trainer._last_state_release.released_count == 0
 
 
 def test_provider_transition_checkpoint_resumes_from_materialized_shadow() -> None:

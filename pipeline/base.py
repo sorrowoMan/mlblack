@@ -72,8 +72,20 @@ class DataPipelineComponent(ContractMixin):
         return {"name": self.name}
 
 
-class DataPipeline:
+class DataPipeline(ContractMixin):
     """Ordered data preparation chain for a trainer assembly."""
+
+    context_requires = ("data.numeric_view",)
+    context_optional = ("trainer.context",)
+    context_provides = ("data.numeric_view",)
+    context_mutates = ("pipeline.fit_state", "pipeline.component_state")
+    context_cache = ("pipeline.fit_state",)
+    requires_metrics = ()
+    metrics_fallback = "strict"
+    context_notes = (
+        "Runs an ordered set of data preparation components and owns their "
+        "bounded fit-state envelope."
+    )
 
     def __init__(self, components: Sequence[DataPipelineComponent] | None = None, *, name: str = "data_pipeline") -> None:
         self.name = str(name)

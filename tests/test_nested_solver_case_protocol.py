@@ -34,6 +34,7 @@ def test_complete_solver_case_bridge_projects_into_outer_trainer(tmp_path) -> No
     (child_root / "build_solver.py").write_text(
         """
 import numpy as np
+from blackbase.types import PopulationSnapshot, UnknownState
 from nsgablack.core import BlackBoxProblem, IncumbentState, SolverBase
 
 
@@ -65,6 +66,15 @@ class InnerSolver(SolverBase):
             "objectives": self.objectives,
         }
         self.pareto_objectives = self.objectives
+        self.pareto_population_snapshot = PopulationSnapshot(
+            candidates=tuple(
+                UnknownState(row, metadata={"source": f"inner:{index}"})
+                for index, row in enumerate(self.population)
+            ),
+            objectives=self.objectives,
+            constraints=self.constraint_violations,
+            candidate_tokens=("inner:0", "inner:1"),
+        )
         self.generation = 3
         self.evaluation_count = 8
         return {
@@ -403,6 +413,7 @@ def test_oversized_pareto_front_uses_resolvable_project_artifact(tmp_path) -> No
     (child_root / "build_solver.py").write_text(
         """
 import numpy as np
+from blackbase.types import PopulationSnapshot, UnknownState
 from nsgablack.core import BlackBoxProblem, IncumbentState, SolverBase
 
 
@@ -436,6 +447,15 @@ class InnerSolver(SolverBase):
             "objectives": self.objectives,
         }
         self.pareto_objectives = self.objectives
+        self.pareto_population_snapshot = PopulationSnapshot(
+            candidates=tuple(
+                UnknownState(row, metadata={"source": f"inner:{index}"})
+                for index, row in enumerate(self.population)
+            ),
+            objectives=self.objectives,
+            constraints=self.constraint_violations,
+            candidate_tokens=("inner:0", "inner:1"),
+        )
         return {
             "status": "ok",
             "solve_status": "feasible",

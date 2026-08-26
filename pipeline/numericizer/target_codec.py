@@ -8,6 +8,15 @@ import numpy as np
 
 @dataclass(frozen=True)
 class TargetCodec:
+    context_requires = ()
+    context_optional = ()
+    context_provides = ()
+    context_mutates = ()
+    context_cache = ()
+    requires_metrics = ()
+    metrics_fallback = "strict"
+    context_notes = "Pure target value codec; it does not access runtime Context."
+
     kind: str = "numeric"
     classes: Sequence[Any] = tuple()
     metadata: Mapping[str, Any] = field(default_factory=dict)

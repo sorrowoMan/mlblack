@@ -1,7 +1,7 @@
-# 12. 自定义 Plugin：10 钩子完整实战（mlblack）
+# 12. 自定义 Plugin：15 钩子完整实战（mlblack）
 
 mlblack capability 与 nsgablack plugin lifecycle 是统一映射关系。  
-本章给你一个可以直接照抄的 10 钩子样例。
+本章给你一个可以直接照抄的 15 钩子样例。
 
 ## 1. 先创建插件文件
 
@@ -9,18 +9,23 @@ mlblack capability 与 nsgablack plugin lifecycle 是统一映射关系。
 python -m nsgablack project add-component --case my_trainer --kind plugin --name trainer_audit_plugin
 ```
 
-## 2. 10 钩子清单（统一）
+## 2. 15 钩子清单（统一）
 
 1. `on_solver_init`
 2. `on_population_init`
-3. `on_generation_start`
-4. `on_evaluate_start`
-5. `on_evaluate_end`
-6. `on_step`
-7. `on_generation_end`
-8. `on_solver_finish`
-9. `on_error`
-10. `on_context_build`
+3. `on_step_attempt_start`
+4. `on_generation_start`
+5. `on_evaluate_start`
+6. `on_evaluate_end`
+7. `on_step`
+8. `on_generation_committed`
+9. `on_generation_end`
+10. `on_step_attempt_end`
+11. `on_solver_finish`
+12. `on_solver_finalization_prepare`
+13. `on_solver_finalized`
+14. `on_error`
+15. `on_context_build`
 
 在 mlblack 语义下，可以把 generation/step 看成训练 step 生命周期映射。
 
@@ -51,6 +56,9 @@ class TrainerAuditPlugin(Plugin):
     def on_population_init(self, population, objectives, violations):
         self._log("on_population_init", {"n": 0 if population is None else len(population)})
 
+    def on_step_attempt_start(self, attempt: int, logical_step: int):
+        self._log("on_step_attempt_start", {"attempt": attempt, "logical_step": logical_step})
+
     def on_generation_start(self, generation: int):
         self._log("on_generation_start", {"generation": generation})
 
@@ -63,12 +71,24 @@ class TrainerAuditPlugin(Plugin):
     def on_step(self, solver, generation: int):
         self._log("on_step", {"generation": generation})
 
+    def on_generation_committed(self, generation: int, outcome):
+        self._log("on_generation_committed", {"generation": generation})
+
     def on_generation_end(self, generation: int):
         self._log("on_generation_end", {"generation": generation})
+
+    def on_step_attempt_end(self, attempt: int, logical_step: int, outcome):
+        self._log("on_step_attempt_end", {"attempt": attempt, "logical_step": logical_step})
 
     def on_solver_finish(self, result):
         elapsed = 0.0 if self._t0 is None else time.time() - self._t0
         self._log("on_solver_finish", {"elapsed_s": elapsed})
+
+    def on_solver_finalization_prepare(self, result):
+        self._log("on_solver_finalization_prepare", {"ready": bool(result.get("trainer_result_ready", False))})
+
+    def on_solver_finalized(self, result):
+        self._log("on_solver_finalized", {"ready": bool(result.get("trainer_result_ready", False))})
 
     def on_error(self, error: BaseException, context=None):
         self._log("on_error", {"error": f"{type(error).__name__}: {error}"})

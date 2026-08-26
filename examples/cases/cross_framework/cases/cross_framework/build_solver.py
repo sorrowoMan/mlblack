@@ -59,7 +59,7 @@ def build_solver(
         adapter=adapter,
         representation_pipeline=pipeline,
     )
-    solver.max_steps = 1
+    solver.set_max_steps(1)
     solver.set_random_seed(17)
     if resource_context is not None:
         solver.set_resource_context(resource_context)

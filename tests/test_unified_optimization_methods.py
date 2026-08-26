@@ -145,8 +145,9 @@ def test_completion_policy_continues_one_logical_run_after_state_restore() -> No
     source.fit(max_steps=1)
     checkpoint = source.get_state()
 
-    assert checkpoint["state_version"] == 4
+    assert checkpoint["state_version"] == 6
     assert checkpoint["run_progress"]["steps_completed"] == 1
+    assert checkpoint["run_progress"]["attempts_completed"] == 1
     assert checkpoint["run_progress"]["elapsed_seconds"] >= 0.0
     assert checkpoint["completion_policy"]["state"]["check_count"] == 1
 
@@ -186,6 +187,30 @@ def test_learning_solver_state_v3_migrates_run_progress_explicitly() -> None:
     restored.fit(max_steps=0)
 
     assert restored.run_progress_steps == int(legacy["generation"])
+
+
+def test_learning_solver_state_v4_migrates_run_progress_to_attempt_schema() -> None:
+    source = build_orthogonal_linear_point_trainer(
+        _regression_data(),
+        learning_rate=0.05,
+    )
+    source.fit(max_steps=1)
+    legacy = dict(source.get_state())
+    legacy["state_version"] = 4
+    legacy["run_progress"] = {
+        "schema": "nsgablack.run_progress/v1",
+        "steps_completed": 1,
+        "elapsed_seconds": 0.5,
+        "deadline_remaining_seconds": None,
+        "run_id": legacy.get("active_run_id"),
+    }
+
+    migrated = source._migrate_learning_state(legacy)
+
+    assert migrated["state_version"] == 6
+    assert migrated["migrated_from_state_version"] == 4
+    assert migrated["run_progress"]["schema"] == "nsgablack.run_progress/v2"
+    assert migrated["run_progress"]["attempts_completed"] == 1
 
 
 def test_unknown_state_metadata_survives_the_numeric_control_plane() -> None:

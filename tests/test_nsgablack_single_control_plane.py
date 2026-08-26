@@ -107,12 +107,14 @@ def test_mlp_codec_and_torch_lowering_share_layout_and_mapping() -> None:
     assert np.allclose(torch_model.predict(X), local_model.predict(X), atol=1e-6)
 
 
-def test_single_control_plane_publishes_model_before_result_serialization() -> None:
+def test_single_control_plane_prepares_model_before_result_serialization() -> None:
     pytest.importorskip("torch")
 
     class _CaseRuntime:
         def __init__(self) -> None:
             self.artifact_refs: dict[str, DataRef] = {}
+            self.finalization_transaction = None
+            self.finalization_observers = []
 
         def checkpoint(self) -> None:
             return None
@@ -126,6 +128,49 @@ def test_single_control_plane_publishes_model_before_result_serialization() -> N
             )
             self.artifact_refs[str(name)] = ref
             return ref
+
+        def begin_artifact_transaction(self, label):
+            del label
+            runtime = self
+
+            class _Transaction:
+                def __init__(self):
+                    self.staged: dict[str, DataRef] = {}
+
+                def publish(self, name, value, **kwargs):
+                    assert value is not None
+                    ref = DataRef(
+                        uri=f"memory://single-control/{name}",
+                        kind=str(kwargs.get("kind", "model")),
+                        backend="memory",
+                    )
+                    self.staged[str(name)] = ref
+                    return ref
+
+                def commit(self):
+                    runtime.artifact_refs.update(self.staged)
+                    return dict(self.staged)
+
+                def prepare(self):
+                    return dict(self.staged)
+
+                def abort(self, reason="aborted"):
+                    del reason
+                    self.staged.clear()
+
+            return _Transaction()
+
+        def begin_finalization_transaction(self, label):
+            if self.finalization_transaction is None:
+                self.finalization_transaction = self.begin_artifact_transaction(label)
+            return self.finalization_transaction
+
+        def abort_finalization_transaction(self, reason="aborted"):
+            if self.finalization_transaction is not None:
+                self.finalization_transaction.abort(reason)
+
+        def register_finalization_observer(self, observer, *, name="observer"):
+            self.finalization_observers.append((str(name), observer))
 
     control = build_mlp_regression_trainer(
         _data(),
