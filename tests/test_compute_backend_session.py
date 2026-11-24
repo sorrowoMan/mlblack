@@ -46,7 +46,8 @@ def test_learning_solver_context_exposes_single_compute_backend_session() -> Non
         compute_backend=ComputeBackendSpec(name="torch", device="cpu"),
     )
     context = solver.build_context()
-    assert context["backend.session"] is solver.compute_backend_session
+    assert "backend.session" not in context
+    assert solver.enrich_ml_context(context)["backend.session"] is solver.compute_backend_session
     assert context["backend.name"] == "torch"
     assert context["backend.device"] == "cpu"
 

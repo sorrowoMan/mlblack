@@ -2,7 +2,9 @@
 
 `mlblack` 是统一框架栈中的机器学习语义扩展包。它把数据、模型结构、参数状态、输出语义、训练问题、求值 Provider 和模型 Artifact 映射到 `nsgablack` 的统一 Solver 控制面，而不是维护第二套 Trainer 循环或 Adapter 体系。
 
-当前版本：`0.4.22`，依赖 `blackbase>=0.3.24,<0.4.0` 与 `nsgablack>=0.3.26,<0.4.0`。
+当前开发版本：`0.4.24`，依赖 `blackbase>=0.3.26,<0.4.0` 与 `nsgablack>=0.4.1,<0.5.0`。
+
+MLRepresentationBridge 显式声明表示能力，LearningSolver 通过 SolverSemanticExtension 同步提交后的 ML 投影，通过 FinalizationHooks 注册 Artifact/结果发布，通过 RunSession 提交恢复请求。它不再覆盖 step 或依赖 initializer/decoder 自指标记；Bias 链保留原始反馈与偏好增量。自定义严格发布 Plugin 须声明 `ParticipationContract(vetoes=("finalization",))`。
 
 本版将最终模型、best state、history 与 report 纳入同一个 Artifact finalization session：
 teardown 成功后只冻结暂存引用，全部严格 `on_solver_finalization_prepare` 参与者通过后，
@@ -120,6 +122,9 @@ python -m nsgablack project doctor --path . --build --strict
 
 - [文档入口](docs/README.md)
 - [统一优化视图](docs/architecture/UNIFIED_OPTIMIZATION_VIEW.md)
+- [ML 候选、解池与 Unit 的统一装配](docs/architecture/ML_POOL_UNIT_INTEGRATION_CN.md)
+- [真实 HF / PEFT 会话 SFT 的接入边界](docs/architecture/HF_CONVERSATION_SFT_CN.md)
+- [框架助手 SFT 完整 Project](examples/cases/framework_assistant_sft/README.md)
 - [线性模型完整切片](docs/architecture/LINEAR_MODEL_OPTIMIZATION_SLICE_CN.md)
 - [统一梯度路径](docs/architecture/UNIFIED_GRADIENT_PATH.md)
 - [神经网络 Provider / backend 边界](docs/neural_graph_backend_architecture/README.md)

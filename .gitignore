@@ -38,3 +38,17 @@ tmp-*
 
 .DS_Store
 Thumbs.db
+
+# Private machine state and generated handoff artifacts
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/.venv/
+/.conda/
+/.mlblack/
+/.test-tmp/
+/.ruff_cache/
+/results/
+**/.blackbase/

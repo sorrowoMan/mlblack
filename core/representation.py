@@ -21,10 +21,17 @@ from .types import UnknownState
 
 
 class ModelRepresentation(RepresentationBase, ContractMixin):
-    """Unknown-state encoder/decoder, equivalent to nsgablack Representation.
+    """Interpret a candidate as a model independently of its search Unit.
 
     Inherits RepresentationBase (unified interface) and ContractMixin
     (mlblack metadata protocol).
+
+    Declare ``dimension`` from the model layout whenever it is available.
+    Backend-dependent layouts may resolve it in ``setup`` without sampling a
+    candidate. ``init`` runs through the shared Solver only after its pool
+    exists. A custom initializer may bind a previously unknown dimension;
+    Adapters that supply candidates directly or need geometry during setup
+    require a layout resolved before their setup.
     """
 
     name = "model_representation"

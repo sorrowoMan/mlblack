@@ -1,0 +1,1 @@
+{"id":"mechanism-fixture-only","messages":[{"role":"user","content":"Problem 与 Bias 的职责有什么不同？"},{"role":"assistant","content":"Problem 定义原始目标和约束。Bias 产生保留原始求值的软偏好，不能将选择视图当成硬可行性判据。这只是输入格式示例，不是足够的框架训练集。"}]}

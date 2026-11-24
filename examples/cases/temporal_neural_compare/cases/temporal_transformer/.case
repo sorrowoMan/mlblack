@@ -1,3 +1,0 @@
-name = temporal_transformer
-kind = trainer
-framework = mlblack

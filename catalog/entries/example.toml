@@ -11,52 +11,58 @@ metadata = { "dataset" = "runs/etf_temporal_forecast/cache/multi_etf_returns_mom
 key = "example.traffic_arimax_attribution"
 title = "ARIMAX Factor Attribution on Traffic CI"
 kind = "example"
-import_path = "examples.cases.traffic_congestion.arimax_factor_attribution:run_trainer"
+import_path = "mlblack.examples.cases.traffic_congestion.cases.arimax_factor_attribution.build_solver:build_solver"
 tags = ["example", "traffic", "arimax", "attribution", "time-series"]
 summary = "ARIMAX(2,0,1) factor group attribution decomposing CI variation into Weather/AQI/Holiday/CI_Lags/Time_Cyclic groups."
+example_entry = "python examples/cases/traffic_congestion/cases/arimax_factor_attribution/run_solver.py"
 metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/arimax_factor_attribution/README.md" }
 
 [[entry]]
 key = "example.traffic_gam_linearity"
 title = "GAM Nonlinearity Check on Traffic CI"
 kind = "example"
-import_path = "examples.cases.traffic_congestion.gam_linearity_check:run_trainer"
+import_path = "mlblack.examples.cases.traffic_congestion.cases.gam_linearity_check.build_solver:build_solver"
 tags = ["example", "traffic", "gam", "nonlinear", "diagnostic"]
 summary = "B-spline GAM vs linear regression comparison diagnosing whether linear assumptions hold for traffic CI prediction."
+example_entry = "python examples/cases/traffic_congestion/cases/gam_linearity_check/run_solver.py"
 metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/gam_linearity_check/README.md" }
 
 [[entry]]
 key = "example.traffic_granger_causality"
 title = "Granger Causality Check on Traffic CI"
 kind = "example"
-import_path = "examples.cases.traffic_congestion.granger_causality_check:run_trainer"
+import_path = "mlblack.examples.cases.traffic_congestion.cases.granger_causality_check.build_solver:build_solver"
 tags = ["example", "traffic", "granger", "causal", "diagnostic"]
 summary = "Pairwise Granger causality tests between CI and external factors (weather, AQI, holidays) on real traffic data."
+example_entry = "python examples/cases/traffic_congestion/cases/granger_causality_check/run_solver.py"
 metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/granger_causality_check/README.md" }
 
 [[entry]]
 key = "example.traffic_shap_consistency"
 title = "SHAP Contribution Consistency on Traffic CI"
 kind = "example"
-import_path = "examples.cases.traffic_congestion.shap_contribution_check:run_trainer"
+import_path = "mlblack.examples.cases.traffic_congestion.cases.shap_contribution_check.build_solver:build_solver"
 tags = ["example", "traffic", "shap", "xgboost", "attribution", "diagnostic"]
 summary = "Cross-paradigm feature importance comparison: Linear coefficients vs XGBoost gain vs SHAP vs Permutation on traffic CI."
+example_entry = "python examples/cases/traffic_congestion/cases/shap_contribution_check/run_solver.py"
 metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/shap_contribution_check/README.md" }
 
 [[entry]]
 key = "example.traffic_symbolic_regression"
 title = "Symbolic Regression on Traffic CI"
 kind = "example"
-import_path = "examples.cases.traffic_congestion.symbolic_regression:run_trainer"
+import_path = "mlblack.examples.cases.traffic_congestion.cases.symbolic_regression.build_solver:build_solver"
 tags = ["example", "traffic", "symbolic", "regression", "linear", "gradient_descent"]
 summary = "Gradient-descent linear regression on traffic CI mechanism reconstruction (same-day features), baseline for symbolic approach."
+example_entry = "python examples/cases/traffic_congestion/cases/symbolic_regression/run_solver.py"
 metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/symbolic_regression/README.md" }
 
 [[entry]]
 key = "example.traffic_xgboost_baseline"
 title = "XGBoost Baseline for Traffic CI Prediction"
 kind = "example"
-import_path = "examples.cases.traffic_congestion.xgboost_baseline:run_trainer"
+import_path = "mlblack.examples.cases.traffic_congestion.cases.xgboost_baseline.build_solver:build_solver"
 tags = ["example", "traffic", "xgboost", "tree", "prediction"]
 summary = "XGBoost baseline on traffic CI forward prediction (lag-only features), using mlblack tree_boosting preset."
+example_entry = "python examples/cases/traffic_congestion/cases/xgboost_baseline/run_solver.py"
 metadata = { "example_entry" = "examples/cases/traffic_congestion/cases/xgboost_baseline/README.md" }

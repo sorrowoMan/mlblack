@@ -106,3 +106,27 @@ def test_case_runtime_provider_serializes_typed_artifact_model_and_keeps_semanti
     assert semantic["name"] == "linear"
     assert semantic["family"] == "neural"
     assert semantic["metadata"] == {"contract": "test"}
+
+
+def test_artifact_materialization_enriches_only_local_context():
+    trainer = _trainer()
+    shared = {"resource_namespace": "case:test"}
+    session = object()
+    trainer.build_context = lambda: shared
+    trainer.enrich_ml_context = lambda context: {**context, "backend.session": session}
+    def build(model, context):
+        assert context["backend.session"] is session
+        return model
+    trainer.problem.build_model_artifact = build
+    CaseRuntimeArtifactProvider().publish_best_model(trainer)
+    assert "backend.session" not in shared
+
+
+def test_prepared_artifact_rejects_changed_model_instead_of_reopening_services():
+    import pytest
+    from mlblack.core.artifact_provider import materialize_model_artifact
+    trainer = _trainer()
+    trainer._prepared_model_artifact = (trainer.best_model, {"artifact": "prepared"})
+    assert materialize_model_artifact(trainer, trainer.best_model) == {"artifact": "prepared"}
+    with pytest.raises(RuntimeError, match="Best model changed"):
+        materialize_model_artifact(trainer, {"another": "model"})

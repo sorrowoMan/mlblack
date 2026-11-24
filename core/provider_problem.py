@@ -106,6 +106,17 @@ class FunctionalGradientLearningProblem(LearningProblem):
             context,
         )
 
+    def restore_model_for_evaluation(
+        self,
+        model: Any,
+        state: UnknownState,
+        feedback: Feedback,
+        context: Mapping[str, Any],
+    ) -> Any:
+        return self.semantic_problem.restore_model_for_evaluation(
+            model, state, feedback, context,
+        )
+
     def describe(self) -> Mapping[str, Any]:
         describe = getattr(self.semantic_problem, "describe", None)
         semantic = dict(describe()) if callable(describe) else {"name": self.name}
@@ -258,6 +269,17 @@ class ProviderBackedLearningProblem(LearningProblem):
             model,
             state,
             context,
+        )
+
+    def restore_model_for_evaluation(
+        self,
+        model: Any,
+        state: UnknownState,
+        feedback: Feedback,
+        context: Mapping[str, Any],
+    ) -> Any:
+        return self.semantic_problem.restore_model_for_evaluation(
+            model, state, feedback, context,
         )
 
     def describe(self) -> Mapping[str, Any]:

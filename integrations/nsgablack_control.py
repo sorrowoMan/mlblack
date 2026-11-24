@@ -8,6 +8,7 @@ lifecycle, incumbent, snapshots, budgets, cancellation, and Adapter execution.
 from __future__ import annotations
 
 import copy
+import inspect
 import json
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
@@ -15,6 +16,9 @@ from uuid import uuid4
 
 import numpy as np
 
+from blackbase.runtime import FinalizationHooks
+from blackbase.representation import RepresentationCapabilities
+from blackbase.preferences import preserve_feedback_evidence
 from blackbase.resources import DataRef, ResourceContext, coerce_resource_context
 from blackbase.types import (
     CandidateBatch,
@@ -37,10 +41,11 @@ from mlblack.core.state import build_trainer_state
 
 from nsgablack.core.base import BlackBoxProblem
 from nsgablack.core.composable_solver import ComposableSolver
-from nsgablack.core.evaluation_feedback import OptimizationFeedbackBatch
+from nsgablack.core.evaluation_feedback import OptimizationFeedbackBatch, feedback_constraint_violation
 from nsgablack.core.state.incumbent import IncumbentState
 from nsgablack.core.state.run_progress import RunProgressState
 from nsgablack.core.state.step_outcome import StepOutcome
+from nsgablack.core.semantic_extension import SolverSemanticExtension
 
 
 @dataclass(frozen=True)
@@ -59,6 +64,25 @@ class _PendingArtifactFinalization:
     best_state_ref: DataRef | None
     history_ref: DataRef | None
     report_ref: DataRef | None
+
+
+class _MLProjectionCheckpointState:
+    """Persist ML evidence projections without another Solver state owner."""
+
+    schema = "mlblack.projection_checkpoint/v1"
+    checkpoint_required = True
+
+    def __init__(self, solver: "LearningSolver") -> None:
+        self.solver = solver
+
+    def get_state(self) -> Mapping[str, Any]:
+        return {"schema": self.schema, **self.solver._export_ml_projection_state()}
+
+    def set_state(self, state: Mapping[str, Any]) -> None:
+        if not isinstance(state, Mapping) or state.get("schema") != self.schema:
+            raise ValueError("unsupported ML projection checkpoint schema")
+        # The shared plugin restores Pool and incumbent before components.
+        self.solver._restore_ml_projection_state(state)
 
 
 class MLRepresentationBridge:
@@ -81,7 +105,13 @@ class MLRepresentationBridge:
         representation: Any,
         *,
         initial_state: UnknownState | None = None,
+        problem_validator: Any = None,
     ) -> None:
+        if problem_validator is not None:
+            if not callable(problem_validator):
+                raise TypeError("problem_validator must be callable")
+            inspect.signature(problem_validator).bind(object(), {})
+        self.problem_validator = problem_validator
         self.representation = representation
         self._control: LearningSolver | None = None
         self._initial_state = initial_state
@@ -89,14 +119,27 @@ class MLRepresentationBridge:
             {} if initial_state is None else dict(initial_state.metadata)
         )
 
-    @property
-    def initializer(self) -> "MLRepresentationBridge":
-        # SolverBase uses this capability marker before calling init(context).
-        return self
+    representation_capabilities = RepresentationCapabilities(
+        frozenset({"init", "repair", "repair_batch", "encode", "decode"})
+    )
 
     @property
-    def decoder(self) -> "MLRepresentationBridge":
-        return self
+    def problem_repair(self):
+        """Opt-in final-state validation over the existing ML repair owner."""
+        return self if self.problem_validator is not None else None
+
+    def validate(self, candidate: UnknownState, context: Mapping[str, Any]) -> bool:
+        if self.problem_validator is None:
+            raise TypeError("ML joint repair requires an explicit problem_validator")
+        return self.problem_validator(candidate, self._ml_context(context))
+
+    def encode(self, model: Any, context=None) -> UnknownState:
+        encoded = self.representation.encode(model, self._ml_context(context))
+        if not isinstance(encoded, UnknownState):
+            raise TypeError("ML ModelRepresentation.encode(...) must return UnknownState")
+        if self._control is not None:
+            self._control._bind_ml_dimension(encoded.size)
+        return encoded
 
     def bind(self, control: "LearningSolver") -> None:
         self._control = control
@@ -105,13 +148,15 @@ class MLRepresentationBridge:
         state = self._initial_state
         self._initial_state = None
         if state is None:
-            state = self.representation.init(self._ml_context(context))
+            state = _initialize_representation(self.representation, self._ml_context(context))
         if not isinstance(state, UnknownState):
             raise TypeError(
                 "ML ModelRepresentation.init(...) must return UnknownState; "
                 f"got {type(state).__name__}"
             )
         self._default_metadata = dict(state.metadata)
+        if self._control is not None:
+            self._control._bind_ml_dimension(state.size)
         return state
 
     def repair(self, candidate: Any, context: Mapping[str, Any] | None = None) -> UnknownState:
@@ -281,6 +326,41 @@ class MLLearningProblemBridge(BlackBoxProblem):
         return self._control
 
 
+class _MLSemantics(SolverSemanticExtension):
+    name = "ml_projection"
+
+    def prepare_run(self, solver):
+        solver._prepare_ml_run()
+
+    def setup(self, solver):
+        solver._setup_ml_semantics()
+
+    def project_context(self, solver, context):
+        projected = solver.enrich_ml_context(context)
+        # Router/task contexts are checkpointable data. The process-local
+        # backend is injected only at ML representation/problem boundaries.
+        projected.pop("backend.session", None)
+        return projected
+
+    def checkpoint_components(self, solver):
+        return solver._ml_checkpoint_components()
+
+    def should_execute_step(self, solver, step_index):
+        return solver._ml_completion_allows_step()
+
+    def cleanup_components(self, solver):
+        return {
+            "provider_trajectory": solver._release_provider_trajectory,
+            "compute_backend": solver.compute_backend_session.close,
+        }
+
+    def before_step(self, solver):
+        solver._step_ml_model_handles = []
+
+    def after_step_committed(self, solver, outcome):
+        solver._synchronize_ml_projection(record_history=True)
+
+
 class LearningSolver(ComposableSolver):
     """ML-friendly facade whose only optimization control is ComposableSolver.
 
@@ -302,6 +382,7 @@ class LearningSolver(ComposableSolver):
         compute_backend: str | Mapping[str, Any] | ComputeBackendSpec | ComputeBackendSession | None = None,
         artifact_provider: ArtifactProvider | None = None,
         result_inline_limit_bytes: int = 64 * 1024,
+        problem_validator: Any = None,
         **solver_kwargs: Any,
     ) -> None:
         self.semantic_problem = problem
@@ -325,23 +406,17 @@ class LearningSolver(ComposableSolver):
             )
         )
         self.biases: list[Any] = []
-        initial_context = {
-            "run_name": self.run_name,
-            "step": 0,
-            "resource_context": resource.as_dict(),
-            "resource.context": resource.as_dict(),
-            **resource.context_items(prefix="resource"),
-            **self.compute_backend_session.context_items(),
-        }
-        initial_state = _initialize_representation(representation, initial_context)
         representation_bridge = MLRepresentationBridge(
             representation,
-            initial_state=initial_state,
+            problem_validator=problem_validator,
         )
         problem_bridge = MLLearningProblemBridge(
             problem,
             representation_bridge,
-            dimension=initial_state.size,
+            # Zero means a deferred layout, never an empty sampled candidate.
+            # Neural layouts resolve in setup; custom representations may bind
+            # their dimension when the first runtime candidate is initialized.
+            dimension=int(getattr(representation, "dimension", 0) or 0),
         )
         super().__init__(
             problem_bridge,
@@ -351,6 +426,13 @@ class LearningSolver(ComposableSolver):
             **solver_kwargs,
         )
         self._resource_context_explicit = resource_context is not None
+        self.register_semantic_extension(_MLSemantics())
+        self.finalization_hooks = FinalizationHooks(
+            prepare_result=self.finalize_run_result,
+            prepare=self.prepare_finalization_after_teardown,
+            freeze=self.freeze_finalization_after_prepare,
+            abort=self.abort_finalization_after_teardown,
+        )
         representation_bridge.bind(self)
         problem_bridge.bind(self)
 
@@ -379,8 +461,21 @@ class LearningSolver(ComposableSolver):
         self._best_state_ref: DataRef | None = None
         self._history_ref: DataRef | None = None
         self._report_ref: DataRef | None = None
-        self._post_teardown_finalization_active = False
+        self.run_session.finalizing = False
         self._pending_artifact_finalization: _PendingArtifactFinalization | None = None
+        self._ml_projection_checkpoint = _MLProjectionCheckpointState(self)
+
+    def _bind_ml_dimension(self, dimension: int) -> None:
+        """Bind a declared/runtime layout without sampling a throwaway model."""
+        size = int(dimension)
+        if size <= 0:
+            raise ValueError("ML representation must define at least one trainable value")
+        if self.dimension not in (0, size):
+            raise ValueError("ML candidate dimension differs from the configured model layout")
+        self.dimension = self.problem.dimension = size
+        self.problem.variables = [f"x{index}" for index in range(size)]
+        self.problem.bounds = {name: (-np.inf, np.inf) for name in self.problem.variables}
+        self.var_bounds = self.problem.bounds
 
     @property
     def step_index(self) -> int:
@@ -406,7 +501,7 @@ class LearningSolver(ComposableSolver):
             {
                 "run_name": self.run_name,
                 "step": int(self.generation),
-                "trajectory_id": str(self._active_run_id or self.run_name),
+                "trajectory_id": str(self.run_session.run_id or self.run_name),
                 "resource_context": resource,
                 "resource.context": resource,
                 **self.resource_context.context_items(prefix="resource"),
@@ -426,30 +521,21 @@ class LearningSolver(ComposableSolver):
                 ctx = dict(projected)
         return ctx
 
-    def build_context(
-        self,
-        individual_id: int | None = None,
-        constraints: np.ndarray | None = None,
-        violation: float | None = None,
-        individual: np.ndarray | None = None,
-    ) -> dict[str, Any]:
-        return self.enrich_ml_context(
-            super().build_context(
-                individual_id=individual_id,
-                constraints=constraints,
-                violation=violation,
-                individual=individual,
-            )
-        )
-
     def init_candidate(
         self,
         context: Mapping[str, Any] | None = None,
+        *,
+        initializer: Any = None,
     ) -> UnknownState:
         candidate = super().init_candidate(
             self.enrich_ml_context(context),
+            initializer=initializer,
         )
-        return self.semantic_candidate_state(candidate)
+        state = self.semantic_candidate_state(candidate)
+        provenance = self.candidate_provenance_for(candidate)
+        if provenance is not None:
+            self.bind_candidate_provenance((state,), (provenance,), activate=False)
+        return state
 
     def set_initial_state(self, state: UnknownState | Sequence[float] | np.ndarray) -> "LearningSolver":
         """Replace the next run's representation-owned initial candidate.
@@ -460,64 +546,12 @@ class LearningSolver(ComposableSolver):
         """
 
         candidate = _unknown_state(state)
+        self._bind_ml_dimension(candidate.size)
         bridge = self.representation_pipeline
         if not isinstance(bridge, MLRepresentationBridge):
             raise TypeError("LearningSolver representation bridge is unavailable")
         bridge._initial_state = candidate
         return self
-
-    def init_population(
-        self,
-        n: int,
-        context: Mapping[str, Any] | None = None,
-    ) -> tuple[UnknownState, ...]:
-        return tuple(self.init_candidate(context) for _ in range(int(n)))
-
-    def repair_candidate(
-        self,
-        candidate: Any,
-        context: Mapping[str, Any] | None = None,
-    ) -> UnknownState:
-        repaired = super().repair_candidate(
-            candidate,
-            self.enrich_ml_context(context),
-        )
-        if not isinstance(repaired, UnknownState):
-            raise TypeError(
-                "ML representation repair must preserve UnknownState semantics"
-            )
-        return repaired
-
-    def encode_candidate(
-        self,
-        model: Any,
-        context: Mapping[str, Any] | None = None,
-    ) -> UnknownState:
-        encoded = self.model_representation.encode(
-            model,
-            self.enrich_ml_context(context),
-        )
-        if not isinstance(encoded, UnknownState):
-            raise TypeError(
-                "ML ModelRepresentation.encode(...) must return UnknownState; "
-                f"got {type(encoded).__name__}"
-            )
-        return encoded
-
-    def decode_candidate(
-        self,
-        candidate: Any,
-        context: Mapping[str, Any] | None = None,
-    ) -> Any:
-        state = (
-            candidate
-            if isinstance(candidate, UnknownState)
-            else self.semantic_candidate_state(candidate)
-        )
-        return self.model_representation.decode(
-            state,
-            self.enrich_ml_context(context),
-        )
 
     def evaluate_individual(
         self,
@@ -528,6 +562,7 @@ class LearningSolver(ComposableSolver):
         # evaluation helper directly and therefore still receives the native
         # (objectives, violation) control-plane tuple exactly once.
         state = _unknown_state(candidate)
+        self._bind_ml_dimension(state.size)
         row = _state_array(state, owner="evaluate_individual")
         provenance = self.prepare_candidate_provenance((state,))
         self.bind_candidate_provenance((row,), provenance, activate=False)
@@ -537,7 +572,7 @@ class LearningSolver(ComposableSolver):
             raise RuntimeError("NSG evaluation did not retain rich Feedback")
         return feedback
 
-    def setup(self) -> None:
+    def _setup_ml_semantics(self) -> None:
         if self.adapter is None:
             raise ValueError("LearningSolver requires an Adapter before fit()")
         requirements = tuple(
@@ -556,11 +591,12 @@ class LearningSolver(ComposableSolver):
             self.require_compute_backend(requirements, consumer="LearningSolver.setup")
         setup = getattr(self.model_representation, "setup", None)
         if callable(setup):
-            setup(self, self.build_context())
-        super().setup()
+            setup(self, self.enrich_ml_context(self.build_context()))
+        dimension = int(getattr(self.model_representation, "dimension", 0) or 0)
+        if dimension:
+            self._bind_ml_dimension(dimension)
 
-    def prepare_fresh_run(self) -> None:
-        super().prepare_fresh_run()
+    def _prepare_ml_run(self) -> None:
         reset_policy = getattr(self._completion_policy, "reset", None)
         if callable(reset_policy):
             reset_policy()
@@ -577,12 +613,13 @@ class LearningSolver(ComposableSolver):
         self._best_feedback_binding = None
         self._last_state_release = None
         self._pending_finalization_report = None
+        self._prepared_model_artifact = None
         self._finalized_report = None
         self._finalized_trainer_result = None
         self._best_state_ref = None
         self._history_ref = None
         self._report_ref = None
-        self._post_teardown_finalization_active = False
+        self.run_session.finalizing = False
         self._pending_artifact_finalization = None
 
     def require_compute_backend(
@@ -603,15 +640,6 @@ class LearningSolver(ComposableSolver):
             consumer=consumer or "LearningSolver.require_compute_backend",
         )
 
-    def teardown(self) -> None:
-        try:
-            super().teardown()
-        finally:
-            try:
-                self._release_provider_trajectory()
-            finally:
-                self.compute_backend_session.close()
-
     def _release_provider_trajectory(self) -> StateReleaseResult | None:
         provider = getattr(self, "evaluation_provider", None)
         gateway = getattr(self.semantic_problem, "gateway", None)
@@ -620,7 +648,7 @@ class LearningSolver(ComposableSolver):
             return None
         if not callable(release):
             raise RuntimeError("stateful evaluation Provider has no release gateway")
-        trajectory_id = str(self._active_run_id or self.run_name)
+        trajectory_id = str(self.run_session.run_id or self.run_name)
         result = release(
             StateReleaseRequest(
                 provider_id=str(provider.spec.provider_id),
@@ -633,12 +661,13 @@ class LearningSolver(ComposableSolver):
         self._last_state_release = result
         return result
 
-    def checkpoint_components(self) -> Mapping[str, Any]:
-        components: dict[str, Any] = {}
+    def _ml_checkpoint_components(self) -> Mapping[str, Any]:
+        components: dict[str, Any] = {
+            "ml_projection": self._ml_projection_checkpoint,
+        }
         provider = getattr(self, "evaluation_provider", None)
         if provider is not None:
             components["evaluation_provider"] = provider
-        components.update(super().checkpoint_components())
         components["model_representation"] = self.model_representation
         semantic_state = getattr(self.semantic_problem, "get_state", None)
         semantic_restore = getattr(self.semantic_problem, "set_state", None)
@@ -650,16 +679,7 @@ class LearningSolver(ComposableSolver):
             components["completion_policy"] = self._completion_policy
         return components
 
-    def step(self) -> StepOutcome:
-        self._step_ml_model_handles = []
-        outcome = super().step()
-        if bool(getattr(outcome, "committed", True)):
-            self._synchronize_ml_projection(record_history=True)
-        return outcome
-
-    def should_execute_step(self, step_index: int) -> bool:
-        if not super().should_execute_step(step_index):
-            return False
+    def _ml_completion_allows_step(self) -> bool:
         if self._completion_policy is not None and self._completion_policy.is_complete(
             step=int(self.run_progress_steps),
             elapsed=float(self.run_progress_elapsed_seconds),
@@ -681,11 +701,7 @@ class LearningSolver(ComposableSolver):
             0,
             int(self.max_steps if max_steps is None else max_steps),
         )
-        run_limit = requested_steps
-        if bool(getattr(self, "_resume_loaded", False)) or bool(
-            getattr(self, "_pending_restore_envelopes", ())
-        ):
-            run_limit += int(getattr(self, "_resume_cursor", 0) or 0)
+        run_limit = self.run_session.step_limit(requested_steps)
         ComposableSolver.run(self, max_steps=run_limit)
         if self._finalized_trainer_result is None:
             raise RuntimeError("ML run completed without a finalized TrainerResult")
@@ -696,6 +712,12 @@ class LearningSolver(ComposableSolver):
 
         self._synchronize_ml_projection(record_history=False)
         report = self.build_report(raw_result)
+        # Capture the derived payload while local backend services are alive.
+        # Publication/serialization still occurs only after successful teardown.
+        self._prepared_model_artifact = None
+        if self.case_runtime is not None and self.best_model is not None:
+            from mlblack.core.artifact_provider import materialize_model_artifact
+            self._prepared_model_artifact = (self.best_model, materialize_model_artifact(self, self.best_model))
         self._pending_finalization_report = dict(report)
         # on_solver_finish is a pre-teardown finishing notification.  It may
         # inspect semantic output, but no durable success Artifact exists yet.
@@ -713,7 +735,7 @@ class LearningSolver(ComposableSolver):
     ) -> Mapping[str, Any]:
         """Stage all success Artifacts after teardown without exposing refs."""
 
-        if not self._post_teardown_finalization_active:
+        if not self.run_session.finalizing:
             raise RuntimeError(
                 "ML result finalization is owned by the Solver lifecycle"
             )
@@ -795,7 +817,7 @@ class LearningSolver(ComposableSolver):
     ) -> Mapping[str, Any]:
         """Freeze staged refs after every strict prepare hook passes."""
 
-        if not self._post_teardown_finalization_active:
+        if not self.run_session.finalizing:
             raise RuntimeError(
                 "ML result finalization is owned by the Solver lifecycle"
             )
@@ -957,6 +979,7 @@ class LearningSolver(ComposableSolver):
         for bias in self.biases:
             adjust = getattr(bias, "adjust_feedback", None)
             if callable(adjust):
+                measured = adjusted
                 adjusted = tuple(adjust(self, state_values, adjusted, ctx))
                 if len(adjusted) != len(state_values):
                     raise ValueError(
@@ -966,6 +989,11 @@ class LearningSolver(ComposableSolver):
                     raise TypeError(
                         f"ML bias {type(bias).__name__} must return Feedback values"
                     )
+                adjusted = tuple(preserve_feedback_evidence(
+                    raw, projected, raw_violation=feedback_constraint_violation(raw),
+                    projected_violation=feedback_constraint_violation(projected),
+                    reason=f"bias:{type(bias).__name__}",
+                ) for raw, projected in zip(measured, adjusted))
         return adjusted
 
     def set_completion_policy(self, policy: Any) -> "LearningSolver":
@@ -1089,12 +1117,17 @@ class LearningSolver(ComposableSolver):
         provider = getattr(self, "evaluation_provider", None)
         provider_state = getattr(provider, "get_state", None)
         return {
-            "state_version": 6,
+            "state_version": 7,
             "control_plane": self.control_plane,
+            "dimension": int(self.dimension),
+            "solution_pool": self.solution_pool.get_state(),
+            "candidate_sequence": int(self._candidate_sequence),
+            "proposal_sequence": int(self._proposal_sequence),
+            "rng_state": self.get_rng_state(),
             "run_name": self.run_name,
             "generation": int(self.generation),
             "evaluation_count": int(self.evaluation_count),
-            "active_run_id": self._active_run_id,
+            "active_run_id": self.run_session.run_id,
             "incumbent": None if incumbent is None else incumbent.as_dict(),
             "adapter": None
             if self.adapter is None
@@ -1115,57 +1148,120 @@ class LearningSolver(ComposableSolver):
                     "state": dict(self._completion_policy.get_state()),
                 }
             ),
-            "best_feedback": (
-                None if self.best_feedback is None else self.best_feedback.as_dict()
-            ),
-            "best_feedback_binding": (
-                None
-                if self._best_feedback_binding is None
-                else dict(self._best_feedback_binding)
-            ),
+            **self._export_ml_projection_state(),
             "history": tuple(dict(row) for row in self.history),
             "resource_context": self.resource_context.as_dict(),
             "compute_backend": self.compute_backend_session.as_dict(),
+        }
+
+    def _export_ml_projection_state(self) -> dict[str, Any]:
+        """One field definition for facade and formal component checkpoints."""
+        return copy.deepcopy({
+            "dimension": int(self.dimension),
+            "best_feedback": (
+                None if self.best_feedback is None else self.best_feedback.as_dict()
+            ),
+            "best_feedback_binding": self._best_feedback_binding,
             "best_model_ref": (
                 None if self.best_model_ref is None else self.best_model_ref.as_dict()
             ),
             "result_artifact_refs": {
                 name: ref.as_dict() for name, ref in self.result_artifact_refs.items()
             },
-        }
+        })
+
+    def _restore_ml_projection_state(self, state: Mapping[str, Any]) -> None:
+        """Restore saved evidence only; never initialize, decode or evaluate."""
+        raw_feedback = state.get("best_feedback")
+        if raw_feedback is not None and not isinstance(raw_feedback, Mapping):
+            raise TypeError("ML projection best_feedback must be a Mapping")
+        feedback = None if raw_feedback is None else Feedback.from_dict(raw_feedback)
+        raw_binding = state.get("best_feedback_binding")
+        if raw_binding is not None and not isinstance(raw_binding, Mapping):
+            raise TypeError("ML projection feedback binding must be a Mapping")
+        binding = None if raw_binding is None else copy.deepcopy(dict(raw_binding))
+        incumbent = self.get_incumbent()
+        dimension = int(state.get("dimension", 0) or 0)
+        if dimension < 0:
+            raise ValueError("ML projection dimension must be nonnegative")
+        if not dimension and incumbent is not None:
+            dimension = np.asarray(incumbent.candidate).size
+        if dimension and self.dimension not in (0, dimension):
+            raise ValueError("ML candidate dimension differs from the configured model layout")
+        if incumbent is not None or feedback is not None or binding is not None:
+            bound_evaluation = None if binding is None else binding.get("evaluation_id")
+            if (
+                incumbent is None or feedback is None or binding is None
+                or incumbent.candidate_token is None
+                or binding.get("candidate_token") != incumbent.candidate_token
+                or (
+                    bound_evaluation is not None and incumbent.evaluation_id is not None
+                    and str(bound_evaluation) != str(incumbent.evaluation_id)
+                )
+            ):
+                raise ValueError(
+                    "restored best_feedback is not bound to the authoritative incumbent"
+                )
+        raw_ref = state.get("best_model_ref")
+        if raw_ref is not None and not isinstance(raw_ref, Mapping):
+            raise TypeError("ML projection best_model_ref must be a Mapping")
+        best_ref = None if raw_ref is None else DataRef.from_dict(raw_ref)
+        raw_refs = state.get("result_artifact_refs", {})
+        if not isinstance(raw_refs, Mapping):
+            raise TypeError("ML projection result_artifact_refs must be a Mapping")
+        refs = {}
+        for name, raw in raw_refs.items():
+            if not isinstance(raw, Mapping):
+                raise TypeError("ML projection artifact reference must be a Mapping")
+            refs[str(name)] = DataRef.from_dict(raw)
+        if best_ref is not None:
+            refs.setdefault("best_model", best_ref)
+        best_state = None
+        if incumbent is not None:
+            metadata = incumbent.metadata.get("candidate.semantic_metadata", {})
+            decoded = decode_shared_value(dict(metadata)) if isinstance(metadata, Mapping) else {}
+            best_state = UnknownState(
+                values=np.asarray(incumbent.candidate, dtype=float).copy(),
+                metadata=dict(decoded) if isinstance(decoded, Mapping) else {},
+            )
+        # Commit detached values after all validation; live handles are never
+        # checkpoint state, and model reconstruction is deferred to projection.
+        if dimension:
+            self._bind_ml_dimension(dimension)
+        self.best_feedback = feedback
+        self._best_feedback_binding = binding
+        self.best_state = best_state
+        self.best_score = None if incumbent is None else float(incumbent.score)
+        self.best_model = None
+        self._step_ml_model_handles = []
+        self.best_model_ref = best_ref
+        self.result_artifact_refs = refs
 
     def set_state(self, state: Mapping[str, Any]) -> "LearningSolver":
         payload = self._migrate_learning_state(state)
-        restore_lock = getattr(self, "_restore_transaction_lock", None)
-        if restore_lock is None:
-            raise RuntimeError("LearningSolver restore transaction lock is unavailable")
-        with restore_lock:
-            if bool(getattr(self, "running", False)):
-                if not bool(getattr(self, "_restore_apply_active", False)):
-                    raise RuntimeError(
-                        "LearningSolver state cannot mutate a running Solver; "
-                        "queue a restore envelope for the post-setup restore phase"
-                    )
-                return self._apply_state_now(payload)
-        if not bool(getattr(self, "_runtime_setup_complete", False)):
-            generation = max(0, int(payload.get("generation", 0) or 0))
-            self._resume_cursor = generation
-            self.queue_restore_envelope(
-                lambda: self._apply_state_now(payload),
-                source="LearningSolver.set_state",
-            )
-            return self
-        return self._apply_state_now(payload)
+        self.run_session.submit_restore(
+            lambda: self._apply_state_now(payload),
+            generation=max(0, int(payload.get("generation", 0) or 0)),
+            source="LearningSolver.set_state",
+        )
+        return self
 
     @staticmethod
     def _migrate_learning_state(state: Mapping[str, Any]) -> dict[str, Any]:
         payload = copy.deepcopy(dict(state or {}))
         version = int(payload.get("state_version", 3) or 3)
-        if version == 6:
+        if version == 7:
+            if not isinstance(payload.get("solution_pool"), Mapping):
+                raise ValueError("LearningSolver v7 state requires its solution_pool closure")
             return payload
-        if version not in {3, 4, 5}:
+        if version not in {3, 4, 5, 6}:
             raise ValueError(
                 f"unsupported LearningSolver state version: {version}"
+            )
+        if not isinstance(payload.get("solution_pool"), Mapping):
+            raise ValueError(
+                "legacy LearningSolver state has no solution_pool value closure; "
+                "restore a complete shared checkpoint instead"
             )
         if version == 3:
             payload.setdefault(
@@ -1186,22 +1282,39 @@ class LearningSolver(ComposableSolver):
             payload.get("run_progress", {})
         ).as_dict()
         payload.setdefault("best_feedback_binding", None)
-        payload["state_version"] = 6
+        payload["state_version"] = 7
         payload["migrated_from_state_version"] = version
         return payload
 
     def _apply_state_now(self, state: Mapping[str, Any]) -> "LearningSolver":
         if str(state.get("control_plane", self.control_plane)) != self.control_plane:
             raise ValueError("trainer state belongs to another control plane")
+        dimension = int(state.get("dimension", 0) or 0)
+        if not dimension and isinstance(state.get("incumbent"), Mapping):
+            dimension = np.asarray(state["incumbent"]["candidate"]).size
+        if dimension:
+            self._bind_ml_dimension(dimension)
         self.run_name = str(state.get("run_name", self.run_name))
         resource = state.get("resource_context")
         if isinstance(resource, Mapping):
             self.set_resource_context(resource)
+        pool_payload = state.get("solution_pool")
+        if isinstance(pool_payload, Mapping):
+            # Restore immutable values before any Adapter resolves exact refs.
+            self.solution_pool.set_state(pool_payload)
         adapter_payload = state.get("adapter")
         if self.adapter is not None and isinstance(adapter_payload, Mapping):
             adapter_state = adapter_payload.get("state", adapter_payload)
             if isinstance(adapter_state, Mapping):
                 self.adapter.set_state(adapter_state)
+        if self.adapter is not None:
+            roots = self.adapter.get_solution_pool_roots(self)
+            if roots is not None:
+                self.solution_pool.read(tuple(roots))
+        self._candidate_sequence = max(0, int(state.get("candidate_sequence", 0)))
+        self._proposal_sequence = max(0, int(state.get("proposal_sequence", 0)))
+        if isinstance(state.get("rng_state"), Mapping):
+            self.set_rng_state(dict(state["rng_state"]))
         provider = getattr(self, "evaluation_provider", None)
         provider_payload = state.get("provider")
         provider_setter = getattr(provider, "set_state", None)
@@ -1218,7 +1331,7 @@ class LearningSolver(ComposableSolver):
         )
         active_run_id = state.get("active_run_id")
         if active_run_id:
-            self._active_run_id = str(active_run_id)
+            self.run_session.run_id = str(active_run_id)
         self.restore_run_progress_state(state.get("run_progress"))
         policy_payload = state.get("completion_policy")
         if isinstance(policy_payload, Mapping):
@@ -1238,39 +1351,10 @@ class LearningSolver(ComposableSolver):
                     "configured completion policy cannot restore checkpoint state"
                 )
             policy_setter(dict(policy_payload.get("state", {}) or {}))
-        raw_feedback = state.get("best_feedback")
-        self.best_feedback = (
-            Feedback.from_dict(raw_feedback)
-            if isinstance(raw_feedback, Mapping)
-            else None
-        )
-        raw_binding = state.get("best_feedback_binding")
-        self._best_feedback_binding = (
-            dict(raw_binding) if isinstance(raw_binding, Mapping) else None
-        )
-        incumbent = self.get_incumbent()
-        if self.best_feedback is not None and not self._feedback_binding_matches(incumbent):
-            self.best_feedback = None
-            self._best_feedback_binding = None
-            raise ValueError(
-                "restored best_feedback is not bound to the authoritative incumbent"
-            )
+        self._restore_ml_projection_state(state)
         self.history = [dict(row) for row in state.get("history", ())]
-        self._resume_cursor = generation
-        self._resume_loaded = True
+        self.run_session.mark_restored(generation)
         self._synchronize_ml_projection(record_history=False)
-        raw_ref = state.get("best_model_ref")
-        self.set_best_model_ref(raw_ref if isinstance(raw_ref, Mapping) else None)
-        self.result_artifact_refs = {}
-        self.result_artifact_refs.update(
-            {
-                str(name): DataRef.from_dict(ref)
-                for name, ref in dict(state.get("result_artifact_refs", {}) or {}).items()
-                if isinstance(ref, Mapping)
-            }
-        )
-        if self.best_model_ref is not None:
-            self.result_artifact_refs.setdefault("best_model", self.best_model_ref)
         return self
 
     def _record_ml_model_handle(
@@ -1346,9 +1430,11 @@ class LearningSolver(ComposableSolver):
                 ),
             )
         )
-        changed = self.best_state is None or not self.model_representation.equivalent(
-            self.best_state,
-            state,
+        changed = (
+            self.best_state is None
+            or not self._feedback_binding_matches(incumbent)
+            or self.best_state.as_dict()["metadata"] != state.as_dict()["metadata"]
+            or not self.model_representation.equivalent(self.best_state, state)
         )
         self.best_state = state
         self.best_score = float(incumbent.score)
@@ -1359,18 +1445,6 @@ class LearningSolver(ComposableSolver):
             ),
             None,
         )
-        if changed or self.best_model is None:
-            if matching_handle is not None:
-                self.best_model = matching_handle.model
-            else:
-                context = self.build_context()
-                decoded_model = self.model_representation.decode(state, context)
-                self.best_model = self.semantic_problem.prepare_model_for_evaluation(
-                    decoded_model,
-                    state,
-                    context,
-                )
-            self.set_best_model_ref(None)
         if matching_index is not None and feedback_batch is not None:
             self.best_feedback = feedback_batch.items[matching_index]
             self._best_feedback_binding = {
@@ -1378,12 +1452,25 @@ class LearningSolver(ComposableSolver):
                 "evaluation_id": incumbent.evaluation_id,
                 "event_id": None if envelope is None else envelope.event_id,
             }
-        elif changed and not self._feedback_binding_matches(incumbent):
+        elif not self._feedback_binding_matches(incumbent):
             self.best_feedback = None
             self._best_feedback_binding = None
             raise RuntimeError(
                 "authoritative ML incumbent has no token-matched canonical feedback"
             )
+        if changed or self.best_model is None:
+            if matching_handle is not None:
+                self.best_model = matching_handle.model
+            else:
+                # Projection consumes saved evidence. It must never train,
+                # evaluate or run an inner Case to reconstruct a best model.
+                context = self.enrich_ml_context(self.build_context())
+                decoded_model = self.model_representation.decode(state, context)
+                self.best_model = self.semantic_problem.restore_model_for_evaluation(
+                    decoded_model, state, self.best_feedback, context,
+                )
+            if changed:
+                self.set_best_model_ref(None)
         if not record_history:
             return
         row = {
@@ -1392,9 +1479,11 @@ class LearningSolver(ComposableSolver):
             "global_best_score": self.best_score,
             "metrics": (
                 {}
-                if not self.last_evaluated_feedback
-                else dict(self.last_evaluated_feedback[0].metrics)
+                if self.best_feedback is None
+                else dict(self.best_feedback.metrics)
             ),
+            "metrics_candidate_token": incumbent.candidate_token,
+            "metrics_evaluation_id": incumbent.evaluation_id,
             "control_plane": self.control_plane,
         }
         if not self.history or self.history[-1] != row:

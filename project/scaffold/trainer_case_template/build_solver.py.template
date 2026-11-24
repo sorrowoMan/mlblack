@@ -1,46 +1,10 @@
-"""Canonical build entry for an ML semantic Case."""
-
-from mlblack.core.problem import LearningProblem
-from mlblack.core.representation import ModelRepresentation
-from mlblack.bias.base import OptimizationBias
-from mlblack.integrations import LearningSolver, build_learning_solver
-from nsgablack.adapters import AlgorithmAdapter
-from blackbase.plugin import PluginBase
-
+"""可运行的 ML 线性回归 Case；修改 pipeline 数据入口即可接入自己的数据。"""
+from mlblack.project.starter import build_starter_trainer
 from .pipeline import build_pipeline
 
 
 def build_solver(config=None, *, resource_context=None, component_overrides=None):
-    """Build and return the configured LearningSolver instance.
-
-    MLBlack supplies ML semantics while NSGABlack supplies optimization control:
-      - Problem: LearningProblem(ProblemBase, ContractMixin) → implement evaluate(candidate, context)
-      - Representation: ModelRepresentation(RepresentationBase, ContractMixin) → implement init/decode
-      - Adapter: AlgorithmAdapter(AdapterBase, ContractMixin) → implement propose/update
-      - Bias: OptimizationBias(BiasBase, ContractMixin) → implement project_context
-      - Capability: PluginBase → override lifecycle hooks
-
-    ``resource_context`` is granted by the shared Project/Case/Scaffold/L0
-    substrate. ``component_overrides`` is the standard nested/cross-framework
-    customization payload.
-    """
-
-    pipeline = build_pipeline(
-        resource_context=resource_context,
-        component_overrides=component_overrides,
-    )
-    del config, pipeline
-    # Return build_learning_solver(problem=..., representation=..., adapter=...).
-    # LearningSolver is the ML semantic projection of the NSGABlack lifecycle.
-    # Keep cross-case orchestration in the shared project-level substrate.
-    raise NotImplementedError("TODO: implement build_solver")
-
-
-def main(argv=None) -> None:
-    del argv
-    solver = build_solver()
-    print(f"build_solver ok: {type(solver).__name__ if solver is not None else 'None'}")
-
-
-if __name__ == "__main__":
-    main()
+    data = build_pipeline(resource_context=resource_context,
+                          component_overrides=component_overrides)
+    return build_starter_trainer(data, resource_context=resource_context,
+                                 component_overrides=component_overrides)

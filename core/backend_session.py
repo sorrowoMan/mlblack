@@ -162,7 +162,7 @@ def get_compute_backend_from_context(
     label = f" for {consumer}" if consumer else ""
     raise ValueError(
         f"compute backend session is required{label}. "
-        "Use LearningSolver.compute_backend_session / LearningSolver.build_context(); "
+        "Use LearningSolver.compute_backend_session / LearningSolver.enrich_ml_context(); "
         "ad-hoc backend.name fallback is disabled."
     )
 

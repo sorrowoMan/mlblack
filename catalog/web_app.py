@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import parse_qs, urlparse
 
-from .dashboard import catalog_summary
+from .facade import catalog_summary
 from .query import CatalogQuery, query_catalog
 from .store import resolve_catalog_db_path
 
@@ -31,7 +31,6 @@ def catalog_web_payload(params: Mapping[str, Any]) -> dict[str, Any]:
 def catalog_summary_payload(params: Mapping[str, Any]) -> dict[str, Any]:
     return catalog_summary(
         db_path=_param(params, "db_path") or None,
-        source="db",
         profile=_param(params, "profile") or "default",
     )
 

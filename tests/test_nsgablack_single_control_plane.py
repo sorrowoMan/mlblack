@@ -107,7 +107,7 @@ def test_mlp_codec_and_torch_lowering_share_layout_and_mapping() -> None:
     assert np.allclose(torch_model.predict(X), local_model.predict(X), atol=1e-6)
 
 
-def test_single_control_plane_prepares_model_before_result_serialization() -> None:
+def test_single_control_plane_prepares_model_before_result_serialization(monkeypatch) -> None:
     pytest.importorskip("torch")
 
     class _CaseRuntime:
@@ -180,6 +180,13 @@ def test_single_control_plane_prepares_model_before_result_serialization() -> No
         shuffle=False,
     )
     control.set_case_runtime(_CaseRuntime())
+    close = control.compute_backend_session.close
+    def close_and_forbid_reopen():
+        close()
+        def forbidden(*args, **kwargs):
+            raise AssertionError("Artifact finalization reopened the backend")
+        monkeypatch.setattr(control.compute_backend_session, "ensure", forbidden)
+    monkeypatch.setattr(control.compute_backend_session, "close", close_and_forbid_reopen)
 
     result = control.fit(max_steps=1)
     payload = result.as_dict()

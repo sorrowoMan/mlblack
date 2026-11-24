@@ -30,3 +30,5 @@ python examples/cases/<project>/run_project.py --check --build-check
 Case-local `run_solver.py` is a debug entry only. Project orchestration, multi-case order, and L0 `ResourceContext` grants belong to `project_config.py` and `run_project.py`.
 
 `mlblack` examples use the same substrate as `nsgablack`; the difference is semantic content, not runner ownership. `mlblack` cases may be outer or inner, and multi-trainer or nested projects should compose Cases through the Project runner rather than creating private schedulers.
+
+真实 HF / PEFT 会话指令微调见 [framework_assistant_sft](framework_assistant_sft/README.md)：默认离线惰性装配，正式训练需要显式基座、语料和 Project 资源声明。

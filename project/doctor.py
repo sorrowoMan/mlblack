@@ -16,6 +16,10 @@ from blackbase.context import ContextContract
 from blackbase.context import METRIC_FALLBACKS, METRIC_KEYS, unknown_context_keys
 from blackbase.contracts import ComponentContract
 
+from blackbase.context.key_registry import with_project_context_keys
+
+
+@with_project_context_keys
 def run_project_doctor(path: str | Path | None = None, *, strict: bool = False) -> DoctorReport:
     root = Path(path or Path.cwd()).resolve()
     package_root = root / "mlblack" if (root / "mlblack").is_dir() else root
@@ -644,6 +648,7 @@ def _check_context_contracts(root: Path, diags: list[DoctorDiagnostic], *, stric
             if key in seen:
                 continue
             seen.add(key)
+            _check_model_restore_contract(obj, diags, strict=strict, path=path)
             if not _is_contract_component(obj):
                 continue
             component_count += 1
@@ -656,6 +661,22 @@ def _check_context_contracts(root: Path, diags: list[DoctorDiagnostic], *, stric
             str(root),
         )
     )
+
+
+def _check_model_restore_contract(obj: Any, diags: list[DoctorDiagnostic], *, strict: bool, path: Path) -> None:
+    """Validate the restore port without building a model or running a Problem."""
+    from mlblack.core.problem import LearningProblem
+
+    if not issubclass(obj, LearningProblem):
+        return
+    try:
+        inspect.signature(obj.restore_model_for_evaluation).bind(None, None, None, None, {})
+    except (TypeError, ValueError) as exc:
+        diags.append(DoctorDiagnostic(
+            "error" if strict else "warn", "model-restore-contract-invalid",
+            f"{obj.__module__}:{obj.__name__}: restore_model_for_evaluation "
+            f"must accept (self, model, state, feedback, context): {exc}", str(path),
+        ))
 
 
 def _iter_python_modules(root: Path) -> Iterable[tuple[str, Path]]:

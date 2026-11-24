@@ -85,8 +85,8 @@ title = "LearningProblem"
 kind = "core"
 import_path = "mlblack.core.problem:LearningProblem"
 tags = ["core", "problem"]
-summary = "Data-dependent evaluator, equivalent to nsgablack Problem."
-metadata = { "architecture_path" = "core.problem", "module" = "mlblack.core.problem", "symbol" = "LearningProblem" }
+summary = "定义数据相关的 loss、指标与约束；具有拟合或内层求解准备的模型，须用 restore_model_for_evaluation 从已保存证据恢复。"
+metadata = { "architecture_path" = "core.problem", "module" = "mlblack.core.problem", "symbol" = "LearningProblem", "model_restore_hook" = "restore_model_for_evaluation" }
 
 [[entry]]
 key = "core.model"
@@ -94,8 +94,8 @@ title = "ModelRepresentation"
 kind = "core"
 import_path = "mlblack.core.representation:ModelRepresentation"
 tags = ["core", "representation"]
-summary = "Unknown-state encoder/decoder, equivalent to nsgablack Representation."
-metadata = { "architecture_path" = "core.representation", "module" = "mlblack.core.representation", "symbol" = "ModelRepresentation" }
+summary = "解释候选的模型含义，提供 Codec、布局与修复；维度来自模型布局，真实初始化在共享 Pool 建立后的运行阶段执行。"
+metadata = { "architecture_path" = "core.representation", "module" = "mlblack.core.representation", "symbol" = "ModelRepresentation", "initialization" = "runtime_after_pool" }
 
 [[entry]]
 key = "core.model_artifact"

@@ -16,6 +16,9 @@
 | [standard_scaffold_tutorial/](standard_scaffold_tutorial/README.md) | 标准 Project / Case / Scaffold 教程 |
 | [neural_graph_backend_architecture/](neural_graph_backend_architecture/README.md) | NeuralGraph、Codec、backend capability 边界 |
 | [model_composition_orchestration.md](model_composition_orchestration.md) | 共享 substrate 下的模型组合边界 |
+| [architecture/JOINT_REPAIR_CN.md](architecture/JOINT_REPAIR_CN.md) | ML 候选与 Unit 的共同修复验收及显式验证装配 |
+| [architecture/ML_POOL_UNIT_INTEGRATION_CN.md](architecture/ML_POOL_UNIT_INTEGRATION_CN.md) | 模型 Codec 与搜索 Unit 的关系、Pool/ctx/Provider 边界及 GA → Adam 交接条件 |
+| [architecture/HF_CONVERSATION_SFT_CN.md](architecture/HF_CONVERSATION_SFT_CN.md) | 真实 HF / PEFT 会话 SFT 的数据、有限 fit、L0 与 Artifact 边界 |
 | [transformer_learning/](transformer_learning/README.md) | Transformer 与模型族学习笔记 |
 | [ml_terminology_review/](ml_terminology_review/README.md) | ML 术语复盘 |
 

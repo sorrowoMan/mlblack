@@ -93,6 +93,16 @@ tags: composition, integration, residual, stacking
 summary: Combines named fitted model predictions without owning training orchestration.
 ```
 
+ML 注册器会把组件显式声明的 `context_requires/provides/mutates/cache`、
+`artifact_requires/provides` 和 `phase_in/out` 发布到共享 `CatalogEntry` 同名字段，
+供本仓和联邦 Catalog 查询上下游；原始 `contract` 仍保留。声明可来自组件属性、
+类型化的 `ContextContract` / `ComponentContract`，或目录中明确的 `context_*`
+与 `context_contract` 字段。依赖名须为字符串或字符串序列，描述字典不会被当作依赖列表。
+后端能力的普通 `contract.provides` 仍表示后端能力，不自动成为上下文产物。
+
+契约邻居表示公开键的供需关系。模型布局、DataView 类型、Head 输出和 Case 装配位置
+还须按具体组件核对；同一个键匹配不能单独证明两个组件可直接组合。
+
 ## 5. Artifact 边界
 
 Artifact 应回答：

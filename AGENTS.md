@@ -2,6 +2,28 @@
 
 ## 0. How To Use This File
 
+Last verified against code: 2026-10-22 (ML pool startup and portable restore).
+
+Runtime ownership and extension rules:
+
+- ML context vocabulary lives in `mlblack.context_keys`; BlackBase owns registration and common keys. Project/Case extensions use scoped `context_keys.json` declarations shared by Doctor and runtime. Do not add ML-only vocabulary to BlackBase.
+- Generated Cases use `mlblack.project.starter` for a runnable NumPy linear-regression baseline; keep data/pipeline and canonical assembly entries editable inside the Case. Scaffold creation is distinct from creating an unimplemented custom component.
+
+- CandidateBatch preserves value and identity independently; Unit carries algorithm structure and an explicit codec, while Adapter owns search decisions.
+- A model Codec interprets candidate parameters and model layout; an Adapter-owned Unit carries search relationships and history. They may share immutable layout data, never writable optimizer state or a live backend object graph. See `docs/architecture/ML_POOL_UNIT_INTEGRATION_CN.md`.
+- Construct LearningSolver and its shared SolutionPool before generating candidates. Read declared `dimension` or resolve layout in Representation.setup; never sample init just to infer shape. Actual init goes through Solver.init_candidate. Adapters that propose directly or use geometry during setup (for example BO initial points) require the model dimension before Adapter.setup.
+- LearningSolver state v7 includes the portable SolutionPool value closure. Restore it before Adapter state resolves exact SolutionRefs; never infer candidate identity from equal arrays or silently replace a missing legacy pool with an empty one.
+- ML result projection uses token-matched model handles or LearningProblem.restore_model_for_evaluation over saved feedback. Recovery must not call prepare_model_for_evaluation, estimator.fit or an inner Case to recreate an already evaluated result. A Problem with preparation side effects must provide an explicit read-only restore rule.
+- The formal checkpoint includes the required `ml_projection` component for best feedback, token/evaluation binding and Artifact references; shared Solver state keeps history. Ordinary build_context contains only backend descriptors. Inject the live session with enrich_ml_context only for local ML calls, never into Router/task checkpoint contexts.
+- RunSession owns run identity/progress/restore/results; use `run_session.submit_restore` instead of writing private resume flags.
+- PopulationAuthority owns the shared in-memory candidate projection; persistent authority still requires AuthorityStore validation.
+- MLRepresentationBridge declares RepresentationCapabilities; initializer/decoder marker attributes are not capabilities.
+- Joint repair is opt-in via LearningSolver(problem_validator=..., joint_repair_policy=...). The validator receives the final UnknownState and ML context; the existing ModelRepresentation remains the repair owner. Never infer feasibility or call model evaluation as an implicit validator. Unit admission, rejection policy and cancellation remain in the shared nsgablack control path.
+- ProblemRepair-only and joint repair paths both restore rejected owners' local pre-repair state. Partial UnitRepair projection runs after Adapter disposition; its draft already uses admitted coordinates. The trajectory/poll/parameters/local_region Unit contracts are v2; never silently reinterpret v1 checkpoint feedback as current.
+- Register ML step projections with SolverSemanticExtension and result publication with FinalizationHooks. Do not override step to repeat the shared transaction.
+- Plugin effects use ParticipationContract; finalization veto and evaluation decision require explicit grants. Controller decisions stay within their owned domains.
+- Bias adjustments retain Feedback.info.raw_evaluation and preference_deltas. A selection view is not the original measurement.
+
 This is the collaboration contract for `mlblack`. It defines where new code, docs, and examples should land.
 
 Language rule (added):
@@ -195,3 +217,11 @@ python -c "from mlblack.project.doctor import run_project_doctor, format_doctor_
 - [ ] No private orchestration or L0 stack is introduced.
 - [ ] Formal examples use Project / Case / Scaffold.
 - [ ] Catalog, doctor, artifact, or report surfaces are updated where relevant.
+
+
+## 11. Artifact local context and teardown boundary (2026-11-16)
+
+- Problem.build_model_artifact is a local ML semantic call and must receive enrich_ml_context; never add backend.session to shared Router/task context.
+- Case finalization prepares the derived model Artifact while backend services are alive, then serializes and publishes through the existing transaction only after successful teardown.
+- Do not reopen a closed backend to regenerate parameter layout or model descriptors. The pending payload is process-local, reset per run, and excluded from checkpoint/context.
+- Cross-worktree tests must explicitly select the target nsgablack configuration/import path; mlblack pytest's default pythonpath may select the neighboring desktop checkout.

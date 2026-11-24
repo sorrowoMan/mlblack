@@ -111,6 +111,9 @@ def test_ml_bias_and_completion_policy_project_into_nsg_control() -> None:
     assert len(result.history) == 1
     assert result.best_feedback is not None
     assert result.best_feedback.metrics["bias.objective_weight_applied"] is True
+    raw_objectives = np.asarray(result.best_feedback.info["raw_evaluation"]["objectives"])
+    assert np.allclose(result.best_feedback.objectives, raw_objectives * [0.5, 1.0])
+    assert result.best_feedback.info["preference_deltas"]
     assert result.report["biases"][0]["name"] == "objective_weight_bias"
     assert result.report["optimization_runtime"]["steps_executed"] == 1
     assert result.report["optimization_runtime"]["steps"] == 1
@@ -145,7 +148,7 @@ def test_completion_policy_continues_one_logical_run_after_state_restore() -> No
     source.fit(max_steps=1)
     checkpoint = source.get_state()
 
-    assert checkpoint["state_version"] == 6
+    assert checkpoint["state_version"] == 7
     assert checkpoint["run_progress"]["steps_completed"] == 1
     assert checkpoint["run_progress"]["attempts_completed"] == 1
     assert checkpoint["run_progress"]["elapsed_seconds"] >= 0.0
@@ -207,7 +210,7 @@ def test_learning_solver_state_v4_migrates_run_progress_to_attempt_schema() -> N
 
     migrated = source._migrate_learning_state(legacy)
 
-    assert migrated["state_version"] == 6
+    assert migrated["state_version"] == 7
     assert migrated["migrated_from_state_version"] == 4
     assert migrated["run_progress"]["schema"] == "nsgablack.run_progress/v2"
     assert migrated["run_progress"]["attempts_completed"] == 1
@@ -215,6 +218,8 @@ def test_learning_solver_state_v4_migrates_run_progress_to_attempt_schema() -> N
 
 def test_unknown_state_metadata_survives_the_numeric_control_plane() -> None:
     class _Representation(ModelRepresentation):
+        dimension = 1
+
         def init(self, context):
             del context
             return UnknownState([0.0], metadata={"model_family": "a"})

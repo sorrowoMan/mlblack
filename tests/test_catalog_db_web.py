@@ -13,7 +13,23 @@ from mlblack.catalog.facade import catalog_flow, catalog_neighbors, show_entry
 from mlblack.catalog.registry import _DISCOVERY_PACKAGES, _entry_from_object, _is_catalog_component, get_catalog
 from mlblack.catalog.relations import usage_profile
 from mlblack.catalog.store import PostgresCatalogStore, resolve_catalog_store
-from mlblack.catalog.web_app import catalog_web_payload, serve_catalog_web
+from mlblack.catalog.web_app import catalog_summary_payload, catalog_web_payload, serve_catalog_web
+
+
+def test_web_summary_uses_the_db_facade_signature_without_registry_fallback(monkeypatch) -> None:
+    calls = []
+
+    def summary(*, db_path=None, profile="default"):
+        calls.append((db_path, profile))
+        return {"total": 7, "by_kind": {"model": 7}, "profile": profile}
+
+    monkeypatch.setattr("mlblack.catalog.web_app.catalog_summary", summary)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("the web summary must not fall back to the source registry")
+    monkeypatch.setattr("mlblack.catalog.registry.get_catalog", forbidden)
+    result = catalog_summary_payload({"db_path": "local-catalog.sqlite", "profile": "framework-core"})
+    assert calls == [("local-catalog.sqlite", "framework-core")]
+    assert result["total"] == 7 and result["profile"] == "framework-core"
 
 
 def test_sqlite_catalog_db_materialize_and_query(tmp_path: Path) -> None:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from blackbase.participation import ParticipationContract
 
 import numpy as np
 import pytest
@@ -169,11 +170,59 @@ def test_incumbent_token_has_priority_over_numeric_equivalence() -> None:
         )
     )
 
-    solver._synchronize_ml_projection(record_history=False)
+    solver._synchronize_ml_projection(record_history=True)
 
     assert solver.best_model == "second-model"
     assert solver.best_feedback.metrics["source"] == "second"
     assert solver.best_state.metadata["architecture"] == "second"
+    assert solver.history[-1]["metrics"] == {"source": "second"}
+    assert solver.history[-1]["metrics_candidate_token"] == "candidate:second"
+
+
+def test_learning_uses_declared_ports_instead_of_replacing_control_methods():
+    solver = _solver()
+    for method in ("step", "build_context", "setup", "prepare_fresh_run", "teardown",
+                   "checkpoint_components", "should_execute_step", "init_population"):
+        assert method not in type(solver).__dict__
+    assert solver.build_context()["run_name"] == solver.run_name
+    assert solver.build_context()["trajectory_id"] == (solver.run_session.run_id or solver.run_name)
+    assert "model_representation" in solver.checkpoint_components()
+
+
+def test_learning_teardown_attempts_all_participants_and_preserves_primary(
+    monkeypatch,
+) -> None:
+    from blackbase.project import collect_failure_evidence
+
+    solver = _solver()
+    events: list[str] = []
+
+    def fail_solver_teardown(_self) -> None:
+        events.append("solver")
+        raise ValueError("solver teardown failed")
+
+    def fail_provider_release() -> None:
+        events.append("provider")
+        raise RuntimeError("provider release failed")
+
+    def fail_backend_close() -> None:
+        events.append("backend")
+        raise OSError("backend close failed")
+
+    monkeypatch.setattr(solver.adapter, "teardown", fail_solver_teardown)
+    solver._release_provider_trajectory = fail_provider_release
+    solver.compute_backend_session.close = fail_backend_close
+
+    with pytest.raises(ValueError, match="solver teardown failed") as captured:
+        solver.teardown()
+
+    assert events == ["solver", "provider", "backend"]
+    evidence = collect_failure_evidence(captured.value)["solver_teardown"]
+    assert [item["phase"] for item in evidence] == [
+        "adapter",
+        "ml_projection.provider_trajectory",
+        "ml_projection.compute_backend",
+    ]
 
 
 def test_missing_canonical_feedback_clears_stale_projection() -> None:
@@ -295,6 +344,7 @@ def test_strict_finalization_prepare_failure_aborts_staged_artifacts() -> None:
     runtime = _CaseRuntime()
 
     class _FailingFinalizationPrepareHook(Plugin):
+        participation = ParticipationContract(vetoes=("finalization",))
         def __init__(self) -> None:
             super().__init__(name="failing_finalization_prepare_hook")
 
@@ -320,6 +370,7 @@ def test_finalized_hook_observes_committed_trainer_result_and_artifacts() -> Non
     events: list[str] = []
 
     class _FinalizationObserver(Plugin):
+        participation = ParticipationContract(vetoes=("finalization",))
         def __init__(self) -> None:
             super().__init__(name="finalization_observer")
 

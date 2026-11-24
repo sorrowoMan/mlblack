@@ -44,15 +44,6 @@ summary = "Stage 1 output boundary consumed by Stage 2."
 metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.artifacts", "module" = "mlblack.integrations.nsgablack_symbolic.artifacts", "symbol" = "OrthogonalBasisSetArtifact" }
 
 [[entry]]
-key = "nsgablack_symbolic.symbolic_basis_artifact"
-title = "SymbolicBasisArtifact"
-kind = "nsgablack_symbolic"
-import_path = "mlblack.integrations.nsgablack_symbolic.artifacts:SymbolicBasisArtifact"
-tags = ["nsgablack_symbolic", "integrations", "artifacts"]
-summary = "Stage 1 output boundary consumed by Stage 2."
-metadata = { "architecture_path" = "integration/integrations.nsgablack_symbolic.artifacts", "module" = "mlblack.integrations.nsgablack_symbolic.artifacts", "symbol" = "SymbolicBasisArtifact" }
-
-[[entry]]
 key = "nsgablack_symbolic.symbolic_basis_consensus_analyzer"
 title = "SymbolicBasisConsensusAnalyzer"
 kind = "nsgablack_symbolic"

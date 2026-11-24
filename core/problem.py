@@ -69,6 +69,32 @@ class LearningProblem(ProblemBase, ContractMixin):
         del state, context
         return model
 
+    def restore_model_for_evaluation(
+        self,
+        model: Any,
+        state: UnknownState,
+        feedback: Feedback,
+        context: Mapping[str, Any],
+    ) -> Any:
+        """Rebuild an evaluated model without repeating evaluation preparation.
+
+        A directly executable decoded model needs no extra state. A Problem
+        that fits an estimator or invokes another Case during preparation must
+        provide an explicit restore rule over saved evidence or model state.
+        Restoration must never call ``prepare_model_for_evaluation`` as a
+        fallback: the recorded feedback belongs to the original execution.
+        """
+
+        del state, feedback, context
+        prepare = self.prepare_model_for_evaluation
+        if getattr(prepare, "__func__", prepare) is not LearningProblem.prepare_model_for_evaluation:
+            raise RuntimeError(
+                f"{type(self).__name__} overrides prepare_model_for_evaluation; "
+                "restore_model_for_evaluation must explicitly restore the evaluated "
+                "model without running preparation again"
+            )
+        return model
+
     # --- ProblemBase abstract method ---
 
     @abstractmethod

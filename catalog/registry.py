@@ -40,22 +40,81 @@ def _static_catalog_entries() -> tuple[CatalogEntry, ...]:
 
 
 def enrich_catalog_entry(entry: CatalogEntry) -> CatalogEntry:
-    """Attach a resolved context contract to a static catalog entry."""
+    """Publish declared contracts in both raw and shared Catalog fields."""
 
     try:
         obj = _resolve_import_path(entry.import_path)
     except Exception as exc:
         return replace(
             entry,
+            **_catalog_contract_fields(entry),
             metadata={**dict(entry.metadata), "contract_error": repr(exc)},
         )
     payload = _contract_payload_for_object(obj)
-    if not payload:
-        return entry
     return replace(
         entry,
+        **_catalog_contract_fields(entry, obj),
         contract={**dict(entry.contract), **payload},
     )
+
+
+_CATALOG_CONTRACT_FIELDS = {
+    "context_requires": "requires",
+    "context_provides": "provides",
+    "context_mutates": "mutates",
+    "context_cache": "cache",
+    "context_notes": "notes",
+    "artifact_requires": "artifact_requires",
+    "artifact_provides": "artifact_provides",
+    "phase_in": "phase_in",
+    "phase_out": "phase_out",
+}
+
+
+def _declared_strings(value: Any) -> tuple[str, ...]:
+    """Keep explicit names; description mappings are not dependency lists."""
+    if isinstance(value, str):
+        values = (value,)
+    elif isinstance(value, (set, frozenset)):
+        values = sorted(v for v in value if isinstance(v, str))
+    elif isinstance(value, (list, tuple)):
+        values = value
+    else:
+        return ()
+    return tuple(dict.fromkeys(v.strip() for v in values if isinstance(v, str) and v.strip()))
+
+
+def _catalog_contract_fields(entry: CatalogEntry, obj: Any = None) -> dict[str, tuple[str, ...]]:
+    """Project owning declarations without interpreting backend capability names.
+
+    Compact requires/provides fields mean context only inside a typed context
+    contract or its explicit context_contract payload. An arbitrary raw
+    contract.provides (for example a backend method table) keeps its own meaning.
+    Read original declarations rather than an already stringified payload.
+    """
+    sources: list[tuple[Mapping[str, Any], bool]] = [(entry.contract, False)]
+    if obj is not None:
+        sources.append(({field: getattr(obj, field, ()) for field in _CATALOG_CONTRACT_FIELDS}, False))
+        raw = getattr(obj, "contract", None)
+        if isinstance(raw, ContextContract):
+            sources.append(({name: getattr(raw, name) for name in _CATALOG_CONTRACT_FIELDS.values()}, True))
+        elif isinstance(raw, ComponentContract):
+            sources.append((raw.describe(), False))
+        elif isinstance(raw, Mapping):
+            sources.append((raw, False))
+    for source, _ in tuple(sources):
+        nested = source.get("context_contract")
+        if isinstance(nested, Mapping):
+            sources.append((nested, True))
+    fields = {}
+    for field, compact in _CATALOG_CONTRACT_FIELDS.items():
+        values = list(_declared_strings(getattr(entry, field)))
+        for source, is_context in sources:
+            values.extend(_declared_strings(source.get(field)))
+            if is_context and compact != field:
+                values.extend(_declared_strings(source.get(compact)))
+        fields[field] = tuple(dict.fromkeys(values))
+    return fields
 
 
 def _enrich_entries(entries: Iterable[CatalogEntry]) -> tuple[CatalogEntry, ...]:

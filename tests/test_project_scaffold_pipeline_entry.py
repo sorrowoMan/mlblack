@@ -16,8 +16,7 @@ def test_generated_solver_and_trainer_cases_have_canonical_pipeline_entry(tmp_pa
         assert "def build_pipeline" in pipeline_main.read_text(encoding="utf-8")
         build_entry = (case_root / "build_solver.py").read_text(encoding="utf-8")
         assert "from .pipeline import build_pipeline" in build_entry
-        assert "from mlblack.integrations import LearningSolver, build_learning_solver" in build_entry
-        assert "from nsgablack.adapters import AlgorithmAdapter" in build_entry
+        assert "from mlblack.project.starter import build_starter_trainer" in build_entry
         assert "mlblack.core.adapter" not in build_entry
         assert "OptimizerAdapter" not in build_entry
         run_entry = (case_root / "run_solver.py").read_text(encoding="utf-8")

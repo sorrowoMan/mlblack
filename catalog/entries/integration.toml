@@ -1,4 +1,13 @@
 [[entry]]
+key = "integration.hf_sft"
+title = "build_hf_sft_solver"
+kind = "integration"
+import_path = "mlblack.integrations.hf_sft:build_hf_sft_solver"
+tags = ["integration", "sft", "peft", "lora", "causal-lm", "provider"]
+summary = "真实 HF + PEFT 会话 SFT：复用 LearningSolver、EvaluationGateway 与 Case Artifact，完整 fit 是一次评估，非逐 optimizer step 回滚。"
+metadata = { "architecture_path" = "integrations.hf_sft", "optional_dependencies" = ["sft"], "example_project" = "examples/cases/framework_assistant_sft", "local_files_only_default" = true, "optimizer_resume" = false }
+
+[[entry]]
 key = "integration.nsgablack_gradient"
 title = "build_gradient_trainer"
 kind = "integration"
@@ -22,8 +31,8 @@ title = "LearningSolver"
 kind = "integration"
 import_path = "mlblack.integrations.nsgablack_control:LearningSolver"
 tags = ["integration", "nsgablack", "control-plane", "trainer-facade"]
-summary = "ML 语义 facade：保留 fit/TrainerResult 词汇，唯一优化生命周期由 nsgablack ComposableSolver 控制。"
-metadata = { "architecture_path" = "integrations.nsgablack_control", "control_plane" = "nsgablack.ComposableSolver", "semantic_owner" = "mlblack" }
+summary = "ML 语义 facade：复用共享 Pool、Unit、编排和唯一 Solver 生命周期；v7 状态保存池值闭包，正式 checkpoint 保存 ML 最佳反馈绑定。"
+metadata = { "architecture_path" = "integrations.nsgablack_control", "control_plane" = "nsgablack.ComposableSolver", "semantic_owner" = "mlblack", "state_version" = 7 }
 
 [[entry]]
 key = "integration.ml_learning_problem_bridge"

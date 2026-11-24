@@ -1,3 +1,0 @@
-name = temporal_lstm
-kind = trainer
-framework = mlblack

@@ -280,12 +280,25 @@ def materialize_model_artifact(trainer: Any, model: Any) -> Any:
     builder is never mistaken for an alternate call signature.
     """
 
+    prepared = getattr(trainer, "_prepared_model_artifact", None)
+    if prepared is not None:
+        source, artifact = prepared
+        if source is not model:
+            raise RuntimeError("Best model changed after Artifact materialization was prepared")
+        return artifact
     problem = getattr(trainer, "problem", None)
     materialize = getattr(problem, "build_model_artifact", None)
     if not callable(materialize):
         return model
     build_context = getattr(trainer, "build_context", None)
     context = build_context() if callable(build_context) else {}
+    # Artifact materialization is a local ML call, like model evaluation.
+    # Ordinary shared context intentionally excludes live backend sessions.
+    enrich = getattr(trainer, "enrich_ml_context", None)
+    if callable(enrich):
+        context = enrich(context)
+        if not isinstance(context, Mapping):
+            raise TypeError("Artifact ML context enrichment must return a Mapping")
     return invoke_bound_once(
         materialize,
         (

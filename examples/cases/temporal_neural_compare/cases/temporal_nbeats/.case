@@ -1,3 +1,0 @@
-name = temporal_nbeats
-kind = trainer
-framework = mlblack
